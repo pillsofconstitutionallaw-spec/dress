@@ -81,11 +81,22 @@ viene aperto l'utente non può salvare nulla (`EMAIL_NOT_CONFIRMED`). Il link ri
 - In **Authentication → Providers → Email** deve restare acceso *Confirm email*.
 - In **Authentication → URL Configuration** metti il **Site URL** del tuo dominio e aggiungi
   `https://tuo-dominio/auth/confirmed` tra i *Redirect URLs* (in locale: `http://localhost:3000/auth/confirmed`).
-- Il mittente predefinito è `noreply@mail.app.supabase.io`. **Va bene solo per le prove**: ha un
-  limite di poche mail all'ora. Per un uso vero collega un tuo SMTP in
-  **Project Settings → Authentication → SMTP Settings** (Resend, Brevo, Postmark, Mailgun…) e usa
-  un mittente tipo `noreply@tuodominio.it`. Il testo della mail si cambia in
-  **Authentication → Email Templates**.
+- Il mittente predefinito è `noreply@mail.app.supabase.io`: è già un vero no-reply, ma **col
+  mittente di default sul piano Free non si può cambiare nulla**. Verificato sul campo:
+  - il limite è **2 mail all'ora** e l'API rifiuta di alzarlo
+    (*"Custom SMTP required to configure RATE_LIMIT_EMAIL_SENT"*);
+  - i testi restano in inglese e l'API rifiuta di personalizzarli
+    (*"Email template modification is not available for free tier projects using the default email provider"*).
+
+  Per le prove va benissimo così. Per sbloccare limiti, lingua e mittente serve un **SMTP tuo**
+  (permesso anche sul piano Free) in **Project Settings → Authentication → SMTP Settings**:
+  - **con un dominio tuo** → Resend o Postmark, mittente `noreply@tuodominio.it`: è l'unico modo di
+    avere un no-reply davvero non replicabile, perché un indirizzo esiste solo su un dominio che
+    controlli. Servono 3 record DNS;
+  - **senza dominio** → Brevo con un singolo indirizzo verificato (anche una Gmail): sblocca lingua e
+    volumi, ma il mittente sarà quell'indirizzo, quindi le risposte arrivano davvero a te.
+
+  Una volta collegato l'SMTP, i testi si cambiano in **Authentication → Email Templates**.
 - Chi non riceve la mail può farsela rimandare: pulsante "Rimanda la mail" (`/api/auth/resend`).
 
 ### 4.3 Cancellare l'account
