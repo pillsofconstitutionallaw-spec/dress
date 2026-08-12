@@ -1,40 +1,41 @@
 import { BRAND } from "@/lib/data";
 
+// Il marchio: una "D" disegnata con asta e mezzo cerchio, seguita dal resto
+// della parola. La lettera è geometria pura, non un carattere tipografico,
+// così resta identica ovunque — anche dove i font non si caricano — ed è la
+// stessa forma dell'icona sulla schermata home.
+//
+// Coordinate: altezza della maiuscola da y=8 a y=44; la parola poggia sulla
+// stessa linea di base.
 export default function BrandMark({ small = false }) {
-  const height = small ? 32 : 44;
-  const width = small ? 100 : 160;
-  const restX = small ? 56 : 76;
+  const width = small ? 104 : 168;
+  const height = small ? 32 : 52;
 
   return (
     <svg
-      className="brand-svg"
-      viewBox={`0 0 ${width} ${height}`}
-      width={small ? 92 : 160}
+      viewBox="0 0 140 52"
+      width={width}
       height={height}
       role="img"
       aria-label={BRAND}
       xmlns="http://www.w3.org/2000/svg"
+      style={{ display: "block", overflow: "visible" }}
     >
       <title>{BRAND}</title>
-      <g className="logo-group" transform={`translate(0,0)`}>
-        {/* Vertical stem */}
-        <path
-          className="logo-d"
-          d={`M14 6 L14 ${height - 8} M14 6 C 44 6, ${width - 28} ${Math.round(height / 2.2)}, 44 ${height - 8} C ${width - 28} ${height - 12}, 44 ${height - 6}, 14 ${height - 8}`}
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
+      <g fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round">
+        {/* asta della D */}
+        <path d="M10 8 L10 44" />
+        {/* pancia della D: mezzo cerchio leggermente più stretto di un semicerchio */}
+        <path d="M10 8 A 16 18 0 0 1 10 44" />
       </g>
-
       <text
-        className="rest"
-        x={restX}
-        y={height - 10}
-        fontFamily="Outfit, system-ui, sans-serif"
-        fontWeight="600"
-        fontSize={small ? 12 : 18}
+        x="34"
+        y="44"
+        fontFamily="Outfit, system-ui, -apple-system, sans-serif"
+        fontSize="50"
+        fontWeight="300"
+        letterSpacing="-1"
+        fill="currentColor"
       >
         ress
       </text>

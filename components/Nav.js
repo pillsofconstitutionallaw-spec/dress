@@ -3,10 +3,8 @@ import BrandMark from "@/components/BrandMark";
 
 export default function Nav() {
   const links = [
-    { href: "/start", label: "Scopri il tuo stile" },
-    { href: "/colors", label: "Colori dell'anno" },
-    { href: "/offers", label: "Offerte" },
-    { href: "/wardrobe", label: "Guardaroba" },
+    { href: "/cerca", label: "Cerca" },
+    { href: "/dashboard", label: "Dashboard" },
   ];
   return (
     <header style={{ borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--paper)", zIndex: 20 }}>
@@ -14,13 +12,13 @@ export default function Nav() {
         <Link href="/" style={{ display: "inline-flex", alignItems: "center" }}>
           <BrandMark small />
         </Link>
-        <nav style={{ display: "flex", gap: "clamp(12px, 2.6vw, 30px)", flexWrap: "wrap", alignItems: "center" }}>
+        <nav style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className="eyebrow" style={{ letterSpacing: "0.16em" }}>
+            <Link key={l.href} href={l.href} className="eyebrow" style={{ letterSpacing: "0.08em" }}>
               {l.label}
             </Link>
           ))}
-          <Link href="/start" className="btn ghost" style={{ marginLeft: 6 }}>Iscriviti</Link>
+          <Link href="/start" className="btn" style={{ marginLeft: 6 }}>Iscriviti</Link>
         </nav>
       </div>
     </header>

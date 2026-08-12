@@ -5,6 +5,8 @@ import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
 import { STYLES, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE } from "@/lib/data";
+import BrandMark from "@/components/BrandMark";
+import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 
 function Swatch({ c }) {
   return (
@@ -40,7 +42,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", hair: "", eyes: "", style: "", comment: "" });
+  const [profile, setProfile] = useState({ height: "", hair: "", eyes: "", style: "", comment: "", sex: "", orientation: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,11 @@ export default function Start() {
   const [budget, setBudget] = useState("");
   const [err, setErr] = useState("");
   const [signedUp, setSignedUp] = useState(false);
-  const [signup, setSignup] = useState({ name: "", email: "", consent: true });
+  const [signup, setSignup] = useState({ name: "", email: "", password: "", consent: true });
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pending, setPending] = useState(null); // messaggio "controlla la mail"
+  const [busy, setBusy] = useState(false);
 
   const set = (k) => (e) => setProfile((p) => ({ ...p, [k]: e.target.value }));
 
@@ -67,11 +73,18 @@ export default function Start() {
         if (s.budget) setBudget(s.budget);
         if (s.result) setResult(s.result);
       }
-      const signed = localStorage.getItem("dress:signedUp");
-      if (signed === "1") setSignedUp(true);
     } catch (e) {
       // ignore
     }
+    // Senza account configurati il flusso resta libero; altrimenti conta
+    // solo una sessione vera (email già confermata).
+    if (!hasAccounts()) {
+      setSignedUp(true);
+      return;
+    }
+    getUser().then((u) => {
+      if (u?.email_confirmed_at || u?.confirmed_at) setSignedUp(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -92,15 +105,55 @@ export default function Start() {
     }
   }
 
-  function completeSignup() {
-    // simple validation
-    if (!signup.name || !signup.email) return setErr("Inserisci nome e email per proseguire.");
-    setSignedUp(true);
-    try {
-      localStorage.setItem("dress:signedUp", "1");
-      localStorage.setItem("dress:signup", JSON.stringify(signup));
-    } catch {}
+  // L'iscrizione non apre subito l'app: prima va confermata l'email.
+  async function completeSignup() {
+    if (!signup.name || !signup.email || !signup.password) {
+      return setErr("Inserisci nome, email e password per proseguire.");
+    }
+    if (!signup.consent) {
+      return setErr("Serve il consenso al trattamento delle immagini per iscriverti.");
+    }
     setErr("");
+    setBusy(true);
+    try {
+      const data = await register({
+        name: signup.name,
+        email: signup.email,
+        password: signup.password,
+        profile,
+      });
+      setPending({ email: signup.email, message: data.message });
+      setSignup((s) => ({ ...s, password: "" }));
+    } catch (e) {
+      setErr(String(e.message || e));
+    }
+    setBusy(false);
+  }
+
+  async function resendMail() {
+    setErr("");
+    try {
+      const data = await resendConfirmation(pending?.email || signup.email);
+      setPending((p) => ({ ...(p || { email: signup.email }), message: data.message }));
+    } catch (e) {
+      setErr(String(e.message || e));
+    }
+  }
+
+  async function completeLogin() {
+    if (!signup.email || !signup.password) return setErr("Inserisci email e password.");
+    setErr("");
+    setBusy(true);
+    try {
+      await signIn({ email: signup.email, password: signup.password });
+      setSignedUp(true);
+      setShowLoginModal(false);
+      setSignup((s) => ({ ...s, password: "" }));
+    } catch (e) {
+      setErr(String(e.message || e));
+      if (e.needsConfirmation) setPending({ email: signup.email, message: "" });
+    }
+    setBusy(false);
   }
 
   async function analyze() {
@@ -123,26 +176,86 @@ export default function Start() {
     }
   }
 
+  function saveProfile() {
+    try {
+      const item = { title: `${profile.name || 'Profilo'} - ${new Date().toISOString()}`, profile, palette: result?.palette || [], note: '' };
+      const cur = JSON.parse(localStorage.getItem('dress:savedItems') || '[]');
+      const next = [item, ...cur].slice(0, 50);
+      localStorage.setItem('dress:savedItems', JSON.stringify(next));
+    } catch {}
+  }
+
   const outfits = result ? fallbackOutfits(mode, profile) : [];
 
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 900 }}>
 
+      {/* Landing with Iscriviti / Accedi when user not signed up */}
       {!signedUp && (
+        <div style={{ display: "grid", gap: 18, justifyContent: "center", alignItems: "center", paddingTop: 40 }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button className="btn" onClick={() => setShowSignupModal(true)}>Iscriviti</button>
+            <button className="btn ghost" onClick={() => setShowLoginModal(true)}>Accedi</button>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <BrandMark small={false} />
+          </div>
+        </div>
+      )}
+
+      {/* Signup modal */}
+      {showSignupModal && (
         <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.36)", zIndex: 60 }}>
           <div className="card" style={{ padding: 28, width: 420, borderRadius: 12 }}>
-            <h2 className="h2" style={{ marginBottom: 8 }}>Benvenuto su {"dress"}</h2>
-            <p className="muted" style={{ marginBottom: 16 }}>Iscriviti per salvare il tuo profilo e tornare indietro senza perdere le scelte.</p>
+            <h2 className="h2" style={{ marginBottom: 8 }}>Iscriviti a {"dress"}</h2>
+
+            {pending ? (
+              <>
+                <p className="muted" style={{ marginBottom: 12 }}>
+                  {pending.message || `Ti abbiamo scritto a ${pending.email}: apri il link per confermare l'iscrizione.`}
+                </p>
+                {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="btn ghost" onClick={resendMail}>Rimanda la mail</button>
+                  <button className="btn" onClick={() => { setPending(null); setShowSignupModal(false); }}>Ho capito</button>
+                </div>
+              </>
+            ) : (
+            <>
+            <p className="muted" style={{ marginBottom: 12 }}>Ti mandiamo una mail di conferma: l'account si attiva quando apri il link. Potrai cancellarlo quando vuoi dal tuo spazio personale.</p>
             <label className="field"><span className="label">Nome</span><input className="control" value={signup.name} onChange={(e) => setSignup((s) => ({ ...s, name: e.target.value }))} /></label>
             <label className="field"><span className="label">Email</span><input className="control" inputMode="email" value={signup.email} onChange={(e) => setSignup((s) => ({ ...s, email: e.target.value }))} /></label>
+            <label className="field"><span className="label">Password</span><input className="control" type="password" value={signup.password} onChange={(e) => setSignup((s) => ({ ...s, password: e.target.value }))} /></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <input type="checkbox" checked={signup.consent} onChange={(e) => setSignup((s) => ({ ...s, consent: e.target.checked }))} />
               <span className="muted">Accetto che le immagini siano usate solo per analisi e non condivise.</span>
             </label>
             {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn ghost" onClick={() => { setSignup({ name: "", email: "", consent: true }); setErr(""); }}>Annulla</button>
-              <button className="btn" onClick={completeSignup}>Iscriviti e continua</button>
+              <button className="btn ghost" onClick={() => { setSignup({ name: "", email: "", password: "", consent: true }); setErr(""); setShowSignupModal(false); }}>Annulla</button>
+              <button className="btn" onClick={completeSignup} disabled={busy}>{busy ? "Invio…" : "Iscriviti"}</button>
+            </div>
+            </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Login modal */}
+      {showLoginModal && (
+        <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.36)", zIndex: 60 }}>
+          <div className="card" style={{ padding: 28, width: 420, borderRadius: 12 }}>
+            <h2 className="h2" style={{ marginBottom: 8 }}>Accedi</h2>
+            <p className="muted" style={{ marginBottom: 12 }}>Inserisci la stessa email usata per l'iscrizione.</p>
+            <label className="field"><span className="label">Email</span><input className="control" inputMode="email" value={signup.email} onChange={(e) => setSignup((s) => ({ ...s, email: e.target.value }))} /></label>
+            <label className="field"><span className="label">Password</span><input className="control" type="password" value={signup.password} onChange={(e) => setSignup((s) => ({ ...s, password: e.target.value }))} /></label>
+            {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
+            {pending ? (
+              <button className="btn ghost" style={{ marginBottom: 10 }} onClick={resendMail}>Rimandami la mail di conferma</button>
+            ) : null}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => { setSignup({ name: "", email: "", password: "", consent: true }); setErr(""); setShowLoginModal(false); }}>Annulla</button>
+              <button className="btn" onClick={completeLogin} disabled={busy}>{busy ? "Accedo…" : "Accedi"}</button>
             </div>
           </div>
         </div>
@@ -186,11 +299,26 @@ export default function Start() {
           </label>
 
           <label className="field">
+            <span className="label">Sesso</span>
+            <select className="control" value={profile.sex} onChange={(e) => setProfile((p) => ({ ...p, sex: e.target.value }))}>
+              <option value="">Preferisco non specificare</option>
+              <option value="female">Donna</option>
+              <option value="male">Uomo</option>
+              <option value="nonbinary">Non binario</option>
+            </select>
+          </label>
+
+          <label className="field">
             <span className="label">Il tuo stile attuale</span>
             <select className="control" value={profile.style} onChange={set("style")}>
               <option value="">Scegli…</option>
               {STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
+          </label>
+
+          <label className="field">
+            <span className="label">Orientamento (opzionale)</span>
+            <input className="control" value={profile.orientation} onChange={(e) => setProfile((p) => ({ ...p, orientation: e.target.value }))} placeholder="es. eterosessuale, bisessuale..." />
           </label>
 
           <button className="btn" onClick={() => setStep(2)}>Continua</button>
@@ -252,11 +380,7 @@ export default function Start() {
             {result.season ? <h1 className="h2" style={{ marginTop: 10 }}>{result.season}</h1> : null}
             {result.styleReading ? <p className="muted" style={{ marginTop: 12, maxWidth: "52ch" }}>Lettura dello stile: {result.styleReading}</p> : null}
           </div>
-          {result.source !== "gemini" ? (
-            <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
-              Modalità dimostrativa (senza chiave AI). Aggiungi <code>GEMINI_API_KEY</code> per l'analisi reale dalla foto.
-            </p>
-          ) : null}
+          {/* production UI: no demo badge shown */}
 
           <div className="swatches" style={{ marginTop: 24 }}>
             {result.palette.map((c, i) => <Swatch key={i} c={c} />)}
@@ -296,6 +420,7 @@ export default function Start() {
             <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link href="/wardrobe" className="btn ghost">Ho già dei capi da abbinare</Link>
               <button className="btn ghost" onClick={() => { setStep(1); setResult(null); }}>Ricomincia</button>
+              <button className="btn" onClick={() => { saveProfile(); }}>Salva profilo</button>
             </div>
           </div>
         </section>
