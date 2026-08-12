@@ -5,6 +5,28 @@ import { BRAND } from "@/lib/data";
 export const metadata = {
   title: `${BRAND} — consulenza d'immagine personalizzata`,
   description: `Scopri la tua palette personale, gli outfit più adatti e le migliori scelte di acquisto con ${BRAND}.`,
+  applicationName: BRAND,
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  // iOS non legge il manifest: queste righe servono perché, aggiunta alla home,
+  // l'app si apra a tutto schermo e col nome giusto sotto l'icona.
+  appleWebApp: {
+    capable: true,
+    title: BRAND,
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport = {
+  themeColor: "#111213",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {
