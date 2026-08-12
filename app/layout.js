@@ -4,8 +4,7 @@ import { BRAND } from "@/lib/data";
 
 export const metadata = {
   title: `${BRAND} — consulenza d'immagine personalizzata`,
-  description:
-    "Scopri la tua palette personale, gli outfit più adatti e le migliori scelte di acquisto con Filo.",
+  description: `Scopri la tua palette personale, gli outfit più adatti e le migliori scelte di acquisto con ${BRAND}.`,
 };
 
 export default function RootLayout({ children }) {
@@ -15,7 +14,7 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Outfit:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>

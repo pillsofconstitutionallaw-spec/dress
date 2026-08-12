@@ -1,4 +1,4 @@
-# Filo — app di stile personale (prototipo)
+# Dress — app di stile personale (prototipo)
 
 App Next.js che, da un selfie e pochi dati, genera una **palette personale di 5 colori** e **outfit**
 con indicazione di **dove comprarli** (con segnalazione del fast fashion) e una sezione per

@@ -14,12 +14,13 @@ export default function Nav() {
         <Link href="/" style={{ display: "inline-flex", alignItems: "center" }}>
           <BrandMark small />
         </Link>
-        <nav style={{ display: "flex", gap: "clamp(12px, 2.6vw, 30px)", flexWrap: "wrap" }}>
+        <nav style={{ display: "flex", gap: "clamp(12px, 2.6vw, 30px)", flexWrap: "wrap", alignItems: "center" }}>
           {links.map((l) => (
             <Link key={l.href} href={l.href} className="eyebrow" style={{ letterSpacing: "0.16em" }}>
               {l.label}
             </Link>
           ))}
+          <Link href="/start" className="btn ghost" style={{ marginLeft: 6 }}>Iscriviti</Link>
         </nav>
       </div>
     </header>

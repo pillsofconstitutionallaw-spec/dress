@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
@@ -40,7 +40,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", hair: "", eyes: "", style: "" });
+  const [profile, setProfile] = useState({ height: "", hair: "", eyes: "", style: "", comment: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -48,8 +48,38 @@ export default function Start() {
   const [mode, setMode] = useState("smart");
   const [budget, setBudget] = useState("");
   const [err, setErr] = useState("");
+  const [signedUp, setSignedUp] = useState(false);
+  const [signup, setSignup] = useState({ name: "", email: "", consent: true });
 
   const set = (k) => (e) => setProfile((p) => ({ ...p, [k]: e.target.value }));
+
+  // Persist state so user can navigate back without losing progress
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("dress:session");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.profile) setProfile((p) => ({ ...p, ...s.profile }));
+        if (s.closeup) setCloseup(s.closeup);
+        if (s.fullbody) setFullbody(s.fullbody);
+        if (s.step) setStep(s.step);
+        if (s.mode) setMode(s.mode);
+        if (s.budget) setBudget(s.budget);
+        if (s.result) setResult(s.result);
+      }
+      const signed = localStorage.getItem("dress:signedUp");
+      if (signed === "1") setSignedUp(true);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const s = { profile, closeup, fullbody, step, mode, budget, result };
+      localStorage.setItem("dress:session", JSON.stringify(s));
+    } catch (e) {}
+  }, [profile, closeup, fullbody, step, mode, budget, result]);
 
   async function onPhoto(setter, e) {
     const file = e.target.files?.[0];
@@ -60,6 +90,17 @@ export default function Start() {
     } catch {
       setErr("Non sono riuscito a leggere l'immagine. Riprova con un'altra foto.");
     }
+  }
+
+  function completeSignup() {
+    // simple validation
+    if (!signup.name || !signup.email) return setErr("Inserisci nome e email per proseguire.");
+    setSignedUp(true);
+    try {
+      localStorage.setItem("dress:signedUp", "1");
+      localStorage.setItem("dress:signup", JSON.stringify(signup));
+    } catch {}
+    setErr("");
   }
 
   async function analyze() {
@@ -86,6 +127,26 @@ export default function Start() {
 
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 900 }}>
+
+      {!signedUp && (
+        <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.36)", zIndex: 60 }}>
+          <div className="card" style={{ padding: 28, width: 420, borderRadius: 12 }}>
+            <h2 className="h2" style={{ marginBottom: 8 }}>Benvenuto su {"dress"}</h2>
+            <p className="muted" style={{ marginBottom: 16 }}>Iscriviti per salvare il tuo profilo e tornare indietro senza perdere le scelte.</p>
+            <label className="field"><span className="label">Nome</span><input className="control" value={signup.name} onChange={(e) => setSignup((s) => ({ ...s, name: e.target.value }))} /></label>
+            <label className="field"><span className="label">Email</span><input className="control" inputMode="email" value={signup.email} onChange={(e) => setSignup((s) => ({ ...s, email: e.target.value }))} /></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <input type="checkbox" checked={signup.consent} onChange={(e) => setSignup((s) => ({ ...s, consent: e.target.checked }))} />
+              <span className="muted">Accetto che le immagini siano usate solo per analisi e non condivise.</span>
+            </label>
+            {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => { setSignup({ name: "", email: "", consent: true }); setErr(""); }}>Annulla</button>
+              <button className="btn" onClick={completeSignup}>Iscriviti e continua</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* progress */}
       <div style={{ display: "flex", gap: 8, marginBottom: 36 }}>
         {[1, 2, 3, 4].map((n) => (
