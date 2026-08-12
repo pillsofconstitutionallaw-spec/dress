@@ -79,7 +79,7 @@ main::before {
 
 .wrap { max-width: var(--maxw); margin: 0 auto; padding-left: var(--pad); padding-right: var(--pad); }
 
-/* The signature "filo": a thin multi-color thread rule */
+/* The signature "dress": a thin multi-color thread rule */
 .thread {
   height: 2px;
   width: 100%;
