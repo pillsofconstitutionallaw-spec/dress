@@ -65,9 +65,7 @@ export default function Wardrobe() {
 
           {res && (
             <div style={{ marginTop: 24 }}>
-              {res.source !== "gemini" ? (
-                <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>Modalità dimostrativa — aggiungi la chiave Gemini per l'analisi reale dalla foto.</p>
-              ) : null}
+              {/* production UI: no demo badge shown */}
 
               <div className="card" style={{ padding: "clamp(18px,3vw,26px)" }}>
                 <p className="eyebrow" style={{ marginBottom: 8 }}>Come abbinarlo</p>
