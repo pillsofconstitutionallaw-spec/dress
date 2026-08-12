@@ -3,6 +3,7 @@ import BrandMark from "@/components/BrandMark";
 
 export default function Nav() {
   const links = [
+    { href: "/cerca", label: "Cerca" },
     { href: "/dashboard", label: "Dashboard" },
   ];
   return (
