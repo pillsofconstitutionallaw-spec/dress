@@ -7,6 +7,19 @@ import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
 
 // Pagina di atterraggio del link contenuto nella mail di conferma.
 // Supabase rimanda qui dopo aver verificato l'indirizzo.
+// Chi non ha ancora dato misure e selfie va al questionario; chi la palette
+// ce l'ha già — per esempio confermando un cambio di indirizzo — non deve
+// rifarlo daccapo.
+function prossimaTappa() {
+  try {
+    const s = JSON.parse(localStorage.getItem("dress:session") || "null");
+    if (s?.result?.palette?.length) return "/dashboard";
+  } catch {
+    /* nessuna sessione */
+  }
+  return "/start";
+}
+
 export default function Confirmed() {
   const router = useRouter();
   const [state, setState] = useState("checking"); // checking | signedIn | confirmed | error
@@ -58,7 +71,7 @@ export default function Confirmed() {
         // Sessione attiva: si entra e basta. Un altro tasto da premere qui
         // sarebbe solo un ostacolo fra l'utente e l'app.
         setState("signedIn");
-        setTimeout(() => router.replace("/start"), 900);
+        setTimeout(() => router.replace(prossimaTappa()), 900);
         return;
       }
       setState("confirmed");
