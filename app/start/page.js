@@ -6,7 +6,7 @@ import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
 import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
 import BrandMark from "@/components/BrandMark";
-import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
+import { apiFetch, getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 import { analizzaColori } from "@/lib/analisiFoto";
 import { consigliaStili } from "@/lib/consigliaStili";
 
@@ -186,6 +186,10 @@ export default function Start() {
       setResult(base);
       setStep(4);
 
+      // Palette e stili si salvano: rifare l'analisi vorrebbe dire richiedere
+      // le foto ogni volta, e nessuno lo farebbe.
+      salvaAnalisi(base);
+
       // 2. Poi, se l'AI è disponibile, chiediamo solo le PAROLE: la lettura
       //    dello stile e i capi da cui partire. Se non risponde, l'utente non
       //    se ne accorge — ha già tutto quello che conta.
@@ -214,6 +218,28 @@ export default function Start() {
       setErr("Non sono riuscito a leggere la foto. Riprova con una più luminosa, o vai avanti senza.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Salva l'esito dell'analisi sul profilo, se c'è un account.
+  async function salvaAnalisi(esito, stileScelto) {
+    try {
+      await apiFetch("/api/profile/save", {
+        method: "POST",
+        body: {
+          palette: esito.palette,
+          dati: {
+            season: esito.season,
+            misura: esito.misura,
+            stili: esito.stili,
+            stileScelto: stileScelto ?? esito.stileScelto ?? null,
+            profilo: { ...profile, budget },
+            aggiornato: new Date().toISOString(),
+          },
+        },
+      });
+    } catch {
+      /* senza account resta tutto nel browser */
     }
   }
 
@@ -456,8 +482,24 @@ export default function Start() {
                 </p>
 
                 <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-                  {result.stili.slice(0, 5).map((st, i) => (
-                    <div key={st.nome + i} className="card" style={{ padding: 16, display: "grid", gap: 8 }}>
+                  {result.stili.slice(0, 5).map((st, i) => {
+                    const scelto = result.stileScelto === st.nome;
+                    return (
+                    <button
+                      key={st.nome + i}
+                      type="button"
+                      onClick={() => {
+                        const nuovo = scelto ? null : st.nome;
+                        setResult((r) => ({ ...r, stileScelto: nuovo }));
+                        salvaAnalisi({ ...result, stileScelto: nuovo }, nuovo);
+                      }}
+                      className="card"
+                      style={{
+                        padding: 16, display: "grid", gap: 8, textAlign: "left", width: "100%",
+                        cursor: "pointer", border: scelto ? "2px solid var(--ink)" : undefined,
+                        background: scelto ? "var(--stone)" : undefined,
+                      }}
+                    >
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                         <span className="eyebrow" style={{ fontSize: 11, color: "var(--greige)" }}>{i + 1}</span>
                         <strong style={{ fontSize: 16 }}>{st.nome}</strong>
@@ -487,8 +529,13 @@ export default function Start() {
                           ))}
                         </div>
                       ) : null}
-                    </div>
-                  ))}
+
+                      <span className="eyebrow" style={{ fontSize: 10, color: scelto ? "var(--ink)" : "var(--greige)" }}>
+                        {scelto ? "✓ scelto — i capi qui sotto sono di questo stile" : "tocca per scegliere questo stile"}
+                      </span>
+                    </button>
+                    );
+                  })}
                 </div>
               </section>
             ) : null}

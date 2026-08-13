@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
+import { paroleDelloStile } from "@/lib/stiliCapi";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function POST(req) {
   const { body, error: badJson } = await readJson(req);
   if (badJson) return badJson;
 
-  const { palette, min, max, genere, escludiFast = false, quanti = 48 } = body || {};
+  const { palette, min, max, genere, stile = null, escludiFast = false, quanti = 48 } = body || {};
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
@@ -37,6 +38,8 @@ export async function POST(req) {
     // Ne chiediamo molti di più di quanti ne mostreremo: il database ordina
     // per distanza, e senza margine tornerebbero solo capi di un colore solo.
     quanti: 400,
+    // Le parole dello stile scelto: senza, si cerca in tutto il catalogo.
+    parole: stile ? paroleDelloStile(stile) : null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

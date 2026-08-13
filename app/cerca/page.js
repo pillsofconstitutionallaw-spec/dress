@@ -16,6 +16,8 @@ export default function Cerca() {
   const [capi, setCapi] = useState([]);
   const [cercando, setCercando] = useState(false);
   const [genere, setGenere] = useState("");
+  const [stile, setStile] = useState("");
+  const [stiliDisponibili, setStiliDisponibili] = useState([]);
   const [tagli, setTagli] = useState([]);
 
   // Se si arriva da un capo suggerito ("mocassini in pelle marrone"), la
@@ -38,6 +40,8 @@ export default function Cerca() {
     try {
       const s = JSON.parse(localStorage.getItem("dress:session") || "null");
       if (s?.result?.palette?.length) setPalette(s.result.palette);
+      if (s?.result?.stili?.length) setStiliDisponibili(s.result.stili.map((x) => x.nome));
+      if (s?.result?.stileScelto) setStile(s.result.stileScelto);
       const sesso = s?.profile?.sex;
       if (sesso === "female") setGenere("donna");
       else if (sesso === "male") setGenere("uomo");
@@ -61,7 +65,7 @@ export default function Cerca() {
         const res = await fetch("/api/capi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ palette, min, max, genere, escludiFast, quanti: 48 }),
+          body: JSON.stringify({ palette, min, max, genere, stile: stile || null, escludiFast, quanti: 48 }),
         });
         const dati = await res.json();
         if (vivo && dati?.ok) setCapi(dati.capi || []);
@@ -73,7 +77,7 @@ export default function Cerca() {
     return () => {
       vivo = false;
     };
-  }, [palette, min, max, genere, escludiFast]);
+  }, [palette, min, max, genere, stile, escludiFast]);
 
   const negoziAmmessi = useMemo(
     () => NEGOZI.filter((n) => (escludiFast ? !n.fast : true)),
@@ -197,10 +201,30 @@ export default function Cerca() {
         </p>
       )}
 
+      {stiliDisponibili.length ? (
+        <div style={{ marginTop: 26 }}>
+          <span className="label" style={{ display: "block", marginBottom: 8 }}>Filtra per stile</span>
+          <div className="chips">
+            <button type="button" className="chip" onClick={() => setStile("")}
+              style={{ cursor: "pointer", background: stile ? undefined : "var(--ink)", color: stile ? undefined : "var(--paper)" }}>
+              Tutti
+            </button>
+            {stiliDisponibili.map((n) => (
+              <button key={n} type="button" className="chip" onClick={() => setStile(n === stile ? "" : n)}
+                style={{ cursor: "pointer", background: n === stile ? "var(--ink)" : undefined, color: n === stile ? "var(--paper)" : undefined }}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {(cercando || capi.length > 0) && (
         <section style={{ marginTop: 34 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
-            <h2 className="h3" style={{ margin: 0 }}>Dalla tua palette</h2>
+            <h2 className="h3" style={{ margin: 0 }}>
+              {stile ? `${stile}, nei tuoi colori` : "Dalla tua palette"}
+            </h2>
             {capi.length ? <span className="muted" style={{ fontSize: 13 }}>{capi.length} capi</span> : null}
           </div>
           <CapiTrovati capi={capi} caricamento={cercando} />
