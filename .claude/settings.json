@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -L --max-time 20 -A \"DressApp/0.1 \\(+https://dressapp.it\\)\" \"https://oydlife.com/products.json?limit=250\" -o /tmp/oyd.json)",
+      "Bash(node scripts/importa-catalogo.mjs fincut)",
+      "Bash(node scripts/importa-catalogo.mjs oyd)",
+      "Bash(git commit -q -m 'feat: scarpe da donna, Fincut Men e OYD *)"
+    ]
+  }
+}

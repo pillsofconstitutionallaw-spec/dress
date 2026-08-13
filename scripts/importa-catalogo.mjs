@@ -58,12 +58,25 @@ export const NEGOZI = [
   { nome: "Premiata", host: "premiata.it", fast: false },
   { nome: "Lotto", host: "lottosport.com", fast: false },
 
+  // scarpe da donna, tacchi compresi
+  { nome: "Loriblu", host: "loriblu.com", fast: false, genere: "donna" },
+  { nome: "Simmi", host: "simmi.com", fast: false, genere: "donna" },
+  { nome: "Public Desire", host: "publicdesire.com", fast: false, genere: "donna" },
+  { nome: "Alohas", host: "alohas.com", fast: false, genere: "donna" },
+  { nome: "Steve Madden", host: "stevemadden.it", fast: false },
+  { nome: "ATP Atelier", host: "atpatelier.com", fast: false, genere: "donna" },
+  { nome: "Nero Giardini", host: "nerogiardini.it", fast: false },
+
   // altri, entrambi
   { nome: "Benetton", host: "www.benetton.com", fast: false },
   { nome: "Sisley", host: "www.sisley.com", fast: false },
   { nome: "Nenette", host: "nenette.it", fast: false, genere: "donna" },
   { nome: "Silvian Heach", host: "silvianheach.com", fast: false, genere: "donna" },
   { nome: "Brandy Melville", host: "brandymelville.eu", fast: false, genere: "donna" },
+
+  // segnalati da te
+  { nome: "Fincut Men", host: "fincutmen-it.com", fast: false, genere: "uomo" },
+  { nome: "OYD", host: "oydlife.com", fast: false },
 
   // qualità e sostenibili
   { nome: "Rifò", host: "rifo-lab.com", fast: false },
