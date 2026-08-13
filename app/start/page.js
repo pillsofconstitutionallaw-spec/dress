@@ -42,7 +42,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", weight: "", hair: "", eyes: "", style: "", comment: "", sex: "", orientation: "" });
+  const [profile, setProfile] = useState({ height: "", weight: "", hair: "", eyes: "", style: "", comment: "", sex: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -278,13 +278,17 @@ export default function Start() {
           </p>
 
           <label className="field">
-            <span className="label">Altezza (cm)</span>
+            <span className="label">Altezza (cm) — facoltativa</span>
             <input className="control" inputMode="numeric" value={profile.height} onChange={set("height")} placeholder="es. 178" />
           </label>
 
           <label className="field">
-            <span className="label">Peso (kg)</span>
+            <span className="label">Peso (kg) — facoltativo</span>
             <input className="control" inputMode="numeric" value={profile.weight} onChange={set("weight")} placeholder="es. 72" />
+            <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
+              Serve solo a proporti la taglia giusta. Non lo commentiamo, non lo mostriamo a nessuno,
+              e puoi lasciarlo vuoto.
+            </span>
           </label>
 
           <label className="field">
@@ -319,11 +323,6 @@ export default function Start() {
               <option value="">Scegli…</option>
               {STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-          </label>
-
-          <label className="field">
-            <span className="label">Orientamento (opzionale)</span>
-            <input className="control" value={profile.orientation} onChange={(e) => setProfile((p) => ({ ...p, orientation: e.target.value }))} placeholder="es. eterosessuale, bisessuale..." />
           </label>
 
           <button className="btn" onClick={() => setStep(2)}>Continua</button>
