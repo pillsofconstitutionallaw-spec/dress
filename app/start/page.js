@@ -7,6 +7,8 @@ import { fallbackOutfits } from "@/lib/fallback";
 import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE } from "@/lib/data";
 import BrandMark from "@/components/BrandMark";
 import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
+import { analizzaColori } from "@/lib/analisiFoto";
+import { consigliaStili } from "@/lib/consigliaStili";
 
 function Swatch({ c }) {
   return (
@@ -160,17 +162,40 @@ export default function Start() {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, closeup, fullbody }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore");
-      setResult(data);
+      // 1. L'analisi la facciamo noi, qui nel telefono: misura la foto,
+      //    calcola la stagione, sceglie i cinque stili. Non serve rete, non
+      //    serve una chiave, non può esaurirsi. E la foto non esce da qui.
+      const nostra = await analizzaColori({ profile, closeup });
+      const stili = consigliaStili(nostra, profile);
+      const base = { ...nostra, stili, styleReading: null };
+      setResult(base);
       setStep(4);
+
+      // 2. Poi, se l'AI è disponibile, chiediamo solo le PAROLE: la lettura
+      //    dello stile e i capi da cui partire. Se non risponde, l'utente non
+      //    se ne accorge — ha già tutto quello che conta.
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile, closeup, fullbody }),
+        });
+        const aiuto = await res.json();
+        if (res.ok && aiuto?.source && aiuto.source !== "fallback" && aiuto.source !== "demo") {
+          setResult((r) => ({
+            ...r,
+            styleReading: aiuto.styleReading || r.styleReading,
+            stili: r.stili.map((s) => {
+              const suo = (aiuto.stili || []).find((x) => x.nome === s.nome);
+              return suo?.capi?.length ? { ...s, capi: suo.capi, perche: suo.perche || s.perche } : s;
+            }),
+          }));
+        }
+      } catch {
+        /* l'analisi nostra è già completa */
+      }
     } catch (e) {
-      setErr("Qualcosa è andato storto nell'analisi. Riprova tra poco.");
+      setErr("Non sono riuscito a leggere la foto. Riprova con una più luminosa, o vai avanti senza.");
     } finally {
       setLoading(false);
     }
