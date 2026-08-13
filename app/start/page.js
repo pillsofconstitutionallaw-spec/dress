@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
-import { STYLES, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE } from "@/lib/data";
+import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE } from "@/lib/data";
 import BrandMark from "@/components/BrandMark";
 import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 
@@ -321,7 +321,12 @@ export default function Start() {
             <span className="label">Il tuo stile attuale</span>
             <select className="control" value={profile.style} onChange={set("style")}>
               <option value="">Scegli…</option>
-              {STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
+              <option value="Non so ancora — aiutami a scoprirlo">Non so ancora — aiutami a scoprirlo</option>
+              {FAMIGLIE_STILI.map((f) => (
+                <optgroup key={f.famiglia} label={f.famiglia}>
+                  {f.stili.map((s) => <option key={s} value={s}>{s}</option>)}
+                </optgroup>
+              ))}
             </select>
           </label>
 
