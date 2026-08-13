@@ -68,8 +68,8 @@ export default function Confirmed() {
           <h1 className="h2">Email confermata</h1>
           <p className="muted">Il tuo account è attivo e sei già dentro.</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <Link className="btn" href="/dashboard">Vai al tuo spazio</Link>
-            <Link className="btn ghost" href="/start">Fai l'analisi colori</Link>
+            <Link className="btn" href="/start">Comincia: misure e selfie</Link>
+            <Link className="btn ghost" href="/dashboard">Il tuo spazio</Link>
           </div>
         </>
       )}
@@ -79,7 +79,7 @@ export default function Confirmed() {
           <h1 className="h2">Email confermata</h1>
           <p className="muted">Ora puoi accedere con la tua email e password.</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <Link className="btn" href="/dashboard">Accedi</Link>
+            <Link className="btn" href="/accedi">Accedi</Link>
           </div>
         </>
       )}
@@ -89,7 +89,7 @@ export default function Confirmed() {
           <h1 className="h2">Non è andata</h1>
           <p className="muted">{message}</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <Link className="btn" href="/dashboard">Torna all'accesso</Link>
+            <Link className="btn" href="/accedi">Torna all'accesso</Link>
           </div>
         </>
       )}

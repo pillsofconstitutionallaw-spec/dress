@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { coloreDaNome, hexALab } from "../lib/colore.js";
+import { coloriDaFoto } from "./colore-immagine.mjs";
 
 const RADICE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -150,6 +151,48 @@ function normalizza(prodotto, negozio) {
   };
 }
 
+// ── colori dalla foto ────────────────────────────────────────────────
+
+/**
+ * Aggiunge a ogni capo i colori letti dalla foto.
+ *
+ * La regola: se il negozio ha dichiarato un colore che sappiamo tradurre,
+ * quello resta il principale — è più affidabile della foto, dove luci da
+ * studio e riflessi ingannano. La foto serve ad aggiungere gli ALTRI colori,
+ * ed è ciò che rende cercabili le fantasie: una camicia a quadri verde e blu
+ * si trova sia dal verde che dal blu.
+ * Quando invece il nome non dice niente ("Fantasia", "Var. 3"), comanda la foto.
+ */
+async function aggiungiColoriDaFoto(righe) {
+  const gruppo = 6; // poche immagini alla volta: siamo ospiti
+  for (let i = 0; i < righe.length; i += gruppo) {
+    await Promise.all(
+      righe.slice(i, i + gruppo).map(async (riga) => {
+        const daFoto = riga.immagine ? await coloriDaFoto(riga.immagine) : [];
+        const daNome = riga.colore_hex ? hexALab(riga.colore_hex) : null;
+
+        const elenco = [];
+        if (daNome) {
+          elenco.push({ hex: riga.colore_hex, l: +daNome.L.toFixed(2), a: +daNome.a.toFixed(2), b: +daNome.b.toFixed(2), peso: 1, da: "nome" });
+        }
+        for (const c of daFoto) elenco.push({ ...c, da: "foto" });
+
+        riga.colori = elenco;
+        riga.colore_da = daNome ? "nome" : daFoto.length ? "foto" : null;
+
+        // Se il nome non diceva niente, il colore principale è il dominante della foto.
+        if (!daNome && daFoto.length) {
+          const primo = daFoto[0];
+          riga.colore_hex = primo.hex;
+          riga.colore_l = primo.l;
+          riga.colore_a = primo.a;
+          riga.colore_b = primo.b;
+        }
+      }),
+    );
+  }
+}
+
 // ── salvataggio ──────────────────────────────────────────────────────
 
 async function salva(righe) {
@@ -190,6 +233,7 @@ async function importa(negozio) {
     letti += prodotti.length;
 
     const righe = prodotti.map((p) => normalizza(p, negozio)).filter(Boolean);
+    await aggiungiColoriDaFoto(righe);
     conColore += righe.filter((r) => r.colore_hex).length;
     conTessuto += righe.filter((r) => r.tessuto).length;
 
