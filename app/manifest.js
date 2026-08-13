@@ -8,9 +8,9 @@ export default function manifest() {
     short_name: BRAND,
     description: "La tua palette personale, gli outfit adatti e dove comprarli.",
     lang: "it",
-    // L'app installata parte dall'accesso, non dalla vetrina: chi ha scaricato
+    // L'app parte dall'accesso, che ora è la prima pagina: chi ha scaricato
     // l'app ha già deciso, non deve essere convinto un'altra volta.
-    start_url: "/accedi",
+    start_url: "/",
     display: "standalone",
     orientation: "portrait",
     background_color: "#ffffff",
