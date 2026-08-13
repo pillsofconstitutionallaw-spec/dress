@@ -23,7 +23,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: "#111213",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -46,7 +46,10 @@ export default function RootLayout({ children }) {
         <footer style={{ borderTop: "1px solid var(--line)", marginTop: 96 }}>
           <div className="wrap" style={{ padding: "40px var(--pad)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
             <span className="eyebrow">{BRAND} · concept</span>
-            <span className="muted" style={{ fontSize: 13 }}>Prototipo dimostrativo · un consiglio di stile, non una regola.</span>
+            <span className="muted" style={{ fontSize: 13, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+              <a href="/privacy">Privacy</a>
+              <span>Un consiglio di stile, non una regola.</span>
+            </span>
           </div>
         </footer>
       </body>
