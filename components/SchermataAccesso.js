@@ -57,6 +57,21 @@ export default function SchermataAccesso() {
     setBusy(false);
   }
 
+  // Mentre aspetti la mail, controlliamo ogni pochi secondi se l'hai
+  // confermata: il link si apre spesso in un'altra scheda o sul telefono, e
+  // senza questo la schermata resterebbe ferma su "controlla la posta".
+  useEffect(() => {
+    if (!inviata) return;
+    const spia = setInterval(async () => {
+      const u = await getUser().catch(() => null);
+      if (u?.email_confirmed_at || u?.confirmed_at) {
+        clearInterval(spia);
+        router.replace(prossimaTappa());
+      }
+    }, 4000);
+    return () => clearInterval(spia);
+  }, [inviata, router]);
+
   // L'iscrizione la raccoglie il modulo dedicato: nome, cognome, nome utente,
   // foto, data di nascita e una password che sta in piedi.
   async function iscriviti(campi) {
@@ -108,6 +123,14 @@ export default function SchermataAccesso() {
               }}
             >
               Rimanda la mail
+            </button>
+            <button
+              type="button"
+              onClick={() => { setInviata(null); setModo("accedi"); }}
+              className="muted"
+              style={{ background: "none", border: 0, fontSize: 14, padding: 10, cursor: "pointer" }}
+            >
+              Ho già confermato, fammi entrare
             </button>
           </div>
         )}

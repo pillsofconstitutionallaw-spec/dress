@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import CampoData from "@/components/CampoData";
 import { fileToDataUrl } from "@/lib/img";
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 
@@ -137,10 +138,7 @@ export default function ModuloIscrizione({ onIscritto, onIndietro }) {
         </div>
       ) : null}
 
-      <label className="field" style={{ margin: 0 }}>
-        <span className="label" style={{ marginBottom: 6 }}>Data di nascita</span>
-        <input className="control-app" type="date" value={d.dataNascita} onChange={cambia("dataNascita")} required />
-      </label>
+      <CampoData valore={d.dataNascita} onChange={(v) => setD((x) => ({ ...x, dataNascita: v }))} />
 
       {err ? <p style={{ color: "var(--signal)", fontSize: 14, margin: "2px 4px" }}>{err}</p> : null}
 

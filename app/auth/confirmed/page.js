@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
 
 // Pagina di atterraggio del link contenuto nella mail di conferma.
 // Supabase rimanda qui dopo aver verificato l'indirizzo.
 export default function Confirmed() {
+  const router = useRouter();
   const [state, setState] = useState("checking"); // checking | signedIn | confirmed | error
   const [message, setMessage] = useState("");
 
@@ -51,7 +53,15 @@ export default function Confirmed() {
       if (!alive) return;
       // Ripulisce i token dalla barra degli indirizzi.
       window.history.replaceState({}, "", "/auth/confirmed");
-      setState(data?.session ? "signedIn" : "confirmed");
+
+      if (data?.session) {
+        // Sessione attiva: si entra e basta. Un altro tasto da premere qui
+        // sarebbe solo un ostacolo fra l'utente e l'app.
+        setState("signedIn");
+        setTimeout(() => router.replace("/start"), 900);
+        return;
+      }
+      setState("confirmed");
     })();
 
     return () => {
@@ -66,7 +76,7 @@ export default function Confirmed() {
       {state === "signedIn" && (
         <>
           <h1 className="h2">Email confermata</h1>
-          <p className="muted">Il tuo account è attivo e sei già dentro.</p>
+          <p className="muted">Ti stiamo portando dentro…</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
             <Link className="btn" href="/start">Comincia: misure e selfie</Link>
             <Link className="btn ghost" href="/dashboard">Il tuo spazio</Link>
