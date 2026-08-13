@@ -278,7 +278,7 @@ export default function Start() {
           </p>
 
           <label className="field">
-            <span className="label">Altezza (cm) — facoltativa</span>
+            <span className="label">Altezza (cm)</span>
             <input className="control" inputMode="numeric" value={profile.height} onChange={set("height")} placeholder="es. 178" />
           </label>
 

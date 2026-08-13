@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { NEGOZI, fasciaDaBudget, urlNeiNegozi, urlShopping } from "@/lib/ricerca";
+import CapiTrovati from "@/components/CapiTrovati";
 
 export default function Cerca() {
   const [capo, setCapo] = useState("");
@@ -12,12 +13,18 @@ export default function Cerca() {
   const [max, setMax] = useState("");
   const [escludiFast, setEscludiFast] = useState(true);
   const [palette, setPalette] = useState([]);
+  const [capi, setCapi] = useState([]);
+  const [cercando, setCercando] = useState(false);
+  const [genere, setGenere] = useState("");
 
   // La palette e il budget arrivano dall'analisi già fatta, se c'è.
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem("dress:session") || "null");
       if (s?.result?.palette?.length) setPalette(s.result.palette);
+      const sesso = s?.profile?.sex;
+      if (sesso === "female") setGenere("donna");
+      else if (sesso === "male") setGenere("uomo");
       if (s?.budget) {
         const f = fasciaDaBudget(s.budget);
         setMin(String(f.min));
@@ -27,6 +34,30 @@ export default function Cerca() {
       /* nessuna sessione salvata */
     }
   }, []);
+
+  // I capi veri del catalogo: si cercano da soli appena c'è la palette.
+  useEffect(() => {
+    if (!palette.length) return;
+    let vivo = true;
+    setCercando(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/capi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ palette, min, max, genere, escludiFast, quanti: 48 }),
+        });
+        const dati = await res.json();
+        if (vivo && dati?.ok) setCapi(dati.capi || []);
+      } catch {
+        /* resta la ricerca su Google */
+      }
+      if (vivo) setCercando(false);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [palette, min, max, genere, escludiFast]);
 
   const negoziAmmessi = useMemo(
     () => NEGOZI.filter((n) => (escludiFast ? !n.fast : true)),
@@ -120,6 +151,27 @@ export default function Cerca() {
         </p>
       )}
 
+      {(cercando || capi.length > 0) && (
+        <section style={{ marginTop: 34 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+            <h2 className="h3" style={{ margin: 0 }}>Dalla tua palette</h2>
+            {capi.length ? <span className="muted" style={{ fontSize: 13 }}>{capi.length} capi</span> : null}
+          </div>
+          <CapiTrovati capi={capi} caricamento={cercando} />
+          <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
+            Sono capi veri, con il prezzo di adesso, presi dai cataloghi dei negozi. Ordinati per
+            quanto il colore corrisponde ai tuoi.
+          </p>
+        </section>
+      )}
+
+      {palette.length > 0 && !cercando && capi.length === 0 && (
+        <p className="muted" style={{ marginTop: 30 }}>
+          In catalogo non c’è ancora niente dei tuoi colori dentro questa fascia di prezzo. Prova ad
+          allargarla, oppure cerca fuori con i tasti qui sotto.
+        </p>
+      )}
+
       <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
         <a
           className="btn"
@@ -148,7 +200,7 @@ export default function Cerca() {
       ) : null}
 
       <section style={{ marginTop: 40, borderTop: "1px solid var(--line)", paddingTop: 24 }}>
-        <h2 className="h4">Dove stiamo cercando</h2>
+        <h2 className="h4">Se qui non c’è, cerchiamo fuori</h2>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
           {NEGOZI.map((n) => {
             const attivo = negoziAmmessi.includes(n);
