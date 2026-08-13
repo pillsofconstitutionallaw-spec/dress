@@ -1,31 +1,47 @@
-import { WEEKLY_OFFERS, FAST_FASHION_NOTE } from "@/lib/data";
+"use client";
 
-export const metadata = { title: "Offerte della settimana" };
+import { useEffect, useState } from "react";
+import CapiTrovati from "@/components/CapiTrovati";
+import { FAST_FASHION_NOTE } from "@/lib/data";
 
-export default function Offers() {
+// Gli sconti veri, presi dal catalogo. Nessuna offerta scritta a mano:
+// il prezzo è quello di adesso sul sito del negozio.
+export default function Offerte() {
+  const [capi, setCapi] = useState([]);
+  const [caricamento, setCaricamento] = useState(true);
+
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/offerte")
+      .then((r) => r.json())
+      .then((d) => vivo && setCapi(d.capi || []))
+      .catch(() => {})
+      .finally(() => vivo && setCaricamento(false));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
   return (
-    <div className="wrap" style={{ paddingTop: 56, paddingBottom: 20 }}>
-      <p className="eyebrow">Aggiornata a mano · curata</p>
-      <h1 className="h1" style={{ fontSize: "clamp(34px, 6vw, 64px)", marginTop: 16, marginBottom: 12 }}>Offerte della settimana</h1>
-      <p className="lead" style={{ marginBottom: 44 }}>
-        Le occasioni migliori del momento. Diamo priorità a marchi più durevoli e al second-hand.
+    <div className="wrap" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 720 }}>
+      <h1 className="h2">In sconto adesso</h1>
+      <p className="muted" style={{ maxWidth: "44ch" }}>
+        Capi che i negozi hanno ribassato di almeno il 10%. Prezzo pieno e prezzo di adesso, come
+        stanno sul loro sito in questo momento.
       </p>
 
-      <div className="grid" style={{ gridTemplateColumns: "1fr" }}>
-        {WEEKLY_OFFERS.map((o) => (
-          <a key={o.retailer} href={o.url} target="_blank" rel="noopener noreferrer"
-            style={{ background: "#fff", padding: "22px clamp(18px,3vw,28px)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{o.retailer}</div>
-              <div className="muted" style={{ fontSize: 14 }}>{o.deal}</div>
-            </div>
-            <span className="eyebrow">Vai →</span>
-          </a>
-        ))}
+      <div style={{ marginTop: 26 }}>
+        <CapiTrovati capi={capi} caricamento={caricamento} />
       </div>
 
-      <div className="card" style={{ padding: "clamp(18px,3vw,28px)", marginTop: 32 }}>
-        <p className="tag warn" style={{ marginBottom: 10 }}>Nota</p>
+      {!caricamento && capi.length === 0 && (
+        <p className="muted" style={{ marginTop: 20 }}>
+          In questo momento nessuno dei negozi in catalogo ha ribassi. Ricontrolla fra qualche
+          giorno: il catalogo si aggiorna ogni notte.
+        </p>
+      )}
+
+      <div className="card" style={{ padding: 18, marginTop: 34 }}>
         <p className="muted" style={{ fontSize: 14, margin: 0, lineHeight: 1.55 }}>{FAST_FASHION_NOTE}</p>
       </div>
     </div>

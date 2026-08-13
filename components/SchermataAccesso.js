@@ -80,9 +80,6 @@ export default function SchermataAccesso() {
       {/* il marchio in alto, al centro */}
       <div style={{ display: "grid", justifyItems: "center", gap: 14, marginTop: "16vh" }}>
         <BrandMark grande animato />
-        <p className="muted entra-morbido" style={{ margin: 0, textAlign: "center", maxWidth: "26ch", animationDelay: "520ms" }}>
-          I tuoi colori, i tuoi outfit, dove comprarli.
-        </p>
       </div>
 
       {/* i comandi, subito sotto */}

@@ -79,7 +79,7 @@ export default function Confirmed() {
           <h1 className="h2">Email confermata</h1>
           <p className="muted">Ora puoi accedere con la tua email e password.</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <Link className="btn" href="/accedi">Accedi</Link>
+            <Link className="btn" href="/">Accedi</Link>
           </div>
         </>
       )}
@@ -89,7 +89,7 @@ export default function Confirmed() {
           <h1 className="h2">Non è andata</h1>
           <p className="muted">{message}</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <Link className="btn" href="/accedi">Torna all'accesso</Link>
+            <Link className="btn" href="/">Torna all'accesso</Link>
           </div>
         </>
       )}

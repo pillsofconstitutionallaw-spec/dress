@@ -391,9 +391,15 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <div style={{ marginTop: 28, display: "flex", gap: 8 }}>
-        <Link href="/start" className="btn ghost">Torna a Start</Link>
-      </div>
+      <section style={{ marginTop: 34, borderTop: "1px solid var(--line)", paddingTop: 24 }}>
+        <h2 className="h3">Altro</h2>
+        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+          <Link href="/offers" className="btn-app chiaro">In sconto adesso</Link>
+          <Link href="/colors" className="btn-app chiaro">I colori dell’anno</Link>
+          <Link href="/wardrobe" className="btn-app chiaro">Abbina o rivendi un capo</Link>
+          <Link href="/start" className="btn-app chiaro">Rifai l’analisi</Link>
+        </div>
+      </section>
     </div>
   );
 }

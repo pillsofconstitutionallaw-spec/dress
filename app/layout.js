@@ -3,8 +3,8 @@ import Cornice from "@/components/Cornice";
 import { BRAND } from "@/lib/data";
 
 export const metadata = {
-  title: `${BRAND} — consulenza d'immagine personalizzata`,
-  description: `Scopri la tua palette personale, gli outfit più adatti e le migliori scelte di acquisto con ${BRAND}.`,
+  title: `${BRAND} — la tua parte migliore`,
+  description: `${BRAND} ti aiuta a tirare fuori la parte migliore di te: i tuoi colori, gli outfit che ti somigliano e dove trovarli.`,
   applicationName: BRAND,
   icons: {
     icon: [

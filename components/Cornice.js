@@ -71,7 +71,7 @@ export default function Cornice({ children }) {
             <span className="eyebrow">Dress</span>
             <span className="muted" style={{ fontSize: 13, display: "flex", gap: 16 }}>
               <Link href="/privacy">Privacy</Link>
-              <span>Un consiglio di stile, non una regola.</span>
+              <span>Moda che ti somiglia.</span>
             </span>
           </div>
         </footer>

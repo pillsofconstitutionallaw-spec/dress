@@ -82,8 +82,12 @@ export default function Scopri() {
 
         <div style={{ display: "flex", gap: 18, marginTop: 28, alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
-            <h1 className="h1">Il tuo spazio di stile personale</h1>
-            <p className="muted">Salva i tuoi capi, crea palette personalizzate e chiedi all'AI cosa abbinare. Tutto in un posto, sempre con te.</p>
+            <h1 className="h1">Vestirsi bene non è questione di gusto.<br />È questione di sapere quali sono i tuoi colori.</h1>
+            <p className="muted" style={{ maxWidth: "46ch" }}>
+              Dress guarda una tua foto e trova i cinque colori che ti stanno meglio. Poi cerca fra
+              ventitremila capi veri, di negozi veri, quelli di quei colori — nella tua taglia e
+              dentro il tuo budget. In pochi secondi, senza uscire dall’app.
+            </p>
 
             <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
               <Link href="/start" className="btn">Scopri il tuo stile</Link>
@@ -121,12 +125,12 @@ export default function Scopri() {
       <section className="wrap" style={{ paddingTop: 36 }}>
         <div className="section-title">
           <p className="eyebrow">Perché funziona</p>
-          <span className="muted">Un servizio personale, non un quiz</span>
+          <span className="muted">Nessun quiz, nessuna teoria: capi che puoi comprare</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
           <div className="card" style={{ padding: 20 }}>
             <div className="eyebrow">Palette personale</div>
-            <p className="muted">Cinque colori selezionati per valorizzare il tuo incarnato e il tuo stile.</p>
+            <p className="muted">Cinque colori scelti sulla luce del tuo viso, non su un questionario.</p>
           </div>
           <div className="card" style={{ padding: 20 }}>
             <div className="eyebrow">Outfit</div>

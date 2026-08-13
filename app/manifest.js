@@ -4,9 +4,9 @@ import { BRAND } from "@/lib/data";
 // nome sotto l'icona, colori e apertura a tutto schermo senza barra del browser.
 export default function manifest() {
   return {
-    name: `${BRAND} — consulenza d'immagine`,
+    name: `${BRAND} — la tua parte migliore`,
     short_name: BRAND,
-    description: "La tua palette personale, gli outfit adatti e dove comprarli.",
+    description: "Ti aiuta a tirare fuori la parte migliore di te: i tuoi colori, i tuoi outfit, dove trovarli.",
     lang: "it",
     // L'app parte dall'accesso, che ora è la prima pagina: chi ha scaricato
     // l'app ha già deciso, non deve essere convinto un'altra volta.
