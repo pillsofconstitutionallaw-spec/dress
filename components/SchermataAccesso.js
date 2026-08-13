@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
+import ModuloIscrizione from "@/components/ModuloIscrizione";
 import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 
 // La prima schermata: il marchio e due tasti. Niente altro.
@@ -48,17 +49,19 @@ export default function SchermataAccesso() {
     setErr("");
     setBusy(true);
     try {
-      if (modo === "accedi") {
-        await signIn({ email: dati.email, password: dati.password });
-        router.replace(prossimaTappa());
-      } else {
-        const r = await register({ name: dati.nome, email: dati.email, password: dati.password });
-        setInviata({ email: dati.email, messaggio: r.message });
-      }
+      await signIn({ email: dati.email, password: dati.password });
+      router.replace(prossimaTappa());
     } catch (e) {
       setErr(e.message);
     }
     setBusy(false);
+  }
+
+  // L'iscrizione la raccoglie il modulo dedicato: nome, cognome, nome utente,
+  // foto, data di nascita e una password che sta in piedi.
+  async function iscriviti(campi) {
+    const r = await register(campi);
+    setInviata({ email: campi.email, messaggio: r.message });
   }
 
   return (
@@ -119,26 +122,27 @@ export default function SchermataAccesso() {
           </div>
         )}
 
-        {!attesa && hasAccounts() && !inviata && modo && (
+        {!attesa && hasAccounts() && !inviata && modo === "iscriviti" && (
+          <ModuloIscrizione onIscritto={iscriviti} onIndietro={() => setModo(null)} />
+        )}
+
+        {!attesa && hasAccounts() && !inviata && modo === "accedi" && (
           <form onSubmit={invia} className="entra-morbido" style={{ display: "grid", gap: 10 }}>
-            {modo === "iscriviti" && (
-              <input className="control-app" placeholder="Nome" value={dati.nome} onChange={cambia("nome")} autoComplete="name" required />
-            )}
-            <input className="control-app" type="email" placeholder="Email" value={dati.email} onChange={cambia("email")} autoComplete="email" required />
+            <input className="control-app" type="text" placeholder="Email o nome utente" value={dati.email} onChange={cambia("email")} autoComplete="username" required />
             <input
               className="control-app"
               type="password"
               placeholder="Password"
               value={dati.password}
               onChange={cambia("password")}
-              autoComplete={modo === "accedi" ? "current-password" : "new-password"}
+              autoComplete="current-password"
               required
             />
 
             {err ? <p style={{ color: "var(--signal)", fontSize: 14, margin: "2px 4px" }}>{err}</p> : null}
 
             <button className="btn-app" type="submit" disabled={busy} style={{ marginTop: 2 }}>
-              {busy ? "Un attimo…" : modo === "accedi" ? "Entra" : "Crea l’account"}
+              {busy ? "Un attimo…" : "Entra"}
             </button>
             <button
               type="button"

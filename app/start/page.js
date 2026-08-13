@@ -42,7 +42,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", hair: "", eyes: "", style: "", comment: "", sex: "", orientation: "" });
+  const [profile, setProfile] = useState({ height: "", weight: "", hair: "", eyes: "", style: "", comment: "", sex: "", orientation: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -283,6 +283,11 @@ export default function Start() {
           </label>
 
           <label className="field">
+            <span className="label">Peso (kg)</span>
+            <input className="control" inputMode="numeric" value={profile.weight} onChange={set("weight")} placeholder="es. 72" />
+          </label>
+
+          <label className="field">
             <span className="label">Colore capelli</span>
             <select className="control" value={profile.hair} onChange={set("hair")}>
               <option value="">Scegli…</option>
@@ -363,7 +368,7 @@ export default function Start() {
           <div className="summary-card" style={{ marginBottom: 24, maxWidth: 620, borderRadius: 18 }}>
             <p className="eyebrow" style={{ marginBottom: 8 }}>Riepilogo</p>
             <p className="muted" style={{ margin: 0, fontSize: 15 }}>
-              {profile.height || "—"} cm · capelli {profile.hair || "—"} · occhi {profile.eyes || "—"} · stile {profile.style || "—"}.
+              {profile.height || "—"} cm · {profile.weight ? `${profile.weight} kg · ` : ""}capelli {profile.hair || "—"} · occhi {profile.eyes || "—"} · stile {profile.style || "—"}.
             </p>
           </div>
           <div style={{ display: "flex", gap: 12 }}>
