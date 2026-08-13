@@ -58,6 +58,7 @@ export default function Start() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pending, setPending] = useState(null); // messaggio "controlla la mail"
   const [busy, setBusy] = useState(false);
+  const [avvisi, setAvvisi] = useState([]);
 
   const set = (k) => (e) => setProfile((p) => ({ ...p, [k]: e.target.value }));
 
@@ -161,12 +162,26 @@ export default function Start() {
   async function analyze() {
     setLoading(true);
     setErr("");
+    setAvvisi([]);
     try {
       // 1. L'analisi la facciamo noi, qui nel telefono: misura la foto,
       //    calcola la stagione, sceglie i cinque stili. Non serve rete, non
       //    serve una chiave, non può esaurirsi. E la foto non esce da qui.
       const nostra = await analizzaColori({ profile, closeup });
       const stili = consigliaStili(nostra, profile);
+
+      // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
+      // un risultato più debole senza capire perché.
+      const mancanze = [];
+      if (!closeup) {
+        mancanze.push("Senza il primo piano non abbiamo misurato il tuo incarnato: la stagione è dedotta dai dati che hai scritto, quindi meno precisa. Aggiungi una foto del viso in luce naturale.");
+      } else if (!nostra.misura?.daFoto) {
+        mancanze.push("La foto del viso non era leggibile — spesso è la luce artificiale o il viso troppo piccolo nell'inquadratura. Riprova vicino a una finestra.");
+      }
+      if (!fullbody) {
+        mancanze.push("Manca la foto a figura intera: senza, la lettura dello stile si basa solo su quello che hai dichiarato.");
+      }
+      setAvvisi(mancanze);
       const base = { ...nostra, stili, styleReading: null };
       setResult(base);
       setStep(4);
@@ -178,7 +193,8 @@ export default function Start() {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile, closeup, fullbody }),
+          // Si mandano i NUMERI, non le immagini.
+          body: JSON.stringify({ profile, misura: { season: nostra.season, palette: nostra.palette, ...nostra.misura } }),
         });
         const aiuto = await res.json();
         if (res.ok && aiuto?.source && aiuto.source !== "fallback" && aiuto.source !== "demo") {
@@ -416,6 +432,18 @@ export default function Start() {
           <div className="summary-card" style={{ marginBottom: 24, borderRadius: 18 }}>
             <p className="eyebrow">La tua palette</p>
             {result.season ? <h1 className="h2" style={{ marginTop: 10 }}>{result.season}</h1> : null}
+
+            {avvisi.length ? (
+              <div className="card" style={{ padding: 16, marginTop: 16, display: "grid", gap: 8, borderColor: "var(--signal)" }}>
+                <strong style={{ fontSize: 14 }}>Il risultato può essere migliore</strong>
+                {avvisi.map((a) => (
+                  <p key={a} className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>{a}</p>
+                ))}
+                <button className="btn ghost" style={{ marginTop: 4, justifySelf: "start" }} onClick={() => setStep(3)}>
+                  Aggiungi le foto
+                </button>
+              </div>
+            ) : null}
             {result.styleReading ? <p className="muted" style={{ marginTop: 12, maxWidth: "52ch" }}>Lettura dello stile: {result.styleReading}</p> : null}
 
             {/* Gli stili consigliati: al massimo cinque, dal più adatto. */}

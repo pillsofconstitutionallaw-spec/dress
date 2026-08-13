@@ -8,7 +8,9 @@ export async function POST(req) {
   let args;
   try {
     const body = await req.json();
-    args = { profile: body.profile || {}, closeup: body.closeup || null, fullbody: body.fullbody || null };
+    // Le foto non entrano nemmeno: se arrivassero per errore, verrebbero
+    // comunque ignorate qui.
+    args = { profile: body.profile || {}, misura: body.misura || null };
   } catch {
     return NextResponse.json({ error: "Richiesta non valida" }, { status: 400 });
   }
