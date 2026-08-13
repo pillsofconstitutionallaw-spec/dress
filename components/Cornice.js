@@ -26,6 +26,15 @@ const VOCI = [
     ),
   },
   {
+    href: "/outfit",
+    label: "Completi",
+    icona: (
+      <>
+        <path d="M6 3l6 3 6-3 2 6-3 1v11H7V10L4 9z" />
+      </>
+    ),
+  },
+  {
     href: "/cerca",
     label: "Cerca",
     icona: (
@@ -98,7 +107,7 @@ export default function Cornice({ children }) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", maxWidth: 560, margin: "0 auto" }}>
           {VOCI.map((v) => {
             const attiva = percorso.startsWith(v.href);
             return (
