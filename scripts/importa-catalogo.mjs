@@ -28,15 +28,42 @@ const SUPABASE = env.SUPABASE_URL;
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY;
 const UA = "DressApp/0.1 (catalogo; +https://dressapp.it)";
 
+// "genere" è solo il valore predefinito del negozio: se il singolo capo dice
+// altro (nel titolo o nelle etichette), vince quello.
 export const NEGOZI = [
+  // uomo
   { nome: "numb-wear", host: "numb-wear.it", fast: false },
   { nome: "Luigi Fusaro", host: "www.luigifusaro.com", fast: false },
-  { nome: "Fusaro Uomo", host: "fusarouomo.eu", fast: false },
+  { nome: "Fusaro Uomo", host: "fusarouomo.eu", fast: false, genere: "uomo" },
   { nome: "Ernesto Casolla", host: "ernestocasolla.it", fast: false },
   { nome: "Sonny Bono", host: "sonnybono.com", fast: false },
-  { nome: "Marinella", host: "www.emarinella.eu", fast: false },
+  { nome: "Marinella", host: "www.emarinella.eu", fast: false, genere: "uomo" },
+
+  // donna
+  { nome: "Kocca", host: "kocca.it", fast: false, genere: "donna" },
+  { nome: "Rinascimento", host: "rinascimento.com", fast: false, genere: "donna" },
+  { nome: "Vicolo", host: "vicolo.com", fast: false, genere: "donna" },
+  { nome: "Fracomina", host: "fracomina.it", fast: false, genere: "donna" },
+  { nome: "Pinko", host: "www.pinko.com", fast: false, genere: "donna" },
+
+  // entrambi
+  { nome: "Terranova", host: "www.terranovastyle.com", fast: true },
+  { nome: "Yamamay", host: "yamamay.com", fast: false },
+  { nome: "Dolly Noire", host: "www.dollynoire.com", fast: false },
   { nome: "Piazza Italia", host: "www.piazzaitalia.it", fast: true },
+
+  // qualità e sostenibili
+  { nome: "Rifò", host: "rifo-lab.com", fast: false },
+  { nome: "Colorful Standard", host: "colorfulstandard.com", fast: false },
+  { nome: "Organic Basics", host: "organicbasics.com", fast: false },
+  { nome: "Armedangels", host: "armedangels.com", fast: false },
+  { nome: "Ecoalf", host: "ecoalf.com", fast: false },
+  { nome: "Thinking Mu", host: "thinkingmu.com", fast: false },
 ];
+
+// Quanti capi al massimo per negozio: meglio molti negozi con qualche
+// centinaio di capi che un negozio solo con diecimila cravatte.
+const TETTO_PER_NEGOZIO = Number(process.env.TETTO || 1500);
 
 // ── lettura del catalogo ─────────────────────────────────────────────
 
@@ -138,7 +165,7 @@ function normalizza(prodotto, negozio) {
     prezzo_pieno: Number(riferimento.compare_at_price) || null,
     disponibile: disponibili.length > 0,
     categoria: prodotto.product_type || null,
-    genere: deduciGenere(prodotto),
+    genere: deduciGenere(prodotto) || negozio.genere || null,
     taglie,
     colore_nome: coloreNome || null,
     colore_hex: hex,
@@ -163,12 +190,22 @@ function normalizza(prodotto, negozio) {
  * si trova sia dal verde che dal blu.
  * Quando invece il nome non dice niente ("Fantasia", "Var. 3"), comanda la foto.
  */
+const FANTASIA = /fantasia|stampa|stampat|righe|rigat|quadri|scozzese|floreal|fiori|pois|animalier|tartan|check|stripe|print|floral|pattern|multicolor/i;
+
+// Vale la pena scaricare la foto? Sì se il nome del colore non ci dice niente,
+// o se il capo è dichiarato a fantasia: sono i casi in cui il nome non basta.
+function serveLaFoto(riga) {
+  if (!riga.immagine) return false;
+  if (!riga.colore_hex) return true;
+  return FANTASIA.test(`${riga.titolo} ${riga.colore_nome || ""}`);
+}
+
 async function aggiungiColoriDaFoto(righe) {
   const gruppo = 6; // poche immagini alla volta: siamo ospiti
   for (let i = 0; i < righe.length; i += gruppo) {
     await Promise.all(
       righe.slice(i, i + gruppo).map(async (riga) => {
-        const daFoto = riga.immagine ? await coloriDaFoto(riga.immagine) : [];
+        const daFoto = serveLaFoto(riga) ? await coloriDaFoto(riga.immagine) : [];
         const daNome = riga.colore_hex ? hexALab(riga.colore_hex) : null;
 
         const elenco = [];
@@ -240,7 +277,7 @@ async function importa(negozio) {
     await salva(righe);
     salvati += righe.length;
 
-    if (prodotti.length < 250) break;
+    if (prodotti.length < 250 || salvati >= TETTO_PER_NEGOZIO) break;
     await new Promise((r) => setTimeout(r, 800)); // ospiti corretti
   }
 
