@@ -125,6 +125,16 @@ function analizzaTessuto(testo) {
   return { tessuto, qualita: peso ? Math.round(somma / peso) : null };
 }
 
+// Un prezzo che arriva da un negozio può essere qualunque cosa: un errore di
+// battitura, un valore in centesimi, un campo di prova rimasto lì. Sopra i
+// 50.000 euro non è un capo d'abbigliamento, è un dato sbagliato — e uno solo
+// bastava a far cadere l'importazione di un intero negozio.
+function prezzoValido(valore) {
+  const n = Number(valore);
+  if (!Number.isFinite(n) || n <= 0 || n > 50000) return null;
+  return Math.round(n * 100) / 100;
+}
+
 function valoreOpzione(prodotto, variante, regex) {
   const i = (prodotto.options || []).findIndex((o) => regex.test(String(o.name || "")));
   if (i < 0) return null;
@@ -148,8 +158,8 @@ function normalizza(prodotto, negozio) {
   if (!riferimento) return null;
 
   const prezzi = (disponibili.length ? disponibili : varianti)
-    .map((v) => Number(v.price))
-    .filter((p) => Number.isFinite(p) && p > 0);
+    .map((v) => prezzoValido(v.price))
+    .filter((p) => p !== null);
 
   // Il colore lo dichiara il negozio in un'opzione; se non c'è, lo cerchiamo
   // nel titolo ("CAMICIA FLANELLA VERDONE").
@@ -175,7 +185,7 @@ function normalizza(prodotto, negozio) {
     url: `https://${negozio.host}/products/${prodotto.handle}`,
     immagine: prodotto.images?.[0]?.src || null,
     prezzo: prezzi.length ? Math.min(...prezzi) : null,
-    prezzo_pieno: Number(riferimento.compare_at_price) || null,
+    prezzo_pieno: prezzoValido(riferimento.compare_at_price),
     disponibile: disponibili.length > 0,
     categoria: prodotto.product_type || null,
     // Nei negozi multimarca la marca del capo non è il negozio: da Pittarello
@@ -262,7 +272,12 @@ async function salva(righe) {
       },
       body: JSON.stringify(blocco),
     });
-    if (!res.ok) throw new Error(`salvataggio: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    if (!res.ok) {
+      // Un blocco rifiutato non deve buttare via gli altri: lo segnaliamo e
+      // si prosegue. Meglio un negozio importato all'ottanta per cento che
+      // un'importazione che si ferma a metà elenco.
+      console.log(`    blocco saltato (${res.status}): ${(await res.text()).slice(0, 120)}`);
+    }
   }
 }
 
