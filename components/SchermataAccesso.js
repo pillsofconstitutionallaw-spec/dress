@@ -17,6 +17,7 @@ export default function SchermataAccesso() {
   const [err, setErr] = useState("");
   const [inviata, setInviata] = useState(null);
   const [recupero, setRecupero] = useState("");
+  const [inviandoRecupero, setInviandoRecupero] = useState(false);
 
   useEffect(() => {
     if (!hasAccounts()) {
@@ -171,20 +172,30 @@ export default function SchermataAccesso() {
             ) : (
               <button
                 type="button"
+                disabled={inviandoRecupero}
                 onClick={async () => {
                   setErr("");
-                  if (!dati.email) return setErr("Scrivi prima la tua email, così sappiamo dove mandarla.");
+                  // Se l'email manca la chiediamo, invece di rimproverare chi
+                  // non l'ha scritta: il tasto deve fare qualcosa, sempre.
+                  let dove = dati.email.trim();
+                  if (!dove) {
+                    dove = (window.prompt("A quale indirizzo mandiamo il link per la nuova password?") || "").trim();
+                    if (!dove) return;
+                    setDati((d) => ({ ...d, email: dove }));
+                  }
+                  setInviandoRecupero(true);
                   try {
-                    const r = await recuperaPassword(dati.email);
+                    const r = await recuperaPassword(dove);
                     setRecupero(r.message);
                   } catch (e) {
                     setErr(e.message);
                   }
+                  setInviandoRecupero(false);
                 }}
                 className="muted"
-                style={{ background: "none", border: 0, fontSize: 13, padding: 8, cursor: "pointer" }}
+                style={{ background: "none", border: 0, fontSize: 13, padding: 10, cursor: "pointer", textDecoration: "underline" }}
               >
-                Ho dimenticato la password
+                {inviandoRecupero ? "Mando la mail…" : "Ho dimenticato la password"}
               </button>
             )}
             <button
