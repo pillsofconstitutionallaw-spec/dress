@@ -1,5 +1,5 @@
 import "./globals.css";
-import Nav from "@/components/Nav";
+import Cornice from "@/components/Cornice";
 import { BRAND } from "@/lib/data";
 
 export const metadata = {
@@ -15,17 +15,14 @@ export const metadata = {
   },
   // iOS non legge il manifest: queste righe servono perché, aggiunta alla home,
   // l'app si apra a tutto schermo e col nome giusto sotto l'icona.
-  appleWebApp: {
-    capable: true,
-    title: BRAND,
-    statusBarStyle: "default",
-  },
+  appleWebApp: { capable: true, title: BRAND, statusBarStyle: "default" },
 };
 
 export const viewport = {
   themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
   viewportFit: "cover",
 };
 
@@ -36,22 +33,15 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Outfit:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
       <body>
-        <Nav />
-        <main>{children}</main>
-        <footer style={{ borderTop: "1px solid var(--line)", marginTop: 96 }}>
-          <div className="wrap" style={{ padding: "40px var(--pad)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
-            <span className="eyebrow">{BRAND} · concept</span>
-            <span className="muted" style={{ fontSize: 13, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <a href="/privacy">Privacy</a>
-              <span>Un consiglio di stile, non una regola.</span>
-            </span>
-          </div>
-        </footer>
+        {/* La cornice decide caso per caso: schermo pieno all'ingresso,
+            barra in basso dentro l'app, intestazione e piè di pagina solo
+            sulle due pagine che si aprono da un link. */}
+        <Cornice>{children}</Cornice>
       </body>
     </html>
   );

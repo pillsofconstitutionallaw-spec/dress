@@ -275,3 +275,81 @@ select.control { appearance: none; background-image: linear-gradient(45deg, tran
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Marchio animato: la D si scopre da sinistra, la parola la segue.
+   Un solo movimento, all'apertura. Niente di più.
+   ───────────────────────────────────────────────────────────── */
+.marchio { color: var(--ink); }
+
+.marchio-animato .marchio-d {
+  animation: marchio-scopri 620ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+}
+.marchio-animato .marchio-parola {
+  animation: marchio-entra 560ms cubic-bezier(0.22, 0.8, 0.28, 1) 220ms both;
+}
+
+@keyframes marchio-scopri {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes marchio-entra {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Comandi da app: grandi, pieni, facili da centrare col pollice.
+   ───────────────────────────────────────────────────────────── */
+.btn-app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 18px 24px;
+  border-radius: 16px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-app:active { transform: scale(0.985); }
+.btn-app.chiaro { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn-app:disabled { opacity: 0.4; }
+
+.control-app {
+  width: 100%;
+  background: var(--stone);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 17px 18px;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.control-app:focus {
+  outline: none;
+  background: var(--paper);
+  border-color: var(--ink);
+}
+.control-app::placeholder { color: var(--greige); }
+
+.entra-morbido { animation: entra-morbido 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both; }
+@keyframes entra-morbido {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marchio-animato .marchio-d,
+  .marchio-animato .marchio-parola,
+  .entra-morbido { animation: none; }
+}
