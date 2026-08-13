@@ -5,7 +5,9 @@
       "Bash(node scripts/importa-catalogo.mjs fincut)",
       "Bash(node scripts/importa-catalogo.mjs oyd)",
       "Bash(git commit -q -m 'feat: scarpe da donna, Fincut Men e OYD *)",
-      "Bash(git commit -q -m 'fix: il recupero password chiedeva l'\\\\''email rimproverando invece di chiederla *)"
+      "Bash(git commit -q -m 'fix: il recupero password chiedeva l'\\\\''email rimproverando invece di chiederla *)",
+      "Bash(git checkout *)",
+      "Bash(node --input-type=module -e ' *)"
     ]
   }
 }

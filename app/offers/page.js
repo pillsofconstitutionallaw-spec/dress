@@ -12,7 +12,16 @@ export default function Offerte() {
 
   useEffect(() => {
     let vivo = true;
-    fetch("/api/offerte")
+    // Il sesso dichiarato nel questionario filtra anche gli sconti.
+    let genere = "";
+    try {
+      const sesso = JSON.parse(localStorage.getItem("dress:session") || "null")?.profile?.sex;
+      if (sesso === "female") genere = "donna";
+      else if (sesso === "male") genere = "uomo";
+    } catch {
+      /* nessuna sessione */
+    }
+    fetch(`/api/offerte${genere ? `?genere=${genere}` : ""}`)
       .then((r) => r.json())
       .then((d) => vivo && setCapi(d.capi || []))
       .catch(() => {})

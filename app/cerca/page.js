@@ -103,8 +103,12 @@ export default function Cerca() {
             className="control"
             value={capo}
             onChange={(e) => setCapo(e.target.value)}
-            placeholder="es. jeans baggy fit chiaro"
+            placeholder="es. giubbino North Face, jeans baggy chiaro, décolleté nere"
           />
+          <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
+            Scrivi anche una marca precisa: se in catalogo non c’è, i tasti in fondo la cercano
+            fuori, ristretta ai negozi scelti.
+          </span>
         </label>
 
         {tagli.length ? (

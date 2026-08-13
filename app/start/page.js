@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
-import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE } from "@/lib/data";
+import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
 import BrandMark from "@/components/BrandMark";
 import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 import { analizzaColori } from "@/lib/analisiFoto";
@@ -349,7 +349,11 @@ export default function Start() {
               <option value="Non so ancora — aiutami a scoprirlo">Non so ancora — aiutami a scoprirlo</option>
               {FAMIGLIE_STILI.map((f) => (
                 <optgroup key={f.famiglia} label={f.famiglia}>
-                  {f.stili.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {f.stili.map((s) => (
+                    <option key={s} value={s} title={spiegaStile(s)}>
+                      {s}{spiegaStile(s) ? ` — ${spiegaStile(s).split(/[.:]/)[0]}` : ""}
+                    </option>
+                  ))}
                 </optgroup>
               ))}
             </select>
@@ -430,7 +434,16 @@ export default function Start() {
                         <span className="eyebrow" style={{ fontSize: 11, color: "var(--greige)" }}>{i + 1}</span>
                         <strong style={{ fontSize: 16 }}>{st.nome}</strong>
                       </div>
-                      <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{st.perche}</p>
+
+                      {/* Cos'è, prima di perché ti sta bene: senza questo
+                          "Blokecore" non dice niente a nessuno. */}
+                      {spiegaStile(st.nome) ? (
+                        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{spiegaStile(st.nome)}</p>
+                      ) : null}
+
+                      <p className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
+                        <em>Perché a te:</em> {st.perche}
+                      </p>
 
                       {st.capi?.length ? (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
