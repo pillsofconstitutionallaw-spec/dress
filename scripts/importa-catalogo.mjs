@@ -52,6 +52,19 @@ export const NEGOZI = [
   { nome: "Dolly Noire", host: "www.dollynoire.com", fast: false },
   { nome: "Piazza Italia", host: "www.piazzaitalia.it", fast: true },
 
+  // scarpe
+  { nome: "Pittarello", host: "www.pittarello.com", fast: false },
+  { nome: "Superga", host: "superga.com", fast: false },
+  { nome: "Premiata", host: "premiata.it", fast: false },
+  { nome: "Lotto", host: "lottosport.com", fast: false },
+
+  // altri, entrambi
+  { nome: "Benetton", host: "www.benetton.com", fast: false },
+  { nome: "Sisley", host: "www.sisley.com", fast: false },
+  { nome: "Nenette", host: "nenette.it", fast: false, genere: "donna" },
+  { nome: "Silvian Heach", host: "silvianheach.com", fast: false, genere: "donna" },
+  { nome: "Brandy Melville", host: "brandymelville.eu", fast: false, genere: "donna" },
+
   // qualità e sostenibili
   { nome: "Rifò", host: "rifo-lab.com", fast: false },
   { nome: "Colorful Standard", host: "colorfulstandard.com", fast: false },
@@ -165,6 +178,9 @@ function normalizza(prodotto, negozio) {
     prezzo_pieno: Number(riferimento.compare_at_price) || null,
     disponibile: disponibili.length > 0,
     categoria: prodotto.product_type || null,
+    // Nei negozi multimarca la marca del capo non è il negozio: da Pittarello
+    // si comprano New Balance e Adidas, ed è quello che l'utente cerca.
+    marca: prodotto.vendor && prodotto.vendor !== negozio.nome ? String(prodotto.vendor).slice(0, 80) : null,
     genere: deduciGenere(prodotto) || negozio.genere || null,
     taglie,
     colore_nome: coloreNome || null,
