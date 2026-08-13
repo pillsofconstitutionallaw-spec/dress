@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
+import CapiTrovati from "@/components/CapiTrovati";
+import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
   deleteAccount,
@@ -34,6 +36,7 @@ export default function Dashboard() {
   const [matchRes, setMatchRes] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const { capi: capiPreferiti, pronto: preferitiPronti } = usaPreferiti();
   const confirmed = Boolean(user?.email_confirmed_at || user?.confirmed_at);
   const online = Boolean(user && confirmed);
 
@@ -304,6 +307,32 @@ export default function Dashboard() {
             </div>
           </>
         )}
+      </section>
+
+      {/* ---------------- I capi messi da parte ---------------- */}
+      <section style={{ marginTop: 28 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <h2 className="h3" style={{ margin: 0 }}>I tuoi preferiti</h2>
+          {capiPreferiti.length ? <span className="muted" style={{ fontSize: 13 }}>{capiPreferiti.length}</span> : null}
+        </div>
+
+        {capiPreferiti.length ? (
+          <div style={{ marginTop: 14 }}>
+            <CapiTrovati capi={capiPreferiti} />
+          </div>
+        ) : (
+          <p className="muted" style={{ marginTop: 10 }}>
+            {preferitiPronti
+              ? "Nessun capo salvato. Tocca il cuore su un capo e lo ritrovi qui."
+              : "Un attimo…"}
+          </p>
+        )}
+
+        {capiPreferiti.length > 0 && !online ? (
+          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+            Sono salvati solo su questo dispositivo. Accedi e te li portiamo dietro ovunque.
+          </p>
+        ) : null}
       </section>
 
       {/* ---------------- Capi salvati ---------------- */}

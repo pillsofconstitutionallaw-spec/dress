@@ -1,9 +1,12 @@
 "use client";
 
 import { AVVISO_NOME_MARCHIO, nomeDelMarchio } from "@/lib/testiProdotto";
+import { usaPreferiti } from "@/lib/preferiti";
 
 // I capi del catalogo, quelli veri, con prezzo e link al negozio.
 export default function CapiTrovati({ capi = [], caricamento = false }) {
+  const { preferito, alterna } = usaPreferiti();
+
   if (caricamento) {
     return (
       <div style={{ display: "grid", gap: 12 }}>
@@ -42,18 +45,41 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
               alignItems: "center",
             }}
           >
-            <div
-              style={{
-                width: 84,
-                height: 106,
-                borderRadius: 12,
-                overflow: "hidden",
-                background: capo.colore_hex || "var(--stone)",
-              }}
-            >
-              {capo.immagine ? (
-                <img src={capo.immagine} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : null}
+            <div style={{ position: "relative", width: 84, height: 106 }}>
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: capo.colore_hex || "var(--stone)",
+                }}
+              >
+                {capo.immagine ? (
+                  <img src={capo.immagine} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : null}
+              </div>
+
+              <button
+                type="button"
+                aria-label={preferito(capo.id) ? "Togli dai preferiti" : "Salva nei preferiti"}
+                aria-pressed={preferito(capo.id)}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); alterna(capo); }}
+                style={{
+                  position: "absolute", top: -6, right: -6,
+                  width: 32, height: 32, borderRadius: "50%",
+                  border: "1px solid var(--line)", background: "var(--paper)",
+                  display: "grid", placeItems: "center", cursor: "pointer", padding: 0,
+                  boxShadow: "0 2px 8px rgba(20,18,16,0.10)",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24"
+                  fill={preferito(capo.id) ? "var(--ink)" : "none"}
+                  stroke={preferito(capo.id) ? "var(--ink)" : "var(--greige)"}
+                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20s-7-4.4-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.6 12 20 12 20z" />
+                </svg>
+              </button>
             </div>
 
             <div style={{ display: "grid", gap: 5, minWidth: 0 }}>
