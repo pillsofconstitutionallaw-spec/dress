@@ -383,6 +383,44 @@ export default function Start() {
             <p className="eyebrow">La tua palette</p>
             {result.season ? <h1 className="h2" style={{ marginTop: 10 }}>{result.season}</h1> : null}
             {result.styleReading ? <p className="muted" style={{ marginTop: 12, maxWidth: "52ch" }}>Lettura dello stile: {result.styleReading}</p> : null}
+
+            {/* Gli stili consigliati: al massimo cinque, dal più adatto. */}
+            {result.stili?.length ? (
+              <section style={{ marginTop: 34 }}>
+                <h2 className="h3" style={{ margin: 0 }}>Gli stili che ti stanno meglio</h2>
+                <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+                  In ordine, dal più adatto. Ne scegliamo al massimo cinque: oltre non è più un
+                  consiglio, è un elenco.
+                </p>
+
+                <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                  {result.stili.slice(0, 5).map((st, i) => (
+                    <div key={st.nome + i} className="card" style={{ padding: 16, display: "grid", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                        <span className="eyebrow" style={{ fontSize: 11, color: "var(--greige)" }}>{i + 1}</span>
+                        <strong style={{ fontSize: 16 }}>{st.nome}</strong>
+                      </div>
+                      <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{st.perche}</p>
+
+                      {st.capi?.length ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+                          {st.capi.slice(0, 4).map((capo) => (
+                            <a
+                              key={capo}
+                              href={`/cerca?capo=${encodeURIComponent(capo)}`}
+                              className="chip"
+                              style={{ textDecoration: "none", color: "inherit" }}
+                            >
+                              {capo}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
           {/* production UI: no demo badge shown */}
 

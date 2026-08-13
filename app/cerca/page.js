@@ -17,6 +17,13 @@ export default function Cerca() {
   const [cercando, setCercando] = useState(false);
   const [genere, setGenere] = useState("");
 
+  // Se si arriva da un capo suggerito ("mocassini in pelle marrone"), la
+  // casella è già compilata: il consiglio deve portare da qualche parte.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("capo");
+    if (q) setCapo(q);
+  }, []);
+
   // La palette e il budget arrivano dall'analisi già fatta, se c'è.
   useEffect(() => {
     try {
