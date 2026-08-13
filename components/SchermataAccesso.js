@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import ModuloIscrizione from "@/components/ModuloIscrizione";
-import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
+import { getUser, hasAccounts, recuperaPassword, register, resendConfirmation, signIn } from "@/lib/session";
 
 // La prima schermata: il marchio e due tasti. Niente altro.
 // Chi ha già una sessione salvata non la vede nemmeno.
@@ -16,6 +16,7 @@ export default function SchermataAccesso() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [inviata, setInviata] = useState(null);
+  const [recupero, setRecupero] = useState("");
 
   useEffect(() => {
     if (!hasAccounts()) {
@@ -164,6 +165,28 @@ export default function SchermataAccesso() {
             <button className="btn-app" type="submit" disabled={busy} style={{ marginTop: 2 }}>
               {busy ? "Un attimo…" : "Entra"}
             </button>
+
+            {recupero ? (
+              <p className="muted" style={{ fontSize: 13, textAlign: "center", margin: "4px 8px" }}>{recupero}</p>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  setErr("");
+                  if (!dati.email) return setErr("Scrivi prima la tua email, così sappiamo dove mandarla.");
+                  try {
+                    const r = await recuperaPassword(dati.email);
+                    setRecupero(r.message);
+                  } catch (e) {
+                    setErr(e.message);
+                  }
+                }}
+                className="muted"
+                style={{ background: "none", border: 0, fontSize: 13, padding: 8, cursor: "pointer" }}
+              >
+                Ho dimenticato la password
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { setModo(null); setErr(""); }}
