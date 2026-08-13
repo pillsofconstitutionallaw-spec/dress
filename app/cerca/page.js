@@ -16,12 +16,21 @@ export default function Cerca() {
   const [capi, setCapi] = useState([]);
   const [cercando, setCercando] = useState(false);
   const [genere, setGenere] = useState("");
+  const [tagli, setTagli] = useState([]);
 
   // Se si arriva da un capo suggerito ("mocassini in pelle marrone"), la
   // casella è già compilata: il consiglio deve portare da qualche parte.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("capo");
     if (q) setCapo(q);
+  }, []);
+
+  // Cosa si porta adesso, contato sul catalogo.
+  useEffect(() => {
+    fetch("/api/tendenze")
+      .then((r) => r.json())
+      .then((d) => setTagli(d.tagli || []))
+      .catch(() => {});
   }, []);
 
   // La palette e il budget arrivano dall'analisi già fatta, se c'è.
@@ -97,6 +106,32 @@ export default function Cerca() {
             placeholder="es. jeans baggy fit chiaro"
           />
         </label>
+
+        {tagli.length ? (
+          <div>
+            <span className="label" style={{ display: "block", marginBottom: 8 }}>
+              Cosa si porta adesso
+            </span>
+            <div className="chips">
+              {tagli.slice(0, 8).map((t) => (
+                <button
+                  key={t.taglio}
+                  type="button"
+                  className="chip"
+                  onClick={() => setCapo((c) => (c.toLowerCase().includes(t.taglio.toLowerCase()) ? c : `${c} ${t.taglio}`.trim()))}
+                  style={{ cursor: "pointer" }}
+                >
+                  {t.taglio}
+                  <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>{t.quanti}</span>
+                </button>
+              ))}
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+              Non è un’opinione: è quanti capi di quel taglio i negozi hanno in vendita
+              in questo momento, contati sul catalogo.
+            </p>
+          </div>
+        ) : null}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <label className="field">
