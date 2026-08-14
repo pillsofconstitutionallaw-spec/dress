@@ -10,7 +10,8 @@
       "Bash(node --input-type=module -e ' *)",
       "Bash(curl -s --max-time 25 https://www.dressapp.it/start?v=__TRACKED_VAR__)",
       "Bash(grep -o '<option value=\"Blokecore\".\\\\{0,140\\\\}')",
-      "Bash(grep -o '<option value=\"Techwear\".\\\\{0,130\\\\}')"
+      "Bash(grep -o '<option value=\"Techwear\".\\\\{0,130\\\\}')",
+      "Bash(git commit -q -m 'fix: cinque errori nei completi, trovati provandoli *)"
     ]
   }
 }

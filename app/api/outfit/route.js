@@ -29,21 +29,31 @@ export async function POST(req) {
     .filter((c) => c.lab);
   if (!voluti.length) return NextResponse.json({ error: "PALETTE_SENZA_COLORI" }, { status: 400 });
 
-  // Un pescaggio solo, largo: comporre quattro completi da quattro richieste
-  // separate darebbe quattro volte gli stessi capi.
-  const { data, error } = await supabase.rpc("capi_per_palette", {
+  const comuni = {
     palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
     prezzo_min: null,
     prezzo_max: max ? Number(max) : null,
     genere_voluto: genere || null,
     escludi_fast: Boolean(escludiFast),
-    quanti: 900,
-    parole: stile ? paroleDelloStile(stile) : null,
-  });
+  };
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Due pescaggi, non uno.
+  //
+  // Le parole dello stile descrivono i VESTITI — "tweed", "maglione a trecce" —
+  // e nei titoli delle scarpe non compaiono mai. Filtrando tutto il catalogo
+  // con quelle, un completo Romantico restava senza scarpe. Quindi lo stile
+  // vincola i capi d'abbigliamento, mentre scarpe e accessori si scelgono per
+  // colore su tutto il catalogo.
+  const [conStile, tutto] = await Promise.all([
+    stile
+      ? supabase.rpc("capi_per_palette", { ...comuni, quanti: 700, parole: paroleDelloStile(stile) })
+      : Promise.resolve({ data: null }),
+    supabase.rpc("capi_per_palette", { ...comuni, quanti: 700, parole: null }),
+  ]);
 
-  const capi = (data || []).map((capo) => {
+  if (tutto.error) return NextResponse.json({ error: tutto.error.message }, { status: 500 });
+
+  const arricchisci = (righe) => (righe || []).map((capo) => {
     const suo = { L: capo.colore_l, a: capo.colore_a, b: capo.colore_b };
     let vicino = null;
     let scarto = Infinity;
@@ -57,19 +67,35 @@ export async function POST(req) {
     return { ...capo, colore_palette: vicino, scarto: Number(scarto.toFixed(1)), ruolo: ruoloDelCapo(capo.titolo, capo.categoria) };
   });
 
+  const vestiti = arricchisci(conStile.data || tutto.data);
+  const qualsiasi = arricchisci(tutto.data);
+
+  // Lo stile comanda su quello che si indossa; scarpe e accessori seguono il
+  // colore, perché è lì che si abbinano davvero.
+  const RUOLI_DELLO_STILE = new Set(["capospalla", "top", "bottom", "intero"]);
+
   // Un capo scelto per un periodo non torna negli altri: quattro completi con
   // lo stesso cappello sono un completo solo mostrato quattro volte.
   const giaUsati = new Set();
 
   const completi = PERIODI.map((periodo) => {
-    const disponibili = capi.filter((c) => c.ruolo && adattoAlPeriodo(c.titolo, periodo));
+    const adatti = (righe) => righe.filter((c) => c.ruolo && adattoAlPeriodo(c.titolo, periodo));
+    const daStile = adatti(vestiti);
+    const daTutto = adatti(qualsiasi);
 
     const scelti = [];
     const negoziUsati = new Set();
     const coloriUsati = new Set();
 
-    for (const ruolo of periodo.ruoli) {
-      const candidati = disponibili
+    // Un abito fa da solo sopra e sotto: se c'è, gli altri due ruoli saltano.
+    const conAbito = daStile.find((c) => c.ruolo === "intero" && !giaUsati.has(c.id) && c.scarto < 12);
+    const ruoliDaRiempire = conAbito
+      ? periodo.ruoli.filter((r) => r !== "top" && r !== "bottom").flatMap((r) => (r === "capospalla" ? [r, "intero"] : [r]))
+      : periodo.ruoli;
+
+    for (const ruolo of ruoliDaRiempire) {
+      const bacino = RUOLI_DELLO_STILE.has(ruolo) ? daStile : daTutto;
+      const candidati = bacino
         .filter((c) => c.ruolo === ruolo && !scelti.some((s) => s.id === c.id) && !giaUsati.has(c.id))
         .map((c) => {
           const t = c.titolo.toLowerCase();
@@ -86,7 +112,27 @@ export async function POST(req) {
         })
         .sort((a, b) => b.punti - a.punti);
 
-      const scelto = candidati[0];
+      let scelto = candidati[0];
+
+      // Se lo stile non ha niente per un ruolo che serve — d'estate un
+      // Romantico può non avere magliette in catalogo — si pesca dal colore
+      // invece di lasciare il buco. Un capo giusto di colore vale più di uno
+      // slot vuoto, e l'utente vede un completo invece di una lista monca.
+      if (!scelto && periodo.obbligatori.includes(ruolo)) {
+        scelto = daTutto
+          .filter((c) => c.ruolo === ruolo && !scelti.some((x) => x.id === c.id) && !giaUsati.has(c.id))
+          .sort((a, b) => a.scarto - b.scarto)[0];
+
+        // E se anche così non c'è, si accetta di ripetere un capo già usato in
+        // un altro periodo. La regola "mai due volte lo stesso" serve a non
+        // mostrare quattro completi identici, non a lasciare l'estate senza
+        // pantaloni: quando le due cose confliggono, vince il completo.
+        if (!scelto) {
+          scelto = daTutto
+            .filter((c) => c.ruolo === ruolo && !scelti.some((x) => x.id === c.id))
+            .sort((a, b) => a.scarto - b.scarto)[0];
+        }
+      }
       if (scelto) {
         scelti.push({ ...scelto, ruolo, ruoloEtichetta: RUOLI[ruolo].etichetta });
         negoziUsati.add(scelto.negozio);
@@ -95,7 +141,11 @@ export async function POST(req) {
       }
     }
 
-    const mancanti = periodo.obbligatori.filter((r) => !scelti.some((s) => s.ruolo === r));
+    // Con un abito, "maglia" e "pantaloni" non mancano: sono coperti.
+    const haAbito = scelti.some((s) => s.ruolo === "intero");
+    const mancanti = periodo.obbligatori.filter(
+      (r) => !scelti.some((s) => s.ruolo === r) && !(haAbito && (r === "top" || r === "bottom")),
+    );
 
     return {
       periodo: periodo.id,
