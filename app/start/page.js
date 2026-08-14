@@ -5,6 +5,8 @@ import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
 import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
+import { FORME } from "@/lib/proporzioni";
+import { leggiVestiti, stiliDaiVestiti } from "@/lib/leggiVestiti";
 import BrandMark from "@/components/BrandMark";
 import { apiFetch, getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 import { analizzaColori } from "@/lib/analisiFoto";
@@ -46,7 +48,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", weight: "", hair: "", eyes: "", style: "", comment: "", sex: "" });
+  const [profile, setProfile] = useState({ height: "", weight: "", forma: "", hair: "", eyes: "", style: "", comment: "", sex: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -180,7 +182,10 @@ export default function Start() {
       } catch {
         /* senza account l'età semplicemente non entra nel calcolo */
       }
-      const stili = consigliaStili(nostra, { ...profile, dataNascita });
+      // Come ti vesti già, letto dalla foto a figura intera: uno stylist
+      // non chiede che stile hai, guarda.
+      const vestiti = fullbody ? await leggiVestiti(fullbody) : null;
+      const stili = consigliaStili(nostra, { ...profile, dataNascita }, stiliDaiVestiti(vestiti));
 
       // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
       // un risultato più debole senza capire perché.
@@ -377,6 +382,18 @@ export default function Start() {
             <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
               Serve solo a proporti la taglia giusta. Non lo commentiamo, non lo mostriamo a nessuno,
               e puoi lasciarlo vuoto.
+            </span>
+          </label>
+
+          <label className="field">
+            <span className="label">Proporzioni — facoltativo</span>
+            <select className="control" value={profile.forma} onChange={set("forma")}>
+              <option value="">Preferisco non dirlo</option>
+              {FORME.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+            </select>
+            <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
+              Serve solo a capire quali tagli cadono meglio: lo stesso pantalone su due persone
+              diverse cade in due modi diversi. Non lo commentiamo mai.
             </span>
           </label>
 

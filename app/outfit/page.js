@@ -14,6 +14,8 @@ export default function Outfit() {
   const [stiliDisponibili, setStiliDisponibili] = useState([]);
   const [genere, setGenere] = useState("");
   const [budget, setBudget] = useState("");
+  const [forma, setForma] = useState("");
+  const [altezza, setAltezza] = useState("");
   const [completi, setCompleti] = useState([]);
   const [periodo, setPeriodo] = useState(periodoCorrente());
   const [caricamento, setCaricamento] = useState(true);
@@ -26,6 +28,8 @@ export default function Outfit() {
       if (s?.result?.stileScelto) setStile(s.result.stileScelto);
       else if (s?.result?.stili?.[0]) setStile(s.result.stili[0].nome);
       if (s?.budget) setBudget(s.budget);
+      if (s?.profile?.forma) setForma(s.profile.forma);
+      if (s?.profile?.height) setAltezza(s.profile.height);
       const sesso = s?.profile?.sex;
       if (sesso === "female") setGenere("donna");
       else if (sesso === "male") setGenere("uomo");
@@ -48,6 +52,8 @@ export default function Outfit() {
         palette,
         stile: stile || null,
         genere: genere || null,
+        forma: forma || null,
+        altezza: altezza || null,
         max: budget ? Math.round(Number(String(budget).replace(/\D/g, "")) * 1.6) : null,
         escludiFast: true,
       }),
@@ -59,7 +65,7 @@ export default function Outfit() {
     return () => {
       vivo = false;
     };
-  }, [palette, stile, genere, budget]);
+  }, [palette, stile, genere, budget, forma, altezza]);
 
   const attuale = useMemo(() => completi.find((c) => c.periodo === periodo), [completi, periodo]);
   const coloriPeriodo = useMemo(() => paletteDelPeriodo(palette, periodo), [palette, periodo]);

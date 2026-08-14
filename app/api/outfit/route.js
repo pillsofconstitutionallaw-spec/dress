@@ -4,6 +4,8 @@ import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
 import { paroleDelloStile } from "@/lib/stiliCapi";
 import { PERIODI, RUOLI, adattoAlPeriodo, ruoloDelCapo } from "@/lib/periodiAnno";
+import { tagliConsigliati } from "@/lib/proporzioni";
+import { TUTTE_LE_VESTIBILITA } from "@/lib/data";
 
 export const runtime = "nodejs";
 
@@ -19,7 +21,7 @@ export async function POST(req) {
   const { body, error: badJson } = await readJson(req);
   if (badJson) return badJson;
 
-  const { palette, stile = null, genere = null, max = null, escludiFast = false } = body || {};
+  const { palette, stile = null, genere = null, max = null, escludiFast = false, forma = null, altezza = null } = body || {};
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
@@ -74,6 +76,16 @@ export async function POST(req) {
   // colore, perché è lì che si abbinano davvero.
   const RUOLI_DELLO_STILE = new Set(["capospalla", "top", "bottom", "intero"]);
 
+  // I tagli che cadono meglio su queste proporzioni: si traducono nelle
+  // parole con cui i negozi li chiamano, e diventano una preferenza — mai un
+  // filtro. Escludere capi per la forma di una persona sarebbe esattamente
+  // quello che abbiamo deciso di non fare.
+  const { tagli } = tagliConsigliati({ forma, altezza });
+  const paroleTaglio = tagli.flatMap((t) => {
+    const v = TUTTE_LE_VESTIBILITA.find((x) => x.nome === t);
+    return v ? v.chiavi : [String(t).toLowerCase()];
+  });
+
   // Un capo scelto per un periodo non torna negli altri: quattro completi con
   // lo stesso cappello sono un completo solo mostrato quattro volte.
   const giaUsati = new Set();
@@ -108,6 +120,8 @@ export async function POST(req) {
           // E cinque capi dello stesso colore non sono un outfit.
           if (coloriUsati.has(c.colore_palette)) punti -= 7;
           if (c.qualita) punti += c.qualita / 25;
+          // I tagli adatti salgono, gli altri restano dove sono.
+          if (paroleTaglio.length && paroleTaglio.some((k) => t.includes(k))) punti += 11;
           return { ...c, punti };
         })
         .sort((a, b) => b.punti - a.punti);
