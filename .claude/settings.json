@@ -17,7 +17,8 @@
       "Bash(node /tmp/sonda5.mjs)",
       "Bash(SMTP_USER='info@dressapp.it' SMTP_PASS='DressApp2026D' node /private/tmp/claude-501/-Users-francescomiragliuolo-Desktop-filo/7d3c7817-e316-4894-85d4-e21f0c595e5a/scratchpad/prova-smtp.mjs)",
       "Bash(git commit -q -m 'feat: info@dressapp.it come contatto per i diritti privacy *)",
-      "Bash(git commit -q -m 'feat: titolare del trattamento indicato *)"
+      "Bash(git commit -q -m 'feat: titolare del trattamento indicato *)",
+      "Bash(git commit -q -m 'feat: da 38 a 103 negozi *)"
     ]
   }
 }

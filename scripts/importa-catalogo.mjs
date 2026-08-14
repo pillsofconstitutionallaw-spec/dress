@@ -78,6 +78,88 @@ export const NEGOZI = [
   { nome: "Fincut Men", host: "fincutmen-it.com", fast: false, genere: "uomo" },
   { nome: "OYD", host: "oydlife.com", fast: false },
 
+  // intimo e lingerie
+  { nome: "Cosabella", host: "cosabella.com", fast: false, genere: "donna" },
+  { nome: "Bluebella", host: "bluebella.com", fast: false, genere: "donna" },
+  { nome: "Lounge", host: "loungeunderwear.com", fast: false },
+  { nome: "Honey Birdette", host: "honeybirdette.com", fast: false, genere: "donna" },
+  { nome: "Nuudii", host: "nuudiisystem.com", fast: false, genere: "donna" },
+  { nome: "Boody", host: "boody.com", fast: false },
+  { nome: "Saxx", host: "saxxunderwear.com", fast: false, genere: "uomo" },
+  { nome: "Muchachomalo", host: "muchachomalo.com", fast: false, genere: "uomo" },
+  { nome: "Julipet", host: "julipet.it", fast: false },
+  { nome: "CDLP", host: "cdlp.com", fast: false, genere: "uomo" },
+
+  // borse, zaini, occhiali, gioielli
+  { nome: "Carpisa", host: "carpisa.com", fast: false },
+  { nome: "Piquadro", host: "piquadro.com", fast: false },
+  { nome: "The Bridge", host: "thebridge.it", fast: false },
+  { nome: "Komono", host: "komono.com", fast: false },
+  { nome: "Herschel", host: "herschel.com", fast: false },
+  { nome: "Invicta", host: "invicta.it", fast: false },
+  { nome: "Rains", host: "rains.com", fast: false },
+  { nome: "Db", host: "dbjourney.com", fast: false },
+  { nome: "Cluse", host: "cluse.com", fast: false, genere: "donna" },
+  { nome: "Daniel Wellington", host: "danielwellington.com", fast: false },
+  { nome: "PDPAOLA", host: "pdpaola.com", fast: false, genere: "donna" },
+  { nome: "Mejuri", host: "www.mejuri.com", fast: false, genere: "donna" },
+
+  // marchi noti
+  { nome: "K-Way", host: "www.k-way.com", fast: false },
+  { nome: "Save The Duck", host: "www.savetheduck.it", fast: false },
+  { nome: "Scotch & Soda", host: "scotch-soda.com", fast: false },
+
+  // vintage e second-hand
+  { nome: "Cavalli e Nastri", host: "cavallienastri.com", fast: false },
+  { nome: "Rokit", host: "rokit.co.uk", fast: false },
+  { nome: "Thrifted", host: "thrifted.com", fast: false },
+
+  // nordici e contemporanei
+  { nome: "Nanushka", host: "nanushka.com", fast: false },
+  { nome: "Baum und Pferdgarten", host: "baumundpferdgarten.com", fast: false, genere: "donna" },
+  { nome: "Moves", host: "moves.dk", fast: false },
+  { nome: "Les Deux", host: "www.lesdeux.com", fast: false, genere: "uomo" },
+  { nome: "Norse Projects", host: "norseprojects.com", fast: false },
+  { nome: "Percival", host: "percivalclo.com", fast: false, genere: "uomo" },
+  { nome: "Oliver Cabell", host: "olivercabell.com", fast: false },
+  { nome: "Knowledge Cotton", host: "knowledgecottonapparel.com", fast: false },
+  { nome: "Pangaia", host: "thepangaia.com", fast: false },
+  { nome: "Everlane", host: "everlane.com", fast: false },
+
+  // streetwear
+  { nome: "Stüssy", host: "stussy.com", fast: false },
+  { nome: "Obey", host: "obeyclothing.com", fast: false },
+  { nome: "Santa Cruz", host: "santacruzskateboards.eu", fast: false },
+  { nome: "Volcom", host: "volcom.eu", fast: false },
+  { nome: "New Era", host: "neweracap.eu", fast: false },
+
+  // italiani, sartoria e capospalla
+  { nome: "Aspesi", host: "aspesi.com", fast: false },
+  { nome: "Slam", host: "slam.com", fast: false },
+  { nome: "Napapijri", host: "napapijri.com", fast: false },
+  { nome: "Xacus", host: "xacus.com", fast: false, genere: "uomo" },
+  { nome: "Lardini", host: "lardini.com", fast: false },
+  { nome: "Circolo 1901", host: "circolo1901.it", fast: false },
+
+  // scarpe, seconda tornata
+  { nome: "Frau", host: "frau.it", fast: false },
+  { nome: "Philippe Model", host: "philippemodel.com", fast: false },
+  { nome: "Womsh", host: "womsh.com", fast: false },
+  { nome: "Allbirds", host: "allbirds.com", fast: false },
+  { nome: "Thousand Fell", host: "thousandfell.com", fast: false },
+
+  // danesi contemporanei, molto donna
+  { nome: "Second Female", host: "secondfemale.com", fast: false, genere: "donna" },
+  { nome: "Munthe", host: "munthe.com", fast: false, genere: "donna" },
+  { nome: "Stine Goya", host: "stinegoya.com", fast: false, genere: "donna" },
+  { nome: "Lollys Laundry", host: "lollyslaundry.com", fast: false, genere: "donna" },
+  { nome: "A-View", host: "a-view.dk", fast: false, genere: "donna" },
+  { nome: "Sofie Schnoor", host: "sofieschnoor.com", fast: false, genere: "donna" },
+  { nome: "Hunkon", host: "hunkon.com", fast: false, genere: "donna" },
+  { nome: "Bruuns Bazaar", host: "bruunsbazaar.com", fast: false },
+  { nome: "Anerkjendt", host: "anerkjendt.com", fast: false, genere: "uomo" },
+  { nome: "Redefined Rebel", host: "redefinedrebel.com", fast: false, genere: "uomo" },
+
   // qualità e sostenibili
   { nome: "Rifò", host: "rifo-lab.com", fast: false },
   { nome: "Colorful Standard", host: "colorfulstandard.com", fast: false },
