@@ -153,22 +153,25 @@ export default function Dashboard() {
     }
   }
 
+  // La foto di un CAPO va all'endpoint dei capi, non a quello dei colori:
+  // /api/analyze ora lavora sulle misure e le immagini le ignora, quindi
+  // questa funzione non faceva più niente.
   async function askMatch() {
-    if (!image) return setErr("Carica prima un'immagine.");
+    if (!image) return setErr("Carica prima la foto di un capo.");
     setLoading(true);
     setErr("");
     setMatchRes(null);
     try {
-      const r = await fetch("/api/analyze", {
+      const r = await fetch("/api/resell", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: {}, closeup: image, fullbody: null }),
+        body: JSON.stringify({ image }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Errore");
       setMatchRes(data);
     } catch {
-      setErr("Analisi non riuscita.");
+      setErr("Non sono riuscito a leggere il capo. Riprova con una foto più nitida.");
     }
     setLoading(false);
   }
@@ -366,7 +369,11 @@ export default function Dashboard() {
       {/* ---------------- Abbinamenti ---------------- */}
       <section style={{ marginTop: 28 }}>
         <h2 className="h3">Chiedi cosa abbinare</h2>
-        <p className="muted">Carica la foto di un capo e chiedi all'AI suggerimenti di abbinamento.</p>
+        <p className="muted">Carica la foto di un capo e chiedi come abbinarlo.</p>
+        <p className="muted" style={{ fontSize: 12, marginTop: -6 }}>
+          Questa foto viene inviata per il tempo della descrizione e non viene conservata. È
+          l'unica che esce dal dispositivo: il selfie dell'analisi colori resta qui.
+        </p>
         <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
           <label className="card" style={{ padding: 12 }}>
             <div style={{ fontSize: 13, marginBottom: 8 }}>Carica immagine</div>
@@ -387,16 +394,14 @@ export default function Dashboard() {
         </div>
 
         {matchRes && (
-          <div style={{ marginTop: 18 }}>
-            <h3 className="h4">Suggerimenti</h3>
-            {matchRes.styleReading ? <p className="muted">Lettura stile: {matchRes.styleReading}</p> : null}
-            <div className="swatches" style={{ marginTop: 12 }}>
-              {matchRes.palette?.map((c, i) => (
-                <div key={i} style={{ display: "inline-block", marginRight: 8 }}>
-                  <div style={{ width: 48, height: 48, background: c.hex, borderRadius: 6 }} />
-                </div>
-              ))}
-            </div>
+          <div className="card" style={{ marginTop: 18, padding: 16, display: "grid", gap: 8 }}>
+            <strong style={{ fontSize: 15 }}>{matchRes.title}</strong>
+            {matchRes.description ? <p className="muted" style={{ margin: 0, fontSize: 14 }}>{matchRes.description}</p> : null}
+            {matchRes.matchTips?.length ? (
+              <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em", fontSize: 14, lineHeight: 1.6 }}>
+                {matchRes.matchTips.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            ) : null}
           </div>
         )}
       </section>

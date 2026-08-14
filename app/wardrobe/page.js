@@ -57,7 +57,7 @@ export default function Wardrobe() {
           <div style={{ aspectRatio: "3/4", background: "var(--stone)", display: "grid", placeItems: "center", overflow: "hidden" }}>
             {image ? <img src={image} alt="capo" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span className="muted" style={{ fontSize: 13 }}>Tocca per caricare</span>}
           </div>
-          <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
+          <input data-avviso="La foto del capo viene inviata per il tempo della descrizione e non viene conservata." type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
         </label>
 
         <div>
