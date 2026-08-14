@@ -171,7 +171,7 @@ export default function Start() {
       // 1. L'analisi la facciamo noi, qui nel telefono: misura la foto,
       //    calcola la stagione, sceglie i cinque stili. Non serve rete, non
       //    serve una chiave, non può esaurirsi. E la foto non esce da qui.
-      const nostra = await analizzaColori({ profile, closeup, testRisposte });
+      const nostra = await analizzaColori({ profile, closeup, fullbody, testRisposte });
       const stili = consigliaStili(nostra, profile);
 
       // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
@@ -190,6 +190,11 @@ export default function Start() {
         mancanze.push("Manca la foto a figura intera: senza, la lettura dello stile si basa solo su quello che hai dichiarato.");
       }
       setAvvisi(mancanze);
+
+      // Sotto la soglia di certezza non affermiamo: apriamo il drappeggio.
+      // È la regola che tiene l'analisi quasi sempre giusta — non rispondere
+      // vale più di rispondere male.
+      if (nostra.daConfermare) setMostraTest(true);
       const base = { ...nostra, stili, styleReading: null };
       setResult(base);
       setStep(4);
@@ -472,16 +477,24 @@ export default function Start() {
                 non gli somiglia, si rifà con le domande dell'armocromista. */}
             <div className="card" style={{ padding: 16, marginTop: 16, display: "grid", gap: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                <strong style={{ fontSize: 14 }}>Ti somiglia?</strong>
+                <strong style={{ fontSize: 14 }}>
+                  {result.daConfermare ? "Su di te non sono sicuro" : "Ti somiglia?"}
+                </strong>
                 <button className="btn ghost" onClick={() => setMostraTest((v) => !v)} style={{ padding: "8px 14px", fontSize: 13 }}>
                   {mostraTest ? "Chiudi" : "No, affiniamo"}
                 </button>
               </div>
 
-              {result.misura?.fonteSottotono ? (
+              {result.daConfermare ? (
+                <span className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+                  La foto non basta a deciderlo: il tuo è un caso al limite fra caldo e freddo, o la
+                  luce ha ingannato la misura. Guarda le due immagini qui sotto — con i teli
+                  accanto la differenza si vede, anche senza saperla spiegare.
+                </span>
+              ) : result.misura?.fonteSottotono ? (
                 <span className="muted" style={{ fontSize: 12.5 }}>
-                  Sottotono <strong>{result.misura.sottotono}</strong>, deciso da: {result.misura.fonteSottotono}.
-                  {result.misura.luceCorretta === false ? " La luce della foto non era correggibile." : ""}
+                  Sottotono <strong>{result.misura.sottotono}</strong>, deciso da: {result.misura.fonteSottotono}
+                  {result.misura.dueScatti ? (result.misura.accordoFoto ? ", due scatti concordi" : ", i due scatti non concordano") : ""}.
                 </span>
               ) : null}
 
