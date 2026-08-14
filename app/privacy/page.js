@@ -21,8 +21,8 @@ export default function Privacy() {
       <section style={{ marginTop: 40 }}>
         <h2 className="h3">Chi tratta i tuoi dati</h2>
         <p>
-          Il titolare del trattamento è <strong>[NOME E COGNOME O RAGIONE SOCIALE]</strong>,
-          <strong> [INDIRIZZO]</strong>. Per qualunque cosa riguardi i tuoi dati scrivi a{" "}
+          Il titolare del trattamento è <strong>Francesco Miragliuolo</strong>.
+          Per qualunque cosa riguardi i tuoi dati scrivi a{" "}
           <a href="mailto:info@dressapp.it"><strong>info@dressapp.it</strong></a>: è una casella
           letta da una persona, non un no-reply.
         </p>
