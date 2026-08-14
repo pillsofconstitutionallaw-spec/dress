@@ -22,11 +22,9 @@ export default function Privacy() {
         <h2 className="h3">Chi tratta i tuoi dati</h2>
         <p>
           Il titolare del trattamento è <strong>[NOME E COGNOME O RAGIONE SOCIALE]</strong>,
-          <strong> [INDIRIZZO]</strong>, contattabile a <strong>[EMAIL DI CONTATTO]</strong>.
-        </p>
-        <p className="muted" style={{ fontSize: 14 }}>
-          L’indirizzo <code>no-reply@dressapp.it</code> non va bene per questo: è una casella che
-          nessuno legge. Per esercitare i tuoi diritti serve un indirizzo a cui qualcuno risponde.
+          <strong> [INDIRIZZO]</strong>. Per qualunque cosa riguardi i tuoi dati scrivi a{" "}
+          <a href="mailto:info@dressapp.it"><strong>info@dressapp.it</strong></a>: è una casella
+          letta da una persona, non un no-reply.
         </p>
       </section>
 
@@ -113,7 +111,7 @@ export default function Privacy() {
           spazio personale, alla voce <strong>Elimina account</strong>.
         </p>
         <p>
-          Per tutto il resto scrivi a <strong>[EMAIL DI CONTATTO]</strong>. Se pensi che qualcosa non
+          Per tutto il resto scrivi a <a href="mailto:info@dressapp.it"><strong>info@dressapp.it</strong></a>. Se pensi che qualcosa non
           sia stato fatto correttamente, puoi rivolgerti al Garante per la protezione dei dati
           personali (<span className="muted">garanteprivacy.it</span>).
         </p>
