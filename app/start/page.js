@@ -673,7 +673,6 @@ export default function Start() {
             <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link href="/wardrobe" className="btn ghost">Ho già dei capi da abbinare</Link>
               <button className="btn ghost" onClick={() => { setStep(1); setResult(null); }}>Ricomincia</button>
-              <button className="btn" onClick={() => { saveProfile(); }}>Salva profilo</button>
             </div>
           </div>
         </section>

@@ -1,6 +1,3 @@
--- Come prima, ma con la possibilità di restringere a uno stile.
--- Le parole arrivano dall'applicazione, che le ricava dalla descrizione
--- dello stile: il catalogo non ha un campo "stile" e non potrebbe averlo.
 create or replace function public.capi_per_palette(
   palette      jsonb,
   prezzo_min   numeric default null,
@@ -18,18 +15,30 @@ returns table (
   tessuto text, qualita smallint, fast_fashion boolean,
   distanza real
 )
-language sql
-stable
+language sql stable
 as $$
   with voluti as (
     select (e->>'l')::real as l, (e->>'a')::real as a, (e->>'b')::real as b
     from jsonb_array_elements(palette) e
   ),
+  -- I limiti come DUE NUMERI, non come tabella da confrontare riga per riga.
+  -- Contro una tabella temporanea Postgres non usa l'indice e scansiona
+  -- trentaseimila righe una per una: erano quasi cinque secondi. Con un
+  -- intervallo scalare l'indice su (colore_l, colore_a, colore_b) entra in
+  -- gioco e il grosso del catalogo viene scartato prima di toccarlo.
+  limiti as (
+    select min(l) - 38 as lmin, max(l) + 38 as lmax,
+           min(a) - 40 as amin, max(a) + 40 as amax,
+           min(b) - 40 as bmin, max(b) + 40 as bmax
+    from voluti
+  ),
   ammessi as (
     select p.*
-    from public.prodotti p
+    from public.prodotti p, limiti li
     where p.disponibile
-      and p.colore_l is not null
+      and p.colore_l between li.lmin and li.lmax
+      and p.colore_a between li.amin and li.amax
+      and p.colore_b between li.bmin and li.bmax
       and (prezzo_min is null or p.prezzo >= prezzo_min)
       and (prezzo_max is null or p.prezzo <= prezzo_max)
       and (genere_voluto is null or p.genere = genere_voluto or p.genere = 'unisex' or p.genere is null)
@@ -64,14 +73,11 @@ as $$
          p.prezzo, p.prezzo_pieno, p.categoria, p.genere,
          p.taglie, p.colore_nome, p.colore_hex,
          p.colore_l, p.colore_a, p.colore_b,
-         p.tessuto, p.qualita, p.fast_fashion,
-         m.distanza
+         p.tessuto, p.qualita, p.fast_fashion, m.distanza
   from migliori m
   join public.prodotti p on p.id = m.id
   where m.distanza <= 34
   order by m.distanza asc, p.qualita desc nulls last
   limit quanti;
 $$;
-
-grant execute on function public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[])
-  to anon, authenticated;
+grant execute on function public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[]) to anon, authenticated;

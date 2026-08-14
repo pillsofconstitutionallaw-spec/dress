@@ -44,7 +44,23 @@ export default function Outfit() {
       return;
     }
     let vivo = true;
-    setCaricamento(true);
+    const chiave = `dress:completi:${stile}|${genere}|${forma}|${altezza}|${budget}|${palette.map((c) => c.hex).join("")}`;
+
+    // Se questi completi li abbiamo già calcolati, si mostrano subito e si
+    // aggiornano dietro. Ricalcolarli da capo ogni volta che si torna sulla
+    // schermata sono due secondi e mezzo di attesa per la stessa risposta.
+    try {
+      const salvati = JSON.parse(sessionStorage.getItem(chiave) || "null");
+      if (salvati?.length) {
+        setCompleti(salvati);
+        setCaricamento(false);
+      } else {
+        setCaricamento(true);
+      }
+    } catch {
+      setCaricamento(true);
+    }
+
     fetch("/api/outfit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,7 +75,15 @@ export default function Outfit() {
       }),
     })
       .then((r) => r.json())
-      .then((d) => vivo && setCompleti(d.completi || []))
+      .then((d) => {
+        if (!vivo || !d.completi?.length) return;
+        setCompleti(d.completi);
+        try {
+          sessionStorage.setItem(chiave, JSON.stringify(d.completi));
+        } catch {
+          /* memoria piena: pazienza, si ricalcola */
+        }
+      })
       .catch(() => {})
       .finally(() => vivo && setCaricamento(false));
     return () => {

@@ -48,9 +48,9 @@ export async function POST(req) {
   // colore su tutto il catalogo.
   const [conStile, tutto] = await Promise.all([
     stile
-      ? supabase.rpc("capi_per_palette", { ...comuni, quanti: 700, parole: paroleDelloStile(stile) })
+      ? supabase.rpc("capi_per_palette", { ...comuni, quanti: 420, parole: paroleDelloStile(stile) })
       : Promise.resolve({ data: null }),
-    supabase.rpc("capi_per_palette", { ...comuni, quanti: 700, parole: null }),
+    supabase.rpc("capi_per_palette", { ...comuni, quanti: 420, parole: null }),
   ]);
 
   if (tutto.error) return NextResponse.json({ error: tutto.error.message }, { status: 500 });
