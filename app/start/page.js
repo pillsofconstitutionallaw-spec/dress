@@ -9,6 +9,7 @@ import BrandMark from "@/components/BrandMark";
 import { apiFetch, getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 import { analizzaColori } from "@/lib/analisiFoto";
 import { consigliaStili } from "@/lib/consigliaStili";
+import TestArmocromia from "@/components/TestArmocromia";
 
 function Swatch({ c }) {
   return (
@@ -59,6 +60,8 @@ export default function Start() {
   const [pending, setPending] = useState(null); // messaggio "controlla la mail"
   const [busy, setBusy] = useState(false);
   const [avvisi, setAvvisi] = useState([]);
+  const [testRisposte, setTestRisposte] = useState({});
+  const [mostraTest, setMostraTest] = useState(false);
 
   const set = (k) => (e) => setProfile((p) => ({ ...p, [k]: e.target.value }));
 
@@ -167,7 +170,7 @@ export default function Start() {
       // 1. L'analisi la facciamo noi, qui nel telefono: misura la foto,
       //    calcola la stagione, sceglie i cinque stili. Non serve rete, non
       //    serve una chiave, non può esaurirsi. E la foto non esce da qui.
-      const nostra = await analizzaColori({ profile, closeup });
+      const nostra = await analizzaColori({ profile, closeup, testRisposte });
       const stili = consigliaStili(nostra, profile);
 
       // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
@@ -234,6 +237,7 @@ export default function Start() {
             stili: esito.stili,
             stileScelto: stileScelto ?? esito.stileScelto ?? null,
             profilo: { ...profile, budget },
+            testArmocromia: testRisposte,
             aggiornato: new Date().toISOString(),
           },
         },
@@ -458,6 +462,42 @@ export default function Start() {
           <div className="summary-card" style={{ marginBottom: 24, borderRadius: 18 }}>
             <p className="eyebrow">La tua palette</p>
             {result.season ? <h1 className="h2" style={{ marginTop: 10 }}>{result.season}</h1> : null}
+
+            {/* Il giudizio dell'utente vale più della misura: se la stagione
+                non gli somiglia, si rifà con le domande dell'armocromista. */}
+            <div className="card" style={{ padding: 16, marginTop: 16, display: "grid", gap: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <strong style={{ fontSize: 14 }}>Ti somiglia?</strong>
+                <button className="btn ghost" onClick={() => setMostraTest((v) => !v)} style={{ padding: "8px 14px", fontSize: 13 }}>
+                  {mostraTest ? "Chiudi" : "No, affiniamo"}
+                </button>
+              </div>
+
+              {result.misura?.fonteSottotono ? (
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  Sottotono <strong>{result.misura.sottotono}</strong>, deciso da: {result.misura.fonteSottotono}.
+                  {result.misura.luceCorretta === false ? " La luce della foto non era correggibile." : ""}
+                </span>
+              ) : null}
+
+              {mostraTest ? (
+                <div style={{ marginTop: 6 }}>
+                  <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+                    Sono le domande che fa un armocromista prima di appoggiarti i teli sotto il viso.
+                    Pesano più della foto, perché riguardano come reagisci alla luce nella vita —
+                    non come sei venuto in uno scatto.
+                  </p>
+                  <TestArmocromia
+                    risposte={testRisposte}
+                    onRisposta={(id, v) => setTestRisposte((r) => ({ ...r, [id]: v }))}
+                    compatto
+                  />
+                  <button className="btn" style={{ marginTop: 16 }} onClick={analyze} disabled={loading}>
+                    {loading ? "Rifaccio…" : "Rifai l'analisi"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
 
             {avvisi.length ? (
               <div className="card" style={{ padding: 16, marginTop: 16, display: "grid", gap: 8, borderColor: "var(--signal)" }}>
