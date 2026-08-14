@@ -172,7 +172,15 @@ export default function Start() {
       //    calcola la stagione, sceglie i cinque stili. Non serve rete, non
       //    serve una chiave, non può esaurirsi. E la foto non esce da qui.
       const nostra = await analizzaColori({ profile, closeup, fullbody, testRisposte });
-      const stili = consigliaStili(nostra, profile);
+      // La data di nascita viene dall'iscrizione, non la chiediamo due volte.
+      let dataNascita = null;
+      try {
+        const u = await getUser();
+        dataNascita = u?.user_metadata?.data_nascita || null;
+      } catch {
+        /* senza account l'età semplicemente non entra nel calcolo */
+      }
+      const stili = consigliaStili(nostra, { ...profile, dataNascita });
 
       // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
       // un risultato più debole senza capire perché.
