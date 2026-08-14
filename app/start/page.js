@@ -10,6 +10,7 @@ import { apiFetch, getUser, hasAccounts, register, resendConfirmation, signIn } 
 import { analizzaColori } from "@/lib/analisiFoto";
 import { consigliaStili } from "@/lib/consigliaStili";
 import TestArmocromia from "@/components/TestArmocromia";
+import Drappeggio from "@/components/Drappeggio";
 
 function Swatch({ c }) {
   return (
@@ -176,6 +177,10 @@ export default function Start() {
       // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
       // un risultato più debole senza capire perché.
       const mancanze = [];
+      // Se le condizioni non permettono di misurare, si dice — come farebbe
+      // un armocromista che ti sposta vicino alla finestra invece di tirare
+      // a indovinare.
+      for (const problema of nostra.misura?.condizioni?.problemi || []) mancanze.push(problema);
       if (!closeup) {
         mancanze.push("Senza il primo piano non abbiamo misurato il tuo incarnato: la stagione è dedotta dai dati che hai scritto, quindi meno precisa. Aggiungi una foto del viso in luce naturale.");
       } else if (!nostra.misura?.daFoto) {
@@ -487,6 +492,16 @@ export default function Start() {
                     Pesano più della foto, perché riguardano come reagisci alla luce nella vita —
                     non come sei venuto in uno scatto.
                   </p>
+                  {/* Prima il drappeggio: si guarda, non si sa. Poi le
+                      domande di fatto, che non chiedono un giudizio. */}
+                  <div style={{ marginBottom: 22 }}>
+                    <Drappeggio
+                      foto={closeup}
+                      scelte={testRisposte}
+                      onScelta={(id, v) => setTestRisposte((r) => ({ ...r, [id]: v }))}
+                    />
+                  </div>
+
                   <TestArmocromia
                     risposte={testRisposte}
                     onRisposta={(id, v) => setTestRisposte((r) => ({ ...r, [id]: v }))}
