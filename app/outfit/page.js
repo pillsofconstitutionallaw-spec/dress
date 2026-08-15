@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import OutfitPeriodo from "@/components/OutfitPeriodo";
 import { periodoCorrente } from "@/lib/periodiAnno";
-import { paletteDelPeriodo } from "@/lib/stagioni";
+import { paletteAggiornata, paletteDelPeriodo } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
 
 // I quattro completi dell'anno, dello stile scelto, nei propri colori.
@@ -23,7 +23,7 @@ export default function Outfit() {
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem("dress:session") || "null");
-      if (s?.result?.palette?.length) setPalette(s.result.palette);
+      if (s?.result?.palette?.length) setPalette(paletteAggiornata(s.result));
       if (s?.result?.stili?.length) setStiliDisponibili(s.result.stili.map((x) => x.nome));
       if (s?.result?.stileScelto) setStile(s.result.stileScelto);
       else if (s?.result?.stili?.[0]) setStile(s.result.stili[0].nome);

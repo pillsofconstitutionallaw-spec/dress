@@ -1,5 +1,7 @@
 "use client";
 
+import { paletteAggiornata } from "@/lib/stagioni";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BrandMark from "@/components/BrandMark";
@@ -15,7 +17,7 @@ export default function Scopri() {
     try {
       const s = JSON.parse(localStorage.getItem("dress:session") || "null");
       if (s?.result?.palette) {
-        setPalette(s.result.palette || []);
+        setPalette(paletteAggiornata(s.result));
       }
     } catch {}
     try {
@@ -29,7 +31,11 @@ export default function Scopri() {
         if (!user) return;
         setSignedIn(true);
         const { profile } = await apiFetch('/api/profile/get');
-        if (profile?.palette) setPalette(profile.palette);
+        // Anche qui la palette si riprende dalla stagione: quella salvata sul
+        // profilo è ferma al giorno dell'analisi.
+        if (profile?.palette) {
+          setPalette(paletteAggiornata({ season: profile.dati?.season, palette: profile.palette }));
+        }
         if (profile?.saved_outfits?.length) setSaved(profile.saved_outfits.slice(0, 6));
       } catch (e) {
         /* offline o sessione scaduta: restano i dati locali */
@@ -84,9 +90,9 @@ export default function Scopri() {
           <div style={{ flex: 1 }}>
             <h1 className="h1">Vestirsi bene non è questione di gusto.<br />È questione di sapere quali sono i tuoi colori.</h1>
             <p className="muted" style={{ maxWidth: "46ch" }}>
-              Dress guarda una tua foto e trova i cinque colori che ti stanno meglio. Poi cerca fra
-              ventitremila capi veri, di negozi veri, quelli di quei colori — nella tua taglia e
-              dentro il tuo budget. In pochi secondi, senza uscire dall’app.
+              Dress guarda una tua foto e trova i colori che ti stanno meglio. Poi cerca fra
+              oltre 68.000 capi veri, di negozi veri, quelli di quei colori — nella tua taglia
+              e dentro il tuo budget. In pochi secondi, senza uscire dall’app.
             </p>
 
             <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
@@ -130,7 +136,7 @@ export default function Scopri() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
           <div className="card" style={{ padding: 20 }}>
             <div className="eyebrow">Palette personale</div>
-            <p className="muted">Cinque colori scelti sulla luce del tuo viso, non su un questionario.</p>
+            <p className="muted">Dodici colori scelti sulla luce del tuo viso, non su un questionario.</p>
           </div>
           <div className="card" style={{ padding: 20 }}>
             <div className="eyebrow">Outfit</div>

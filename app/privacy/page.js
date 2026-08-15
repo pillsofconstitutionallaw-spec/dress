@@ -61,7 +61,7 @@ export default function Privacy() {
           <li>Le foto vengono <strong>rimpicciolite sul tuo dispositivo</strong> prima di partire.</li>
           <li>Vengono inviate al servizio di analisi solo per il tempo del calcolo.</li>
           <li><strong>Non le salviamo</strong>: non finiscono nel nostro database né in un archivio.</li>
-          <li>Quello che resta è il risultato — i cinque colori — non l’immagine.</li>
+          <li>Quello che resta è il risultato — la stagione e i suoi colori — non l’immagine.</li>
         </ul>
         <p>
           Un’avvertenza onesta: una fotografia del viso è un dato personale delicato. Se preferisci

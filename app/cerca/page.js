@@ -1,5 +1,7 @@
 "use client";
 
+import { paletteAggiornata } from "@/lib/stagioni";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { NEGOZI, fasciaDaBudget, urlNeiNegozi, urlShopping } from "@/lib/ricerca";
@@ -39,7 +41,7 @@ export default function Cerca() {
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem("dress:session") || "null");
-      if (s?.result?.palette?.length) setPalette(s.result.palette);
+      if (s?.result?.palette?.length) setPalette(paletteAggiornata(s.result));
       if (s?.result?.stili?.length) setStiliDisponibili(s.result.stili.map((x) => x.nome));
       if (s?.result?.stileScelto) setStile(s.result.stileScelto);
       const sesso = s?.profile?.sex;
@@ -197,7 +199,7 @@ export default function Cerca() {
         </p>
       ) : (
         <p className="muted" style={{ fontSize: 13, marginTop: 18 }}>
-          <Link href="/start">Fai l’analisi colori</Link> e qui troverai i tuoi cinque colori già pronti.
+          <Link href="/start">Fai l’analisi colori</Link> e qui troverai i tuoi colori già pronti.
         </p>
       )}
 
