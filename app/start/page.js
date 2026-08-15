@@ -10,6 +10,7 @@ import { leggiVestiti, stiliDaiVestiti } from "@/lib/leggiVestiti";
 import BrandMark from "@/components/BrandMark";
 import { apiFetch, getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 import { analizzaColori } from "@/lib/analisiFoto";
+import { principali } from "@/lib/stagioni";
 import { consigliaStili } from "@/lib/consigliaStili";
 import TestArmocromia from "@/components/TestArmocromia";
 import Drappeggio from "@/components/Drappeggio";
@@ -635,9 +636,29 @@ export default function Start() {
           </div>
           {/* production UI: no demo badge shown */}
 
+          {/* I cinque da cui partire, spiegati uno per uno. Gli altri sette
+              completano la stagione: servono a trovarti i capi, e mostrarli
+              tutti e dodici con la loro spiegazione sarebbe un muro di testo. */}
           <div className="swatches" style={{ marginTop: 24 }}>
-            {result.palette.map((c, i) => <Swatch key={i} c={c} />)}
+            {principali(result.palette).map((c, i) => <Swatch key={i} c={c} />)}
           </div>
+
+          {result.palette.length > 5 ? (
+            <div style={{ marginTop: 20 }}>
+              <p className="label" style={{ marginBottom: 10 }}>Gli altri colori della tua stagione</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {result.palette.filter((c) => !c.principale).map((c) => (
+                  <div key={c.hex + c.name} style={{ width: 88 }}>
+                    <div style={{ height: 44, borderRadius: 10, background: c.hex, border: "1px solid rgba(0,0,0,0.10)" }} />
+                    <div style={{ fontSize: 11.5, marginTop: 6, lineHeight: 1.3 }}>{c.name}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+                Li usiamo per cercarti i capi: sono della stessa famiglia dei cinque qui sopra.
+              </p>
+            </div>
+          ) : null}
 
           {/* Outfits */}
           <div style={{ marginTop: 56 }}>

@@ -16,6 +16,16 @@ returns table (
   distanza real
 )
 language sql stable
+  -- Il piano di esecuzione dice una cosa contro l'intuito: l'indice sui
+  -- colori COSTA invece di far risparmiare. Postgres stima quaranta righe
+  -- dove ne trova trentaseimila, sceglie l'indice, e leggere il disco a
+  -- salti su quelle righe prende oltre tre secondi — mentre scorrere tutta
+  -- la tabella di fila ne prende cinquantaquattro, di millisecondi.
+  -- Con dodici colori in palette il riquadro copre quasi tutto il catalogo:
+  -- un indice che non scarta niente è solo un giro più lungo.
+  -- Misurato: 1236 ms con l'indice, 1071 ms senza, stesse identiche righe.
+  set enable_indexscan = off
+  set enable_bitmapscan = off
 as $$
   with voluti as (
     select (e->>'l')::real as l, (e->>'a')::real as a, (e->>'b')::real as b

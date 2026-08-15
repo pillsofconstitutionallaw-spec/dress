@@ -231,86 +231,114 @@ export default function Dashboard() {
     setDeleting(false);
   }
 
+  // Le quattro destinazioni vere dell'app. Stavano in fondo, dentro una
+  // sezione chiamata "Altro", come quattro bottoni grigi tutti uguali — e
+  // due delle pagine più utili, i completi e la ricerca, non erano
+  // raggiungibili da nessuna parte. Adesso stanno in cima, che è dove uno
+  // guarda quando apre.
+  const destinazioni = [
+    { href: "/outfit", titolo: "I tuoi completi", detta: "Uno per stagione, nei tuoi colori" },
+    { href: "/offers", titolo: "In sconto adesso", detta: "I ribassi veri dei negozi in catalogo" },
+    { href: "/cerca", titolo: "Cerca un capo", detta: "Per marca o modello, filtrato sui tuoi colori" },
+    { href: "/start", titolo: "Rifai l’analisi", detta: "Se cambi capelli, o la foto non era buona" },
+  ];
+
+  // L'account: in cima se devi ancora entrare, in fondo se sei già dentro.
+  // Le impostazioni non sono la prima cosa che uno vuole vedere di casa sua.
+  const sezioneAccount = (
+    <section className="card" style={{ marginTop: 28, padding: 16 }}>
+      <h2 className="h3">Account</h2>
+
+      {!hasAccounts() && (
+        <p className="muted">
+          Gli account non sono configurati su questa installazione: i tuoi dati restano solo in questo
+          browser.
+        </p>
+      )}
+
+      {hasAccounts() && !user && (
+        <>
+          <p className="muted">Accedi per ritrovare palette, preferiti e outfit su qualsiasi dispositivo.</p>
+          <form onSubmit={onSignIn} style={{ display: "grid", gap: 8, maxWidth: 360, marginTop: 12 }}>
+            <input
+              type="email"
+              placeholder="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              autoComplete="email"
+            />
+            <input
+              type="password"
+              placeholder="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              autoComplete="current-password"
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn" type="submit">Accedi</button>
+              <Link className="btn ghost" href="/start">Iscriviti</Link>
+            </div>
+          </form>
+          <button className="btn ghost" style={{ marginTop: 8 }} onClick={onResend} type="button">
+            Rimandami la mail di conferma
+          </button>
+        </>
+      )}
+
+      {user && !confirmed && (
+        <>
+          <p className="muted">
+            Manca solo la conferma: abbiamo mandato un link a <strong>{user.email}</strong>. Finché non lo apri
+            i dati non vengono salvati online.
+          </p>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button className="btn ghost" onClick={onResend}>Rimanda la mail</button>
+            <button className="btn ghost" onClick={onSignOut}>Esci</button>
+          </div>
+        </>
+      )}
+
+      {online && (
+        <>
+          <p className="muted">
+            Collegato come <strong>{user.email}</strong>.
+          </p>
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            <button className="btn ghost" onClick={onSignOut}>Esci</button>
+            <button
+              className="btn ghost"
+              onClick={onDelete}
+              disabled={deleting}
+              style={{ color: "var(--signal)" }}
+            >
+              {deleting ? "Elimino…" : "Elimina account"}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 960 }}>
       <h1 className="h2">Il tuo spazio personale</h1>
-      <p className="muted">Qui salvi i capi preferiti, le offerte e chiedi all'AI cosa abbinare.</p>
+      <p className="muted">I tuoi colori, i capi che hai messo da parte, gli sconti dei negozi.</p>
 
       {err ? <p style={{ color: "var(--signal)", marginTop: 12 }}>{err}</p> : null}
       {notice ? <p className="muted" style={{ marginTop: 12 }}>{notice}</p> : null}
 
-      {/* ---------------- Account ---------------- */}
-      <section className="card" style={{ marginTop: 24, padding: 16 }}>
-        <h2 className="h3">Account</h2>
+      {/* ---------------- Dove andare ---------------- */}
+      <nav style={{ marginTop: 24, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {destinazioni.map((d) => (
+          <Link key={d.href} href={d.href} className="card"
+            style={{ padding: 16, textDecoration: "none", color: "inherit", display: "block" }}>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>{d.titolo}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.4 }}>{d.detta}</div>
+          </Link>
+        ))}
+      </nav>
 
-        {!hasAccounts() && (
-          <p className="muted">
-            Gli account non sono configurati su questa installazione: i tuoi dati restano solo in questo
-            browser.
-          </p>
-        )}
-
-        {hasAccounts() && !user && (
-          <>
-            <p className="muted">Accedi per ritrovare palette, preferiti e outfit su qualsiasi dispositivo.</p>
-            <form onSubmit={onSignIn} style={{ display: "grid", gap: 8, maxWidth: 360, marginTop: 12 }}>
-              <input
-                type="email"
-                placeholder="email"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                autoComplete="email"
-              />
-              <input
-                type="password"
-                placeholder="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                autoComplete="current-password"
-              />
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn" type="submit">Accedi</button>
-                <Link className="btn ghost" href="/start">Iscriviti</Link>
-              </div>
-            </form>
-            <button className="btn ghost" style={{ marginTop: 8 }} onClick={onResend} type="button">
-              Rimandami la mail di conferma
-            </button>
-          </>
-        )}
-
-        {user && !confirmed && (
-          <>
-            <p className="muted">
-              Manca solo la conferma: abbiamo mandato un link a <strong>{user.email}</strong>. Finché non lo apri
-              i dati non vengono salvati online.
-            </p>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button className="btn ghost" onClick={onResend}>Rimanda la mail</button>
-              <button className="btn ghost" onClick={onSignOut}>Esci</button>
-            </div>
-          </>
-        )}
-
-        {online && (
-          <>
-            <p className="muted">
-              Collegato come <strong>{user.email}</strong>.
-            </p>
-            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <button className="btn ghost" onClick={onSignOut}>Esci</button>
-              <button
-                className="btn ghost"
-                onClick={onDelete}
-                disabled={deleting}
-                style={{ color: "var(--signal)" }}
-              >
-                {deleting ? "Elimino…" : "Elimina account"}
-              </button>
-            </div>
-          </>
-        )}
-      </section>
+      {online ? null : sezioneAccount}
 
       {/* ---------------- I capi messi da parte ---------------- */}
       <section style={{ marginTop: 28 }}>
@@ -428,12 +456,12 @@ export default function Dashboard() {
       <section style={{ marginTop: 34, borderTop: "1px solid var(--line)", paddingTop: 24 }}>
         <h2 className="h3">Altro</h2>
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
-          <Link href="/offers" className="btn-app chiaro">In sconto adesso</Link>
           <Link href="/colors" className="btn-app chiaro">I colori dell’anno</Link>
           <Link href="/wardrobe" className="btn-app chiaro">Abbina o rivendi un capo</Link>
-          <Link href="/start" className="btn-app chiaro">Rifai l’analisi</Link>
         </div>
       </section>
+
+      {online ? sezioneAccount : null}
     </div>
   );
 }

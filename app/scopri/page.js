@@ -98,9 +98,9 @@ export default function Scopri() {
           <aside style={{ width: 320 }}>
             <div className="card" style={{ padding: 16 }}>
               <div className="eyebrow">Palette corrente</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                 {palette.length ? palette.map((c, i) => (
-                  <div key={i} style={{ width: 48, height: 48, borderRadius: 8, background: c.hex }} title={`${c.name} ${c.hex}`} />
+                  <div key={i} style={{ width: 40, height: 40, borderRadius: 8, background: c.hex, border: '1px solid rgba(0,0,0,0.08)' }} title={`${c.name} ${c.hex}`} />
                 )) : <div className="muted">Nessuna palette ancora — crea una analisi</div>}
               </div>
             </div>
