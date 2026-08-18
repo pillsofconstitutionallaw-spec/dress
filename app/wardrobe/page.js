@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fileToDataUrl } from "@/lib/img";
+import AnnuncioVinted from "@/components/AnnuncioVinted";
 
 export default function Wardrobe() {
   const [image, setImage] = useState(null);
@@ -39,7 +40,8 @@ export default function Wardrobe() {
       <h1 className="h1" style={{ fontSize: "clamp(30px, 5.4vw, 56px)", marginTop: 16, marginBottom: 12 }}>Abbina o rivendi un capo</h1>
       <p className="lead" style={{ marginBottom: 40 }}>
         Carica la foto di un capo che hai già. Ti do consigli su come abbinarlo — e se vuoi rivenderlo,
-        una descrizione pronta, un prezzo indicativo e il link per pubblicarlo, senza dover partire da zero.
+        titolo e descrizione pronti da copiare su Vinted, un prezzo indicativo e il link per pubblicarlo,
+        senza dover partire da zero.
       </p>
 
       {err ? <p style={{ color: "var(--signal)", marginBottom: 16 }}>{err}</p> : null}
@@ -47,7 +49,8 @@ export default function Wardrobe() {
       <div className="summary-card" style={{ marginBottom: 24, borderRadius: 18 }}>
         <p className="eyebrow" style={{ marginBottom: 8 }}>Come lavora il servizio</p>
         <p className="muted" style={{ margin: 0, fontSize: 15 }}>
-          Carichi una foto, ottieni consigli di abbinamento e una scheda di rivendita pronta da usare, con un tono più pratico e più elegante.
+          Carichi una foto, ottieni consigli di abbinamento e l'annuncio già scritto: titolo e descrizione
+          si copiano con un tocco e si incollano su Vinted.
         </p>
       </div>
 
@@ -75,12 +78,13 @@ export default function Wardrobe() {
               </div>
 
               <div className="card" style={{ padding: "clamp(18px,3vw,26px)", marginTop: 16 }}>
-                <p className="eyebrow" style={{ marginBottom: 8 }}>Scheda di rivendita</p>
+                <p className="eyebrow" style={{ marginBottom: 8 }}>Che capo è</p>
                 <h3 className="h2" style={{ fontSize: 19, marginBottom: 6 }}>{res.title}</h3>
-                <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Categoria: {res.category} · Prezzo suggerito: <strong style={{ color: "var(--ink)" }}>{res.priceRange}</strong></p>
-                <p style={{ fontSize: 15, lineHeight: 1.55 }}>{res.description}</p>
-                <a className="btn" style={{ marginTop: 12 }} href={res.vintedUrl} target="_blank" rel="noopener noreferrer">Pubblica su Vinted →</a>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Categoria: {res.category}</p>
+                <p style={{ fontSize: 15, lineHeight: 1.55, margin: 0 }}>{res.description}</p>
               </div>
+
+              <AnnuncioVinted annuncio={res} />
             </div>
           )}
         </div>

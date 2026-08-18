@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import CapiTrovati from "@/components/CapiTrovati";
+import AnnuncioVinted from "@/components/AnnuncioVinted";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
@@ -422,15 +423,18 @@ export default function Dashboard() {
         </div>
 
         {matchRes && (
-          <div className="card" style={{ marginTop: 18, padding: 16, display: "grid", gap: 8 }}>
-            <strong style={{ fontSize: 15 }}>{matchRes.title}</strong>
-            {matchRes.description ? <p className="muted" style={{ margin: 0, fontSize: 14 }}>{matchRes.description}</p> : null}
-            {matchRes.matchTips?.length ? (
-              <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em", fontSize: 14, lineHeight: 1.6 }}>
-                {matchRes.matchTips.map((t) => <li key={t}>{t}</li>)}
-              </ul>
-            ) : null}
-          </div>
+          <>
+            <div className="card" style={{ marginTop: 18, padding: 16, display: "grid", gap: 8 }}>
+              <strong style={{ fontSize: 15 }}>{matchRes.title}</strong>
+              {matchRes.description ? <p className="muted" style={{ margin: 0, fontSize: 14 }}>{matchRes.description}</p> : null}
+              {matchRes.matchTips?.length ? (
+                <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em", fontSize: 14, lineHeight: 1.6 }}>
+                  {matchRes.matchTips.map((t) => <li key={t}>{t}</li>)}
+                </ul>
+              ) : null}
+            </div>
+            <AnnuncioVinted annuncio={matchRes} compatto />
+          </>
         )}
       </section>
 
