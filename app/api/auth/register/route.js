@@ -38,14 +38,25 @@ export async function POST(req) {
   }
 
   // Nome utente già preso? Meglio dirlo adesso che dopo la mail di conferma.
+  //
+  // Questo controllo è una cortesia, non la garanzia: fra la lettura e la
+  // scrittura c'è sempre una fessura in cui due iscrizioni simultanee passano
+  // tutte e due. L'unicità vera la impone l'indice del database
+  // (sql/profili_completi.sql), e si vede più sotto.
   const admin = getSupabaseService();
   if (admin) {
-    const { data: esistente } = await admin
+    const { data: esistente, error: erroreRicerca } = await admin
       .from('profiles')
       .select('id')
       .ilike('username', String(username).trim())
       .maybeSingle();
-    if (esistente) {
+
+    // Prima questo errore veniva ignorato: la colonna "username" non esisteva
+    // nemmeno, la select falliva a ogni iscrizione e il codice proseguiva
+    // come se il nome fosse libero. Il controllo non è mai scattato.
+    if (erroreRicerca) {
+      console.error('[register] controllo del nome utente non riuscito:', erroreRicerca.message);
+    } else if (esistente) {
       return NextResponse.json({ error: 'Questo nome utente è già preso.' }, { status: 409 });
     }
   }
@@ -75,7 +86,7 @@ export async function POST(req) {
 
   // Il resto del profilo lo scriviamo noi: il trigger salva solo nome ed email.
   if (admin && data?.user?.id && !giaRegistrato) {
-    await admin
+    const { error: erroreProfilo } = await admin
       .from('profiles')
       .update({
         cognome: String(cognome).trim(),
@@ -84,6 +95,17 @@ export async function POST(req) {
         avatar: avatar || null,
       })
       .eq('id', data.user.id);
+
+    if (erroreProfilo) {
+      // 23505 = vincolo unico violato: qualcuno ha preso quel nome utente
+      // nell'istante fra il controllo qui sopra e questa riga.
+      if (erroreProfilo.code === '23505') {
+        return NextResponse.json({ error: 'Questo nome utente è già preso.' }, { status: 409 });
+      }
+      // Gli altri errori non annullano l'iscrizione — l'utente esiste e la
+      // mail è partita — ma non devono più sparire nel nulla come prima.
+      console.error('[register] profilo non salvato:', erroreProfilo.message);
+    }
   }
 
   return NextResponse.json({
