@@ -9,3 +9,4 @@
 # Registra ogni comando approvato, credenziali comprese: resta sul computer.
 .claude/settings.json
 .claude/settings.local.json
+.vercel
