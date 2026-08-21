@@ -4,22 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
+import { prossimaTappa } from "@/lib/prossimaTappa";
 
 // Pagina di atterraggio del link contenuto nella mail di conferma.
 // Supabase rimanda qui dopo aver verificato l'indirizzo.
-// Chi non ha ancora dato misure e selfie va al questionario; chi la palette
-// ce l'ha già — per esempio confermando un cambio di indirizzo — non deve
-// rifarlo daccapo.
-function prossimaTappa() {
-  try {
-    const s = JSON.parse(localStorage.getItem("dress:session") || "null");
-    if (s?.result?.palette?.length) return "/dashboard";
-  } catch {
-    /* nessuna sessione */
-  }
-  return "/start";
-}
-
 export default function Confirmed() {
   const router = useRouter();
   const [state, setState] = useState("checking"); // checking | signedIn | confirmed | error
@@ -51,18 +39,31 @@ export default function Confirmed() {
         return;
       }
 
-      // Se arriviamo con un codice va scambiato con una sessione; altrimenti
-      // il client ha già letto i token dall'URL da solo.
+      // Il client legge da solo il codice dall'URL (detectSessionInUrl) e lo
+      // scambia con una sessione. getSession() aspetta che quel lavoro sia
+      // finito, quindi qui la sessione o c'è o non ci sarà.
+      let { data } = await sb.auth.getSession();
+
+      // Se non c'è ma un codice nell'URL c'era, lo scambio è fallito.
+      // Prima questo tentativo stava dentro un catch vuoto: falliva in
+      // silenzio e la pagina concludeva "non sei entrato" senza dire perché.
+      // Adesso il motivo si legge.
       const code = url.searchParams.get("code");
-      if (code) {
-        try {
-          await sb.auth.exchangeCodeForSession(code);
-        } catch {
-          /* proviamo comunque a leggere la sessione qui sotto */
+      if (!data?.session && code) {
+        const { data: scambio, error } = await sb.auth.exchangeCodeForSession(code);
+        if (!alive) return;
+        if (error) {
+          setState("error");
+          setMessage(
+            /expired|invalid|not found|used/i.test(error.message || "")
+              ? "Il link è scaduto o è già stato usato. Chiedine uno nuovo dalla pagina di accesso."
+              : `Non sono riuscito a completare l'accesso: ${error.message}`,
+          );
+          return;
         }
+        data = scambio;
       }
 
-      const { data } = await sb.auth.getSession();
       if (!alive) return;
       // Ripulisce i token dalla barra degli indirizzi.
       window.history.replaceState({}, "", "/auth/confirmed");
@@ -80,7 +81,7 @@ export default function Confirmed() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [router]);
 
   return (
     <div className="wrap" style={{ paddingTop: 64, paddingBottom: 48, maxWidth: 620 }}>

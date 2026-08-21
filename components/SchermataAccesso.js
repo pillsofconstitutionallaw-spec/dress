@@ -4,20 +4,22 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import ModuloIscrizione from "@/components/ModuloIscrizione";
-import { getUser, hasAccounts, recuperaPassword, register, resendConfirmation, signIn } from "@/lib/session";
+import { entraCon, getUser, hasAccounts, recuperaPassword, register, resendConfirmation, signIn } from "@/lib/session";
+import { prossimaTappa } from "@/lib/prossimaTappa";
 
 // La prima schermata: il marchio e due tasti. Niente altro.
 // Chi ha già una sessione salvata non la vede nemmeno.
 export default function SchermataAccesso() {
   const router = useRouter();
   const [modo, setModo] = useState(null); // null | "accedi" | "iscriviti"
-  const [dati, setDati] = useState({ nome: "", email: "", password: "" });
+  const [dati, setDati] = useState({ nome: "", identificativo: "", password: "" });
   const [attesa, setAttesa] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [inviata, setInviata] = useState(null);
   const [recupero, setRecupero] = useState("");
   const [inviandoRecupero, setInviandoRecupero] = useState(false);
+  const [conGoogle, setConGoogle] = useState(false);
 
   useEffect(() => {
     if (!hasAccounts()) {
@@ -32,18 +34,6 @@ export default function SchermataAccesso() {
       .catch(() => setAttesa(false));
   }, [router]);
 
-  // Chi non ha ancora dato misure e selfie va al questionario, gli altri
-  // direttamente nel guardaroba.
-  function prossimaTappa() {
-    try {
-      const s = JSON.parse(localStorage.getItem("dress:session") || "null");
-      if (s?.result?.palette?.length) return "/dashboard";
-    } catch {
-      /* nessuna sessione */
-    }
-    return "/start";
-  }
-
   const cambia = (campo) => (e) => setDati((d) => ({ ...d, [campo]: e.target.value }));
 
   async function invia(e) {
@@ -51,7 +41,7 @@ export default function SchermataAccesso() {
     setErr("");
     setBusy(true);
     try {
-      await signIn({ email: dati.email, password: dati.password });
+      await signIn({ identificativo: dati.identificativo, password: dati.password });
       router.replace(prossimaTappa());
     } catch (e) {
       setErr(e.message);
@@ -139,8 +129,44 @@ export default function SchermataAccesso() {
 
         {!attesa && hasAccounts() && !inviata && !modo && (
           <div className="entra-morbido" style={{ display: "grid", gap: 12, animationDelay: "600ms" }}>
+            {/* Un tasto solo per il primo ingresso e per tutti quelli dopo:
+                OAuth non distingue "iscriviti" da "accedi". */}
+            <button
+              className="btn-app chiaro"
+              disabled={conGoogle}
+              onClick={async () => {
+                setErr("");
+                setConGoogle(true);
+                try {
+                  await entraCon("google");
+                  // Da qui il browser se ne va su Google: se torniamo indietro
+                  // è perché qualcosa non è partito.
+                } catch (e) {
+                  setErr(e.message);
+                  setConGoogle(false);
+                }
+              }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+            >
+              <svg width="17" height="17" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
+                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
+                <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z" />
+                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.47.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+              </svg>
+              {conGoogle ? "Ti porto su Google…" : "Continua con Google"}
+            </button>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "2px 0" }}>
+              <span style={{ height: 1, background: "var(--line)" }} />
+              <span className="muted" style={{ fontSize: 12 }}>oppure</span>
+              <span style={{ height: 1, background: "var(--line)" }} />
+            </div>
+
             <button className="btn-app" onClick={() => setModo("accedi")}>Accedi</button>
             <button className="btn-app chiaro" onClick={() => setModo("iscriviti")}>Iscriviti</button>
+
+            {err ? <p style={{ color: "var(--signal)", fontSize: 14, margin: "2px 4px", textAlign: "center" }}>{err}</p> : null}
           </div>
         )}
 
@@ -150,7 +176,7 @@ export default function SchermataAccesso() {
 
         {!attesa && hasAccounts() && !inviata && modo === "accedi" && (
           <form onSubmit={invia} className="entra-morbido" style={{ display: "grid", gap: 10 }}>
-            <input className="control-app" type="text" placeholder="Email o nome utente" value={dati.email} onChange={cambia("email")} autoComplete="username" required />
+            <input className="control-app" type="text" placeholder="Email o nome utente" value={dati.identificativo} onChange={cambia("identificativo")} autoComplete="username" required />
             <input
               className="control-app"
               type="password"
@@ -175,13 +201,15 @@ export default function SchermataAccesso() {
                 disabled={inviandoRecupero}
                 onClick={async () => {
                   setErr("");
-                  // Se l'email manca la chiediamo, invece di rimproverare chi
-                  // non l'ha scritta: il tasto deve fare qualcosa, sempre.
-                  let dove = dati.email.trim();
+                  // La mail può partire solo verso un indirizzo. Se qui sopra
+                  // c'è un nome utente non ci serve: lo chiediamo, invece di
+                  // rimproverare chi non l'ha scritto. Il tasto deve fare
+                  // qualcosa, sempre.
+                  const scritto = dati.identificativo.trim();
+                  let dove = scritto.includes("@") ? scritto : "";
                   if (!dove) {
                     dove = (window.prompt("A quale indirizzo mandiamo il link per la nuova password?") || "").trim();
                     if (!dove) return;
-                    setDati((d) => ({ ...d, email: dove }));
                   }
                   setInviandoRecupero(true);
                   try {

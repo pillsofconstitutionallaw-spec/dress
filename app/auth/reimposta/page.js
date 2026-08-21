@@ -14,6 +14,7 @@ import { controllaPassword } from "@/lib/password";
 export default function Reimposta() {
   const router = useRouter();
   const [stato, setStato] = useState("controllo"); // controllo | pronta | scaduta | fatta
+  const [perche, setPerche] = useState("");
   const [password, setPassword] = useState("");
   const [ripeti, setRipeti] = useState("");
   const [vedi, setVedi] = useState(false);
@@ -30,20 +31,29 @@ export default function Reimposta() {
 
       const url = new global.URL(window.location.href);
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-      if (url.searchParams.get("error_description") || hash.get("error_description")) {
-        return vivo && setStato("scaduta");
+      const guasto = url.searchParams.get("error_description") || hash.get("error_description");
+      if (guasto) {
+        if (!vivo) return;
+        setPerche(decodeURIComponent(guasto));
+        return setStato("scaduta");
       }
 
+      // Il codice nell'URL lo scambia da solo il client (detectSessionInUrl),
+      // e getSession() aspetta che abbia finito.
+      let { data } = await sb.auth.getSession();
+
+      // Se la sessione non c'è ma un codice c'era, lo scambio è fallito.
+      // Prima il tentativo stava dentro un catch vuoto: qualunque cosa fosse
+      // andata storta, l'utente leggeva "il link non è più valido" — anche
+      // quando il link era buono e il problema era un altro.
       const code = url.searchParams.get("code");
-      if (code) {
-        try {
-          await sb.auth.exchangeCodeForSession(code);
-        } catch {
-          /* proviamo comunque a leggere la sessione */
-        }
+      if (!data?.session && code) {
+        const { data: scambio, error } = await sb.auth.exchangeCodeForSession(code);
+        if (!vivo) return;
+        if (error) setPerche(error.message || "");
+        data = scambio;
       }
 
-      const { data } = await sb.auth.getSession();
       if (!vivo) return;
       window.history.replaceState({}, "", "/auth/reimposta");
       setStato(data?.session ? "pronta" : "scaduta");
@@ -97,6 +107,11 @@ export default function Reimposta() {
               I link per la password scadono in fretta, ed è giusto così. Chiedine uno nuovo
               dalla schermata d’accesso.
             </p>
+            {perche ? (
+              <p className="muted" style={{ margin: 0, fontSize: 12, opacity: 0.75 }}>
+                Dettaglio tecnico: {perche}
+              </p>
+            ) : null}
             <button className="btn-app" onClick={() => router.replace("/")}>Torna all’accesso</button>
           </div>
         )}
