@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import CapiTrovati from "@/components/CapiTrovati";
-import AnnuncioVinted from "@/components/AnnuncioVinted";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
@@ -157,13 +156,15 @@ export default function Dashboard() {
   // La foto di un CAPO va all'endpoint dei capi, non a quello dei colori:
   // /api/analyze ora lavora sulle misure e le immagini le ignora, quindi
   // questa funzione non faceva più niente.
+  //
+  // Qui si abbina soltanto: l'annuncio di vendita si chiede da /vendi.
   async function askMatch() {
     if (!image) return setErr("Carica prima la foto di un capo.");
     setLoading(true);
     setErr("");
     setMatchRes(null);
     try {
-      const r = await fetch("/api/resell", {
+      const r = await fetch("/api/abbina", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image }),
@@ -433,7 +434,6 @@ export default function Dashboard() {
                 </ul>
               ) : null}
             </div>
-            <AnnuncioVinted annuncio={matchRes} compatto />
           </>
         )}
       </section>
@@ -461,7 +461,8 @@ export default function Dashboard() {
         <h2 className="h3">Altro</h2>
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
           <Link href="/colors" className="btn-app chiaro">I colori dell’anno</Link>
-          <Link href="/wardrobe" className="btn-app chiaro">Abbina o rivendi un capo</Link>
+          <Link href="/wardrobe" className="btn-app chiaro">Abbina un capo</Link>
+          <Link href="/vendi" className="btn-app chiaro">Vendi un capo</Link>
         </div>
       </section>
 

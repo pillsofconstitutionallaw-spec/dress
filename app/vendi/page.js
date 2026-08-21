@@ -1,26 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { fileToDataUrl } from "@/lib/img";
-import { lasciaCapo } from "@/lib/capoInCorso";
+import AnnuncioVinted from "@/components/AnnuncioVinted";
+import { raccogliCapo } from "@/lib/capoInCorso";
 
-// Abbinare un capo. Solo quello.
+// Vendere un capo. L'annuncio, il prezzo, e il link per pubblicarlo.
 //
-// Questa pagina si intitolava "Abbina o rivendi un capo" e faceva tutte e due
-// le cose in una volta, con una chiamata sola che scriveva anche l'annuncio
-// per chi non aveva nessuna intenzione di vendere. Adesso vendere sta di là.
-export default function Wardrobe() {
-  const router = useRouter();
+// Sta per conto suo perché è un gesto per conto suo: chi arriva qui ha già
+// deciso di dare via il capo, e non gli serve sapere con cosa abbinarlo.
+export default function Vendi() {
   const [image, setImage] = useState(null);
+  const [daAbbinamento, setDaAbbinamento] = useState(false);
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState(null);
   const [err, setErr] = useState("");
+
+  // Se arriviamo dal tasto "Vendilo", la foto è già stata scelta di là.
+  useEffect(() => {
+    const foto = raccogliCapo();
+    if (foto) {
+      setImage(foto);
+      setDaAbbinamento(true);
+    }
+  }, []);
 
   async function onPhoto(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setErr("");
+    setDaAbbinamento(false);
     try { setImage(await fileToDataUrl(file)); } catch { setErr("Immagine non leggibile."); }
   }
 
@@ -28,7 +37,7 @@ export default function Wardrobe() {
     if (!image) { setErr("Carica prima una foto del capo."); return; }
     setLoading(true); setErr(""); setRes(null);
     try {
-      const r = await fetch("/api/abbina", {
+      const r = await fetch("/api/vendi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image }),
@@ -37,23 +46,17 @@ export default function Wardrobe() {
       if (!r.ok) throw new Error(data.error || "Errore");
       setRes(data);
     } catch {
-      setErr("Analisi non riuscita. Riprova.");
+      setErr("Non sono riuscito a scrivere l'annuncio. Riprova con una foto più nitida.");
     } finally { setLoading(false); }
-  }
-
-  // La foto viaggia con noi: /vendi la trova già caricata.
-  function vendilo() {
-    if (image) lasciaCapo(image);
-    router.push("/vendi");
   }
 
   return (
     <div className="wrap" style={{ paddingTop: 56, paddingBottom: 20, maxWidth: 900 }}>
-      <p className="eyebrow">Il tuo guardaroba</p>
-      <h1 className="h1" style={{ fontSize: "clamp(30px, 5.4vw, 56px)", marginTop: 16, marginBottom: 12 }}>Abbina un capo</h1>
+      <p className="eyebrow">Vendi</p>
+      <h1 className="h1" style={{ fontSize: "clamp(30px, 5.4vw, 56px)", marginTop: 16, marginBottom: 12 }}>Metti in vendita un capo</h1>
       <p className="lead" style={{ marginBottom: 40 }}>
-        Carica la foto di un capo che hai già e ti dico che cos&apos;è e con cosa si mette. Se invece
-        vuoi darlo via, c&apos;è <strong>Vendi</strong>: da lì esce l&apos;annuncio già scritto.
+        Carica la foto e ti scrivo l&apos;annuncio: titolo e descrizione pronti da copiare su Vinted,
+        un prezzo indicativo e il link per pubblicarlo, senza partire da zero.
       </p>
 
       {err ? <p style={{ color: "var(--signal)", marginBottom: 16 }}>{err}</p> : null}
@@ -68,31 +71,24 @@ export default function Wardrobe() {
         </label>
 
         <div>
-          <button className="btn" onClick={run} disabled={loading}>{loading ? "Analizzo…" : "Analizza il capo"}</button>
+          {daAbbinamento ? (
+            <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 12 }}>
+              È la foto che hai appena analizzato. Toccala per cambiarla.
+            </p>
+          ) : null}
+
+          <button className="btn" onClick={run} disabled={loading}>{loading ? "Scrivo…" : "Scrivi l'annuncio"}</button>
 
           {res && (
             <div style={{ marginTop: 24 }}>
               <div className="card" style={{ padding: "clamp(18px,3vw,26px)" }}>
-                <p className="eyebrow" style={{ marginBottom: 8 }}>Come abbinarlo</p>
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {res.matchTips?.map((t, i) => <li key={i} style={{ marginBottom: 8, fontSize: 15 }}>{t}</li>)}
-                </ul>
-              </div>
-
-              <div className="card" style={{ padding: "clamp(18px,3vw,26px)", marginTop: 16 }}>
                 <p className="eyebrow" style={{ marginBottom: 8 }}>Che capo è</p>
                 <h3 className="h2" style={{ fontSize: 19, marginBottom: 6 }}>{res.title}</h3>
                 <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Categoria: {res.category}</p>
                 <p style={{ fontSize: 15, lineHeight: 1.55, margin: 0 }}>{res.description}</p>
               </div>
 
-              <div className="card" style={{ padding: "clamp(18px,3vw,26px)", marginTop: 16, display: "grid", gap: 10 }}>
-                <p className="eyebrow" style={{ margin: 0 }}>Oppure daglielo via</p>
-                <p className="muted" style={{ margin: 0, fontSize: 14 }}>
-                  Ti scrivo l&apos;annuncio per Vinted a partire da questa stessa foto: non devi ricaricarla.
-                </p>
-                <button className="btn ghost" onClick={vendilo} style={{ justifySelf: "start" }}>Vendilo →</button>
-              </div>
+              <AnnuncioVinted annuncio={res} />
             </div>
           )}
         </div>

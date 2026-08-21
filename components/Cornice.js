@@ -54,6 +54,16 @@ const VOCI = [
       </>
     ),
   },
+  {
+    href: "/vendi",
+    label: "Vendi",
+    icona: (
+      <>
+        <path d="M4.5 12.5 12 5h7v7l-7.5 7.5a1.6 1.6 0 0 1-2.3 0l-4.7-4.7a1.6 1.6 0 0 1 0-2.3z" />
+        <circle cx="15.5" cy="8.5" r="1.1" />
+      </>
+    ),
+  },
 ];
 
 export default function Cornice({ children }) {
@@ -107,7 +117,9 @@ export default function Cornice({ children }) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", maxWidth: 560, margin: "0 auto" }}>
+        {/* Le colonne le conta l'elenco: erano fissate a quattro, e la quinta
+            voce sarebbe finita fuori dalla griglia. */}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${VOCI.length}, 1fr)`, maxWidth: 560, margin: "0 auto" }}>
           {VOCI.map((v) => {
             const attiva = percorso.startsWith(v.href);
             return (
@@ -137,7 +149,7 @@ export default function Cornice({ children }) {
                 >
                   {v.icona}
                 </svg>
-                <span style={{ fontSize: 11, letterSpacing: "0.06em" }}>{v.label}</span>
+                <span style={{ fontSize: 11, letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{v.label}</span>
               </Link>
             );
           })}
