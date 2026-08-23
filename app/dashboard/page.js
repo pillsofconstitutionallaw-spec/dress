@@ -17,7 +17,7 @@ import {
   signOut,
 } from "@/lib/session";
 
-const RETAILER_TOGGLES = ["Zara", "Vinted", "COS", "Arket"];
+const RETAILER_TOGGLES = ["Zara", "Vinted", "COS", "Arket", "Nike", "Puma", "New Balance", "Asics", "Lotto"];
 
 function labelOf(item) {
   if (typeof item === "string") return item;

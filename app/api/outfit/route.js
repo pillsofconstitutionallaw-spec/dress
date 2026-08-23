@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
-import { paroleDelloStile } from "@/lib/stiliCapi";
+import { paroleDaIndossare, paroleDelloStile } from "@/lib/stiliCapi";
 import { PERIODI, RUOLI, adattoAlPeriodo, ruoloDelCapo } from "@/lib/periodiAnno";
 import { tagliConsigliati } from "@/lib/proporzioni";
 import { TUTTE_LE_VESTIBILITA } from "@/lib/data";
@@ -72,9 +72,20 @@ export async function POST(req) {
   const vestiti = arricchisci(conStile.data || tutto.data);
   const qualsiasi = arricchisci(tutto.data);
 
-  // Lo stile comanda su quello che si indossa; scarpe e accessori seguono il
-  // colore, perché è lì che si abbinano davvero.
+  // Lo stile comanda su quello che si indossa. Scarpe e accessori seguivano
+  // solo il colore, e si vedeva: allo Streetwear toccavano le décolleté, al
+  // Balletcore le sneakers da running, e la stessa sciarpa bordeaux finiva in
+  // ogni completo di ogni stile. Ora hanno un vocabolario loro — vedi
+  // paroleDaIndossare — e il colore torna a fare quello che deve, scegliere
+  // fra le scarpe giuste invece che al posto loro.
   const RUOLI_DELLO_STILE = new Set(["capospalla", "top", "bottom", "intero"]);
+  const daIndossare = stile ? paroleDaIndossare(stile) : null;
+  const paroleDelRuolo = (ruolo) => {
+    if (!daIndossare) return null;
+    if (ruolo === "scarpe") return daIndossare.scarpe;
+    if (ruolo === "accessorio") return daIndossare.accessori;
+    return null;
+  };
 
   // I tagli che cadono meglio su queste proporzioni: si traducono nelle
   // parole con cui i negozi li chiamano, e diventano una preferenza — mai un
@@ -106,12 +117,48 @@ export async function POST(req) {
       : periodo.ruoli;
 
     for (const ruolo of ruoliDaRiempire) {
-      const bacino = RUOLI_DELLO_STILE.has(ruolo) ? daStile : daTutto;
+      let bacino = RUOLI_DELLO_STILE.has(ruolo) ? daStile : daTutto;
+
+      // Scarpe e accessori: si tiene solo quello che lo stile porterebbe
+      // davvero. Prima le sue parole precise, poi quelle della sua famiglia,
+      // e se in catalogo non c'è nulla né dell'una né dell'altra si molla il
+      // filtro — un completo scalzo è peggio di un completo con la scarpa
+      // sbagliata, e in quel caso almeno il colore è giusto.
+      const livelli = paroleDelRuolo(ruolo);
+      let parole = null;
+      if (livelli) {
+        const restringi = (chiavi) =>
+          chiavi.length
+            ? bacino.filter((c) => {
+                const t = String(c.titolo).toLowerCase();
+                return c.ruolo === ruolo && chiavi.some((k) => t.includes(k));
+              })
+            : [];
+
+        const prime = restringi(livelli.prime);
+        if (prime.length) {
+          bacino = prime;
+          parole = livelli.prime;
+        } else {
+          const poi = restringi(livelli.poi);
+          if (poi.length) {
+            bacino = poi;
+            parole = livelli.poi;
+          }
+        }
+      }
+
       const candidati = bacino
         .filter((c) => c.ruolo === ruolo && !scelti.some((s) => s.id === c.id) && !giaUsati.has(c.id))
         .map((c) => {
           const t = c.titolo.toLowerCase();
           let punti = 40 - c.scarto;
+          // Le parole stanno in ordine: prima quelle dello stile preciso, poi
+          // quelle della sua famiglia. Al Western i texani prima dei sandali.
+          if (parole?.length) {
+            const posto = parole.findIndex((k) => t.includes(k));
+            if (posto >= 0) punti += 12 - Math.min(posto, 8);
+          }
           // Chi usa le parole giuste per il periodo va davanti.
           if (periodo.preferisci.some((p) => t.includes(p))) punti += 14;
           // Un completo di cinque capi dello stesso negozio è una vetrina,

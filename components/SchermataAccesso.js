@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import ModuloIscrizione from "@/components/ModuloIscrizione";
-import { entraCon, getUser, hasAccounts, recuperaPassword, register, resendConfirmation, signIn } from "@/lib/session";
+import { accessoAttivo, entraCon, getUser, hasAccounts, recuperaPassword, register, resendConfirmation, signIn } from "@/lib/session";
 import { prossimaTappa } from "@/lib/prossimaTappa";
 
 // La prima schermata: il marchio e due tasti. Niente altro.
@@ -20,6 +20,20 @@ export default function SchermataAccesso() {
   const [recupero, setRecupero] = useState("");
   const [inviandoRecupero, setInviandoRecupero] = useState(false);
   const [conGoogle, setConGoogle] = useState(false);
+  // Finché non si sa, il tasto Google non si mostra: comparire e poi sparire
+  // è peggio che comparire un attimo dopo.
+  const [googleAcceso, setGoogleAcceso] = useState(null);
+
+  useEffect(() => {
+    if (!hasAccounts()) return;
+    let vivo = true;
+    accessoAttivo("google")
+      .then((ok) => vivo && setGoogleAcceso(ok))
+      .catch(() => vivo && setGoogleAcceso(false));
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!hasAccounts()) {
@@ -130,7 +144,11 @@ export default function SchermataAccesso() {
         {!attesa && hasAccounts() && !inviata && !modo && (
           <div className="entra-morbido" style={{ display: "grid", gap: 12, animationDelay: "600ms" }}>
             {/* Un tasto solo per il primo ingresso e per tutti quelli dopo:
-                OAuth non distingue "iscriviti" da "accedi". */}
+                OAuth non distingue "iscriviti" da "accedi".
+                Compare solo se il provider è davvero acceso su Supabase: un
+                tasto che porta a una pagina di errore è peggio di nessun
+                tasto, e il giorno in cui verrà acceso ricompare da solo. */}
+            {googleAcceso ? (
             <button
               className="btn-app chiaro"
               disabled={conGoogle}
@@ -156,12 +174,15 @@ export default function SchermataAccesso() {
               </svg>
               {conGoogle ? "Ti porto su Google…" : "Continua con Google"}
             </button>
+            ) : null}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "2px 0" }}>
-              <span style={{ height: 1, background: "var(--line)" }} />
-              <span className="muted" style={{ fontSize: 12 }}>oppure</span>
-              <span style={{ height: 1, background: "var(--line)" }} />
-            </div>
+            {googleAcceso ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "2px 0" }}>
+                <span style={{ height: 1, background: "var(--line)" }} />
+                <span className="muted" style={{ fontSize: 12 }}>oppure</span>
+                <span style={{ height: 1, background: "var(--line)" }} />
+              </div>
+            ) : null}
 
             <button className="btn-app" onClick={() => setModo("accedi")}>Accedi</button>
             <button className="btn-app chiaro" onClick={() => setModo("iscriviti")}>Iscriviti</button>

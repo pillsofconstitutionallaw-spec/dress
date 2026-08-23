@@ -9,9 +9,26 @@ import { FAST_FASHION_NOTE } from "@/lib/data";
 export default function Offerte() {
   const [capi, setCapi] = useState([]);
   const [caricamento, setCaricamento] = useState(true);
+  // Lo stile scelto nell'analisi, e la possibilità di metterlo da parte: un
+  // feed di sconti troppo stretto è un feed vuoto, e chi cerca un affare a
+  // volte lo vuole anche fuori dal suo stile.
+  const [stile, setStile] = useState("");
+  const [filtra, setFiltra] = useState(true);
+  const [stileApplicato, setStileApplicato] = useState(null);
+  const [quantiDelloStile, setQuantiDelloStile] = useState(null);
+
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem("dress:session") || "null");
+      if (s?.result?.stileScelto) setStile(s.result.stileScelto);
+    } catch {
+      /* nessuna sessione */
+    }
+  }, []);
 
   useEffect(() => {
     let vivo = true;
+    setCaricamento(true);
     // Il sesso dichiarato nel questionario filtra anche gli sconti.
     let genere = "";
     try {
@@ -21,15 +38,23 @@ export default function Offerte() {
     } catch {
       /* nessuna sessione */
     }
-    fetch(`/api/offerte${genere ? `?genere=${genere}` : ""}`)
+    const q = new URLSearchParams();
+    if (genere) q.set("genere", genere);
+    if (stile && filtra) q.set("stile", stile);
+    fetch(`/api/offerte${q.toString() ? `?${q}` : ""}`)
       .then((r) => r.json())
-      .then((d) => vivo && setCapi(d.capi || []))
+      .then((d) => {
+        if (!vivo) return;
+        setCapi(d.capi || []);
+        setStileApplicato(d.stile || null);
+        setQuantiDelloStile(d.quantiDelloStile ?? null);
+      })
       .catch(() => {})
       .finally(() => vivo && setCaricamento(false));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [stile, filtra]);
 
   return (
     <div className="wrap" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 720 }}>
@@ -38,6 +63,21 @@ export default function Offerte() {
         Capi che i negozi hanno ribassato di almeno il 10%. Prezzo pieno e prezzo di adesso, come
         stanno sul loro sito in questo momento.
       </p>
+
+      {stile ? (
+        <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button className={filtra ? "btn" : "btn ghost"} onClick={() => setFiltra((f) => !f)} style={{ padding: "6px 14px", fontSize: 13 }}>
+            {filtra ? `Solo ${stile} ✓` : `Solo ${stile}`}
+          </button>
+          {filtra && !caricamento && !stileApplicato ? (
+            <span className="muted" style={{ fontSize: 13 }}>
+              {quantiDelloStile === 0
+                ? `Nessun capo ${stile} in sconto adesso: sotto ci sono tutti gli altri.`
+                : `Solo ${quantiDelloStile} capi ${stile} in sconto: te li mostro dentro tutto il resto.`}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div style={{ marginTop: 26 }}>
         <CapiTrovati capi={capi} caricamento={caricamento} />
