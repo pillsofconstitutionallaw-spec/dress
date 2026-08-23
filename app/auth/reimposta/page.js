@@ -158,7 +158,6 @@ export default function Reimposta() {
                       key={i}
                       style={{
                         height: 3,
-                        borderRadius: 2,
                         background: i < forza.forza ? (forza.ok ? "var(--ink)" : "var(--greige)") : "var(--line)",
                         transition: "background 200ms ease",
                       }}

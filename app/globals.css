@@ -13,6 +13,10 @@
 
 * { box-sizing: border-box; }
 
+/* Niente angoli tondi, da nessuna parte: i bordi di questa interfaccia
+   sono squadrati, a punta. Se ne aggiungi uno, toglilo. */
+* { border-radius: 0; }
+
 html, body { padding: 0; margin: 0; }
 
 body {
@@ -164,7 +168,7 @@ main::before {
   outline-offset: 3px;
 }
 
-.card { border: 1px solid var(--line); background: #fff; box-shadow: 0 12px 36px rgba(20,18,16,0.04); border-radius: 22px; }
+.card { border: 1px solid var(--line); background: #fff; box-shadow: 0 12px 36px rgba(20,18,16,0.04); }
 
 .hero-badge {
   display: inline-flex;
@@ -174,7 +178,6 @@ main::before {
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.74);
   backdrop-filter: blur(8px);
-  border-radius: 999px;
   font-family: var(--font-display), system-ui, sans-serif;
   font-size: 11px;
   letter-spacing: 0.2em;
@@ -187,7 +190,6 @@ main::before {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 999px;
   background: var(--stone);
   color: var(--ink);
   font-size: 12px;
@@ -208,7 +210,6 @@ main::before {
   border: 1px solid var(--line);
   background: linear-gradient(180deg, #fff 0%, #f8f5ef 100%);
   padding: 18px 20px;
-  border-radius: 20px;
   box-shadow: 0 8px 24px rgba(20,18,16,0.03);
 }
 
@@ -308,7 +309,6 @@ select.control { appearance: none; background-image: linear-gradient(45deg, tran
   justify-content: center;
   width: 100%;
   padding: 18px 24px;
-  border-radius: 16px;
   border: 1px solid var(--ink);
   background: var(--ink);
   color: var(--paper);
@@ -328,7 +328,6 @@ select.control { appearance: none; background-image: linear-gradient(45deg, tran
   width: 100%;
   background: var(--stone);
   border: 1px solid transparent;
-  border-radius: 14px;
   padding: 17px 18px;
   font-family: var(--font-body), system-ui, sans-serif;
   font-size: 16px;

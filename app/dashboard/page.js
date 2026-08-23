@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import CapiTrovati from "@/components/CapiTrovati";
+import NonUnCapo from "@/components/NonUnCapo";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
@@ -423,7 +424,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {matchRes && (
+        {matchRes?.riconosciuto === false && (
+          <div style={{ marginTop: 18 }}>
+            <NonUnCapo esito={matchRes} />
+          </div>
+        )}
+
+        {matchRes && matchRes.riconosciuto !== false && (
           <>
             <div className="card" style={{ marginTop: 18, padding: 16, display: "grid", gap: 8 }}>
               <strong style={{ fontSize: 15 }}>{matchRes.title}</strong>

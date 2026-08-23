@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { fileToDataUrl } from "@/lib/img";
+import NonUnCapo from "@/components/NonUnCapo";
 import { lasciaCapo } from "@/lib/capoInCorso";
 
 // Abbinare un capo. Solo quello.
@@ -70,7 +71,13 @@ export default function Wardrobe() {
         <div>
           <button className="btn" onClick={run} disabled={loading}>{loading ? "Analizzo…" : "Analizza il capo"}</button>
 
-          {res && (
+          {res?.riconosciuto === false && (
+            <div style={{ marginTop: 24 }}>
+              <NonUnCapo esito={res} />
+            </div>
+          )}
+
+          {res && res.riconosciuto !== false && (
             <div style={{ marginTop: 24 }}>
               <div className="card" style={{ padding: "clamp(18px,3vw,26px)" }}>
                 <p className="eyebrow" style={{ marginBottom: 8 }}>Come abbinarlo</p>

@@ -11,7 +11,7 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
     return (
       <div style={{ display: "grid", gap: 12 }}>
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} style={{ height: 96, borderRadius: 16, background: "var(--stone)", opacity: 1 - i * 0.18 }} />
+          <div key={i} style={{ height: 96, background: "var(--stone)", opacity: 1 - i * 0.18 }} />
         ))}
       </div>
     );
@@ -37,7 +37,6 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
               gridTemplateColumns: "84px 1fr",
               gap: 14,
               padding: 10,
-              borderRadius: 18,
               background: "var(--paper)",
               border: "1px solid var(--line)",
               textDecoration: "none",
@@ -50,7 +49,6 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
                 style={{
                   width: "100%",
                   height: "100%",
-                  borderRadius: 12,
                   overflow: "hidden",
                   background: capo.colore_hex || "var(--stone)",
                 }}
@@ -67,8 +65,7 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); alterna(capo); }}
                 style={{
                   position: "absolute", top: -6, right: -6,
-                  width: 32, height: 32, borderRadius: "50%",
-                  border: "1px solid var(--line)", background: "var(--paper)",
+                  width: 32, height: 32, border: "1px solid var(--line)", background: "var(--paper)",
                   display: "grid", placeItems: "center", cursor: "pointer", padding: 0,
                   boxShadow: "0 2px 8px rgba(20,18,16,0.10)",
                 }}
@@ -100,7 +97,7 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
                 {capo.colore_hex ? (
                   <span
                     aria-hidden="true"
-                    style={{ width: 12, height: 12, borderRadius: "50%", background: capo.colore_hex, border: "1px solid var(--line)" }}
+                    style={{ width: 12, height: 12, background: capo.colore_hex, border: "1px solid var(--line)" }}
                   />
                 ) : null}
                 <span className="muted" style={{ fontSize: 12 }}>

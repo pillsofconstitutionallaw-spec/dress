@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fileToDataUrl } from "@/lib/img";
 import AnnuncioVinted from "@/components/AnnuncioVinted";
+import NonUnCapo from "@/components/NonUnCapo";
 import { raccogliCapo } from "@/lib/capoInCorso";
 
 // Vendere un capo. L'annuncio, il prezzo, e il link per pubblicarlo.
@@ -79,7 +80,13 @@ export default function Vendi() {
 
           <button className="btn" onClick={run} disabled={loading}>{loading ? "Scrivo…" : "Scrivi l'annuncio"}</button>
 
-          {res && (
+          {res?.riconosciuto === false && (
+            <div style={{ marginTop: 24 }}>
+              <NonUnCapo esito={res} />
+            </div>
+          )}
+
+          {res && res.riconosciuto !== false && (
             <div style={{ marginTop: 24 }}>
               <div className="card" style={{ padding: "clamp(18px,3vw,26px)" }}>
                 <p className="eyebrow" style={{ marginBottom: 8 }}>Che capo è</p>

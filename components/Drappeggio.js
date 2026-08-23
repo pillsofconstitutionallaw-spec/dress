@@ -48,7 +48,6 @@ function Telo({ foto, colore, scelto, onScegli, etichetta }) {
         gap: 0,
         padding: 0,
         border: scelto ? "2px solid var(--ink)" : "1px solid var(--line)",
-        borderRadius: 16,
         overflow: "hidden",
         background: "var(--paper)",
         cursor: "pointer",

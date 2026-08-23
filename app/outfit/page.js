@@ -140,7 +140,6 @@ export default function Outfit() {
             onClick={() => setPeriodo(c.periodo)}
             style={{
               padding: "12px 4px",
-              borderRadius: 12,
               border: "1px solid " + (c.periodo === periodo ? "var(--ink)" : "var(--line)"),
               background: c.periodo === periodo ? "var(--ink)" : "var(--paper)",
               color: c.periodo === periodo ? "var(--paper)" : "var(--ink)",
@@ -160,13 +159,13 @@ export default function Outfit() {
 
           {/* i colori da portare avanti in questo periodo */}
           {coloriPeriodo.ordine.length ? (
-            <div style={{ marginTop: 18, padding: 14, borderRadius: 14, background: "var(--stone)" }}>
+            <div style={{ marginTop: 18, padding: 14, background: "var(--stone)" }}>
               {/* La palette è di dodici colori: qui vanno a capo, e sbiadiscono
                   appena per dire l'ordine senza far sparire gli ultimi. */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                 {coloriPeriodo.ordine.map((c, i) => (
                   <div key={c.hex + i} title={`${c.name} · ${c.hex}`}
-                    style={{ width: 30, height: 30, borderRadius: 8, background: c.hex, border: "1px solid rgba(0,0,0,0.08)", opacity: Math.max(0.62, 1 - i * 0.05) }} />
+                    style={{ width: 30, height: 30, background: c.hex, border: "1px solid rgba(0,0,0,0.08)", opacity: Math.max(0.62, 1 - i * 0.05) }} />
                 ))}
               </div>
               <p className="muted" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>{coloriPeriodo.nota}</p>
@@ -177,7 +176,7 @@ export default function Outfit() {
             {caricamento ? (
               <div style={{ display: "grid", gap: 10 }}>
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} style={{ height: 110, borderRadius: 16, background: "var(--stone)", opacity: 1 - i * 0.18 }} />
+                  <div key={i} style={{ height: 110, background: "var(--stone)", opacity: 1 - i * 0.18 }} />
                 ))}
               </div>
             ) : (
@@ -186,7 +185,7 @@ export default function Outfit() {
           </div>
 
           {/* aggiungere qualcosa di preciso: la marca che vuoi tu */}
-          <div style={{ marginTop: 26, padding: 16, border: "1px dashed var(--line)", borderRadius: 16 }}>
+          <div style={{ marginTop: 26, padding: 16, border: "1px dashed var(--line)" }}>
             <strong style={{ fontSize: 14 }}>Vuoi metterci qualcosa di preciso?</strong>
             <p className="muted" style={{ fontSize: 13, margin: "6px 0 12px" }}>
               Cerca un capo per marca o modello — “giubbino North Face”, “stivali Dr. Martens”.

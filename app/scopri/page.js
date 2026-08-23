@@ -106,7 +106,7 @@ export default function Scopri() {
               <div className="eyebrow">Palette corrente</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                 {palette.length ? palette.map((c, i) => (
-                  <div key={i} style={{ width: 40, height: 40, borderRadius: 8, background: c.hex, border: '1px solid rgba(0,0,0,0.08)' }} title={`${c.name} ${c.hex}`} />
+                  <div key={i} style={{ width: 40, height: 40, background: c.hex, border: '1px solid rgba(0,0,0,0.08)' }} title={`${c.name} ${c.hex}`} />
                 )) : <div className="muted">Nessuna palette ancora — crea una analisi</div>}
               </div>
             </div>
@@ -116,7 +116,7 @@ export default function Scopri() {
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                 {COLORS_OF_YEAR.map((c) => (
                   <div key={c.hex} style={{ width: 64, textAlign: 'center' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 8, margin: '0 auto', background: c.hex, boxShadow: colorMatches(c.hex) ? '0 0 0 3px rgba(0,0,0,0.06) inset' : undefined }} />
+                    <div style={{ width: 48, height: 48, margin: '0 auto', background: c.hex, boxShadow: colorMatches(c.hex) ? '0 0 0 3px rgba(0,0,0,0.06) inset' : undefined }} />
                     <div style={{ fontSize: 12, marginTop: 6 }}>{c.name.split(' ')[0]}</div>
                   </div>
                 ))}

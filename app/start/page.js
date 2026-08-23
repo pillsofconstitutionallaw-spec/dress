@@ -301,7 +301,7 @@ export default function Start() {
       {/* Signup modal */}
       {showSignupModal && (
         <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.36)", zIndex: 60 }}>
-          <div className="card" style={{ padding: 28, width: 420, borderRadius: 12 }}>
+          <div className="card" style={{ padding: 28, width: 420 }}>
             <h2 className="h2" style={{ marginBottom: 8 }}>Iscriviti a {"dress"}</h2>
 
             {pending ? (
@@ -339,7 +339,7 @@ export default function Start() {
       {/* Login modal */}
       {showLoginModal && (
         <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.36)", zIndex: 60 }}>
-          <div className="card" style={{ padding: 28, width: 420, borderRadius: 12 }}>
+          <div className="card" style={{ padding: 28, width: 420 }}>
             <h2 className="h2" style={{ marginBottom: 8 }}>Accedi</h2>
             <p className="muted" style={{ marginBottom: 12 }}>Inserisci la stessa email usata per l'iscrizione.</p>
             <label className="field"><span className="label">Email</span><input className="control" inputMode="email" value={signup.email} onChange={(e) => setSignup((s) => ({ ...s, email: e.target.value }))} /></label>
@@ -480,7 +480,7 @@ export default function Start() {
         <section>
           <p className="eyebrow">Passo 3</p>
           <h1 className="h2" style={{ marginTop: 10, marginBottom: 12 }}>Genera la tua palette</h1>
-          <div className="summary-card" style={{ marginBottom: 24, maxWidth: 620, borderRadius: 18 }}>
+          <div className="summary-card" style={{ marginBottom: 24, maxWidth: 620 }}>
             <p className="eyebrow" style={{ marginBottom: 8 }}>Riepilogo</p>
             <p className="muted" style={{ margin: 0, fontSize: 15 }}>
               {profile.height || "—"} cm · {profile.weight ? `${profile.weight} kg · ` : ""}capelli {profile.hair || "—"} · occhi {profile.eyes || "—"} · stile {profile.style || "—"}.
@@ -495,7 +495,7 @@ export default function Start() {
 
       {step === 4 && result && (
         <section>
-          <div className="summary-card" style={{ marginBottom: 24, borderRadius: 18 }}>
+          <div className="summary-card" style={{ marginBottom: 24 }}>
             <p className="eyebrow">La tua palette</p>
             {result.season ? <h1 className="h2" style={{ marginTop: 10 }}>{result.season}</h1> : null}
 
@@ -649,7 +649,7 @@ export default function Start() {
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {result.palette.filter((c) => !c.principale).map((c) => (
                   <div key={c.hex + c.name} style={{ width: 88 }}>
-                    <div style={{ height: 44, borderRadius: 10, background: c.hex, border: "1px solid rgba(0,0,0,0.10)" }} />
+                    <div style={{ height: 44, background: c.hex, border: "1px solid rgba(0,0,0,0.10)" }} />
                     <div style={{ fontSize: 11.5, marginTop: 6, lineHeight: 1.3 }}>{c.name}</div>
                   </div>
                 ))}

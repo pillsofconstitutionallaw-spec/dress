@@ -21,12 +21,11 @@ export default function OutfitPeriodo({ completo }) {
             alignItems: "center",
             padding: 10,
             border: "1px solid var(--line)",
-            borderRadius: 16,
             background: "var(--paper)",
           }}
         >
           <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
-            <div style={{ width: 72, height: 90, borderRadius: 10, overflow: "hidden", background: c.colore_hex || "var(--stone)" }}>
+            <div style={{ width: 72, height: 90, overflow: "hidden", background: c.colore_hex || "var(--stone)" }}>
               {c.immagine ? <img src={c.immagine} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
             </div>
           </a>

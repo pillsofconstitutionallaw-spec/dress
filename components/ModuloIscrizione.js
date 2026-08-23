@@ -58,7 +58,7 @@ export default function ModuloIscrizione({ onIscritto, onIndietro }) {
           onClick={() => fileRef.current?.click()}
           aria-label="Scegli l'immagine del profilo"
           style={{
-            width: 84, height: 84, borderRadius: "50%", overflow: "hidden",
+            width: 84, height: 84, overflow: "hidden",
             border: avatar ? "none" : "1px dashed var(--line)",
             background: avatar ? `center/cover url(${avatar})` : "var(--stone)",
             display: "grid", placeItems: "center", cursor: "pointer", padding: 0,
@@ -127,7 +127,6 @@ export default function ModuloIscrizione({ onIscritto, onIndietro }) {
                 key={i}
                 style={{
                   height: 3,
-                  borderRadius: 2,
                   background: i < forza.forza ? (forza.ok ? "var(--ink)" : "var(--greige)") : "var(--line)",
                   transition: "background 200ms ease",
                 }}
