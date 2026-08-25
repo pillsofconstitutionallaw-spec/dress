@@ -5,6 +5,7 @@ import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import CapiTrovati from "@/components/CapiTrovati";
 import NonUnCapo from "@/components/NonUnCapo";
+import Gruppo from "@/components/Gruppo";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
@@ -234,22 +235,26 @@ export default function Dashboard() {
     setDeleting(false);
   }
 
-  // Le quattro destinazioni vere dell'app. Stavano in fondo, dentro una
-  // sezione chiamata "Altro", come quattro bottoni grigi tutti uguali — e
-  // due delle pagine più utili, i completi e la ricerca, non erano
-  // raggiungibili da nessuna parte. Adesso stanno in cima, che è dove uno
-  // guarda quando apre.
+  // Le destinazioni dell'app, in un elenco solo.
+  //
+  // Erano due: quattro schede in cima e tre bottoni grigi in fondo, sotto un
+  // titolo che diceva "Altro". Due liste della stessa cosa, in due posti, con
+  // due aspetti diversi — e per sapere dove si poteva andare bisognava
+  // leggerle tutte e due. Adesso è una, e ogni voce dice cosa ci trovi.
   const destinazioni = [
     { href: "/outfit", titolo: "I tuoi completi", detta: "Uno per stagione, nei tuoi colori" },
     { href: "/offers", titolo: "In sconto adesso", detta: "I ribassi veri dei negozi in catalogo" },
     { href: "/cerca", titolo: "Cerca un capo", detta: "Per marca o modello, filtrato sui tuoi colori" },
+    { href: "/wardrobe", titolo: "Abbina un capo", detta: "La stessa cosa di qui sopra, in una pagina sua" },
+    { href: "/vendi", titolo: "Vendi un capo", detta: "L’annuncio per Vinted, già scritto" },
+    { href: "/colors", titolo: "I colori dell’anno", detta: "Le tinte della stagione, spiegate" },
     { href: "/start", titolo: "Rifai l’analisi", detta: "Se cambi capelli, o la foto non era buona" },
   ];
 
   // L'account: in cima se devi ancora entrare, in fondo se sei già dentro.
   // Le impostazioni non sono la prima cosa che uno vuole vedere di casa sua.
   const sezioneAccount = (
-    <section className="card" style={{ marginTop: 28, padding: 16 }}>
+    <section className="card" style={{ padding: 16 }}>
       <h2 className="h3">Account</h2>
 
       {!hasAccounts() && (
@@ -325,28 +330,21 @@ export default function Dashboard() {
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 960 }}>
       <h1 className="h2">Il tuo spazio personale</h1>
-      <p className="muted">I tuoi colori, i capi che hai messo da parte, gli sconti dei negozi.</p>
+      <p className="muted">I capi che hai messo da parte, i completi salvati, i negozi che segui.</p>
 
       {err ? <p style={{ color: "var(--signal)", marginTop: 12 }}>{err}</p> : null}
       {notice ? <p className="muted" style={{ marginTop: 12 }}>{notice}</p> : null}
 
-      {/* ---------------- Dove andare ---------------- */}
-      <nav style={{ marginTop: 24, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        {destinazioni.map((d) => (
-          <Link key={d.href} href={d.href} className="card"
-            style={{ padding: 16, textDecoration: "none", color: "inherit", display: "block" }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{d.titolo}</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.4 }}>{d.detta}</div>
-          </Link>
-        ))}
-      </nav>
+      {online ? null : <div style={{ marginTop: 24 }}>{sezioneAccount}</div>}
 
-      {online ? null : sezioneAccount}
-
+      <Gruppo
+        titolo="Le tue cose"
+        detta="Quello che hai messo da parte tu: resta qui e non cambia se non lo cambi."
+      >
       {/* ---------------- I capi messi da parte ---------------- */}
-      <section style={{ marginTop: 28 }}>
+      <section>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h2 className="h3" style={{ margin: 0 }}>I tuoi preferiti</h2>
+          <h2 className="h3" style={{ margin: 0 }}>Capi col cuore</h2>
           {capiPreferiti.length ? <span className="muted" style={{ fontSize: 13 }}>{capiPreferiti.length}</span> : null}
         </div>
 
@@ -370,8 +368,8 @@ export default function Dashboard() {
       </section>
 
       {/* ---------------- Capi salvati ---------------- */}
-      <section style={{ marginTop: 28 }}>
-        <h2 className="h3">Capi salvati</h2>
+      <section>
+        <h2 className="h3">Completi salvati</h2>
         {saved.length === 0 ? (
           <p className="muted">Non ci sono ancora capi salvati.</p>
         ) : (
@@ -397,8 +395,32 @@ export default function Dashboard() {
         )}
       </section>
 
+      {/* ---------------- Preferiti ---------------- */}
+      <section>
+        <h2 className="h3">Negozi che segui</h2>
+        <p className="muted">Segna i tuoi negozi per ricevere offerte mirate.</p>
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          {RETAILER_TOGGLES.map((site) => {
+            const on = favorites.some((f) => labelOf(f) === site);
+            return (
+              <button key={site} className={on ? "btn" : "btn ghost"} onClick={() => toggleFavorite(site)}>
+                {site}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <strong>Segui:</strong> {favorites.map(labelOf).join(", ") || "nessuno"}
+        </div>
+      </section>
+      </Gruppo>
+
+      <Gruppo
+        titolo="Fare qualcosa"
+        detta="Le pagine dell’app, tutte da qui — e la domanda che si fa più spesso, senza doverci andare."
+      >
       {/* ---------------- Abbinamenti ---------------- */}
-      <section style={{ marginTop: 28 }}>
+      <section>
         <h2 className="h3">Chiedi cosa abbinare</h2>
         <p className="muted">Carica la foto di un capo e chiedi come abbinarlo.</p>
         <p className="muted" style={{ fontSize: 12, marginTop: -6 }}>
@@ -445,35 +467,22 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* ---------------- Preferiti ---------------- */}
-      <section style={{ marginTop: 28 }}>
-        <h2 className="h3">Negozi preferiti</h2>
-        <p className="muted">Segna i tuoi negozi per ricevere offerte mirate.</p>
-        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          {RETAILER_TOGGLES.map((site) => {
-            const on = favorites.some((f) => labelOf(f) === site);
-            return (
-              <button key={site} className={on ? "btn" : "btn ghost"} onClick={() => toggleFavorite(site)}>
-                {site}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <strong>Preferiti:</strong> {favorites.map(labelOf).join(", ") || "nessuno"}
-        </div>
-      </section>
+      <nav style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {destinazioni.map((d) => (
+          <Link key={d.href} href={d.href} className="card"
+            style={{ padding: 16, textDecoration: "none", color: "inherit", display: "block" }}>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>{d.titolo}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.4 }}>{d.detta}</div>
+          </Link>
+        ))}
+      </nav>
+      </Gruppo>
 
-      <section style={{ marginTop: 34, borderTop: "1px solid var(--line)", paddingTop: 24 }}>
-        <h2 className="h3">Altro</h2>
-        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
-          <Link href="/colors" className="btn-app chiaro">I colori dell’anno</Link>
-          <Link href="/wardrobe" className="btn-app chiaro">Abbina un capo</Link>
-          <Link href="/vendi" className="btn-app chiaro">Vendi un capo</Link>
-        </div>
-      </section>
-
-      {online ? sezioneAccount : null}
+      {online ? (
+        <Gruppo titolo="Impostazioni">
+          {sezioneAccount}
+        </Gruppo>
+      ) : null}
     </div>
   );
 }
