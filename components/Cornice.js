@@ -101,9 +101,43 @@ export default function Cornice({ children }) {
     );
   }
 
-  // Dentro l'app: contenuto a schermo pieno e barra in basso.
+  // Dentro l'app: contenuto a schermo pieno, la rotella in alto e la barra
+  // in basso.
   return (
     <>
+      {/* La rotella sta qui e non dentro una pagina.
+          Prima stava solo sulla home: da "Completi", da "Cerca" o da "Stile"
+          non c'era in nessun punto dello schermo, e per cambiare la password
+          bisognava prima sapere che le impostazioni erano in casa. Un comando
+          che si cerca da qualunque parte va messo in un posto che c'è da
+          qualunque parte. */}
+      {percorso !== "/impostazioni" ? (
+        <Link
+          href="/impostazioni"
+          aria-label="Impostazioni"
+          title="Impostazioni"
+          style={{
+            position: "fixed",
+            top: "calc(10px + env(safe-area-inset-top))",
+            right: 12,
+            zIndex: 25,
+            display: "grid",
+            placeItems: "center",
+            width: 38,
+            height: 38,
+            background: "var(--paper)",
+            border: "1px solid var(--line)",
+            color: "var(--greige)",
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </Link>
+      ) : null}
+
       <main style={{ minHeight: "100dvh", paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}>
         {children}
       </main>

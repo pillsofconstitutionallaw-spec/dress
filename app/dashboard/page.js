@@ -274,29 +274,10 @@ export default function Dashboard() {
 
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 960 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div>
-          <h1 className="h2" style={{ margin: 0 }}>Il tuo spazio personale</h1>
-          <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
-            I capi che hai messo da parte e i completi salvati.
-          </p>
-        </div>
-
-        {/* La rotella. Le impostazioni non sono una sezione di casa tua: sono
-            una stanza a parte, e ci si va quando serve. */}
-        <Link
-          href="/impostazioni"
-          aria-label="Impostazioni"
-          title="Impostazioni"
-          style={{ padding: 8, marginTop: 2, color: "var(--greige)", flex: "0 0 auto" }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3.2" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </Link>
-      </div>
+      <h1 className="h2" style={{ margin: 0 }}>Il tuo spazio personale</h1>
+      <p className="muted" style={{ marginTop: 6 }}>
+        I capi che hai messo da parte e i completi salvati.
+      </p>
 
       {err ? <p style={{ color: "var(--signal)", marginTop: 12 }}>{err}</p> : null}
       {notice ? <p className="muted" style={{ marginTop: 12 }}>{notice}</p> : null}
