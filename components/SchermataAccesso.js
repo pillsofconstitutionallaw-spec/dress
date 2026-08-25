@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import ModuloIscrizione from "@/components/ModuloIscrizione";
-import { accessoAttivo, apparecchiRegistrati, entraCon, entraConImpronta, getUser, hasAccounts, passkeyAttive, questoApparecchioSaFarlo, recuperaPassword, register, registraQuestoApparecchio, resendConfirmation, signIn } from "@/lib/session";
+import { accessoAttivo, entraCon, entraConImpronta, getUser, hasAccounts, improntaAttivaQui, passkeyAttive, questoApparecchioSaFarlo, recuperaPassword, register, registraQuestoApparecchio, resendConfirmation, signIn } from "@/lib/session";
 import { prossimaTappa } from "@/lib/prossimaTappa";
 
 // La prima schermata: il marchio e due tasti. Niente altro.
@@ -63,13 +63,9 @@ export default function SchermataAccesso() {
   // Chi ha appena digitato dieci caratteri è la persona giusta a cui dire
   // "la prossima volta puoi non farlo".
   async function dopoLAccesso() {
-    if (!improntaPronta) return router.replace(prossimaTappa());
-    try {
-      const gia = await apparecchiRegistrati();
-      if (gia.length) return router.replace(prossimaTappa());
-    } catch {
-      return router.replace(prossimaTappa());
-    }
+    // Su questo apparecchio, non su questo account: chi l'ha attivata sul
+    // telefono, sul computer non ce l'ha ancora.
+    if (!improntaPronta || improntaAttivaQui()) return router.replace(prossimaTappa());
     setProponiImpronta(true);
   }
 

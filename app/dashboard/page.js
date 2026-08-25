@@ -6,6 +6,7 @@ import { fileToDataUrl } from "@/lib/img";
 import CapiTrovati from "@/components/CapiTrovati";
 import NonUnCapo from "@/components/NonUnCapo";
 import Gruppo from "@/components/Gruppo";
+import ProponiImpronta from "@/components/ProponiImpronta";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
@@ -283,6 +284,9 @@ export default function Dashboard() {
       {notice ? <p className="muted" style={{ marginTop: 12 }}>{notice}</p> : null}
 
       {online ? null : <div style={{ marginTop: 24 }}>{sezioneAccount}</div>}
+
+      {/* A chi è già dentro e non l'ha ancora attivato. Si mostra una volta. */}
+      <ProponiImpronta />
 
       <Gruppo
         titolo="Le tue cose"

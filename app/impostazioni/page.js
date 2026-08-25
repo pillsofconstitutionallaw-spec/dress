@@ -22,6 +22,7 @@ import {
   passkeyAttive,
   questoApparecchioSaFarlo,
   registraQuestoApparecchio,
+  segnaImprontaQui,
   signOut,
   togliApparecchio,
 } from "@/lib/session";
@@ -139,6 +140,9 @@ export default function Impostazioni() {
       await togliApparecchio(id);
       const aggiornati = await apparecchiRegistrati();
       setImpronta((i) => ({ ...i, apparecchi: aggiornati }));
+      // Non si può sapere quale chiave apparteneva a questo apparecchio: ma
+      // se sull'account non ne resta nessuna, di sicuro non ne ha più.
+      if (!aggiornati.length) segnaImprontaQui(false);
       avvisa("Tolta.");
     } catch (e) {
       setErr(e.message);
