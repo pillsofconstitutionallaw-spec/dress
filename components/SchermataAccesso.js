@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import ModuloIscrizione from "@/components/ModuloIscrizione";
-import { accessoAttivo, entraCon, getUser, hasAccounts, recuperaPassword, register, resendConfirmation, signIn } from "@/lib/session";
+import { accessoAttivo, apparecchiRegistrati, entraCon, entraConImpronta, getUser, hasAccounts, passkeyAttive, questoApparecchioSaFarlo, recuperaPassword, register, registraQuestoApparecchio, resendConfirmation, signIn } from "@/lib/session";
 import { prossimaTappa } from "@/lib/prossimaTappa";
 
 // La prima schermata: il marchio e due tasti. Niente altro.
@@ -23,6 +23,14 @@ export default function SchermataAccesso() {
   // Finché non si sa, il tasto Google non si mostra: comparire e poi sparire
   // è peggio che comparire un attimo dopo.
   const [googleAcceso, setGoogleAcceso] = useState(null);
+  // Face ID e impronta: si può offrirli solo se il progetto li ha accesi E
+  // questo apparecchio ha un lettore. Due domande, due risposte.
+  const [improntaPronta, setImprontaPronta] = useState(false);
+  const [conImpronta, setConImpronta] = useState(false);
+  // La proposta dopo l'accesso con la password: è lì che uno decide di non
+  // riscriverla più, non in fondo a una pagina di impostazioni.
+  const [proponiImpronta, setProponiImpronta] = useState(false);
+  const [attivando, setAttivando] = useState(false);
 
   useEffect(() => {
     if (!hasAccounts()) return;
@@ -30,10 +38,52 @@ export default function SchermataAccesso() {
     accessoAttivo("google")
       .then((ok) => vivo && setGoogleAcceso(ok))
       .catch(() => vivo && setGoogleAcceso(false));
+    Promise.all([passkeyAttive(), questoApparecchioSaFarlo()])
+      .then(([accese, puo]) => vivo && setImprontaPronta(accese && puo))
+      .catch(() => vivo && setImprontaPronta(false));
     return () => {
       vivo = false;
     };
   }, []);
+
+  // Entrare senza password.
+  async function entraConLaFaccia() {
+    setErr("");
+    setConImpronta(true);
+    try {
+      await entraConImpronta();
+      router.replace(prossimaTappa());
+    } catch (e) {
+      setErr(e.message);
+      setConImpronta(false);
+    }
+  }
+
+  // Dopo aver scritto la password: la si propone a chi non ce l'ha già.
+  // Chi ha appena digitato dieci caratteri è la persona giusta a cui dire
+  // "la prossima volta puoi non farlo".
+  async function dopoLAccesso() {
+    if (!improntaPronta) return router.replace(prossimaTappa());
+    try {
+      const gia = await apparecchiRegistrati();
+      if (gia.length) return router.replace(prossimaTappa());
+    } catch {
+      return router.replace(prossimaTappa());
+    }
+    setProponiImpronta(true);
+  }
+
+  async function attivaOra() {
+    setErr("");
+    setAttivando(true);
+    try {
+      await registraQuestoApparecchio();
+      router.replace(prossimaTappa());
+    } catch (e) {
+      setErr(e.message);
+      setAttivando(false);
+    }
+  }
 
   useEffect(() => {
     if (!hasAccounts()) {
@@ -56,7 +106,7 @@ export default function SchermataAccesso() {
     setBusy(true);
     try {
       await signIn({ identificativo: dati.identificativo, password: dati.password });
-      router.replace(prossimaTappa());
+      await dopoLAccesso();
     } catch (e) {
       setErr(e.message);
     }
@@ -141,7 +191,31 @@ export default function SchermataAccesso() {
           </div>
         )}
 
-        {!attesa && hasAccounts() && !inviata && !modo && (
+        {proponiImpronta && (
+          <div className="entra-morbido" style={{ display: "grid", gap: 14 }}>
+            <div>
+              <p className="eyebrow" style={{ margin: 0 }}>Un&apos;ultima cosa</p>
+              <h2 className="h3" style={{ margin: "8px 0 0" }}>Non riscriverla più</h2>
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>
+              Da qui in avanti puoi entrare con la faccia o col dito, senza digitare niente. La chiave
+              resta dentro questo apparecchio e non esce: a noi arriva solo che ti ha riconosciuto,
+              mai la tua impronta né il tuo viso. La password resta valida.
+            </p>
+            <button className="btn-app" onClick={attivaOra} disabled={attivando}>
+              {attivando ? "Aspetto l\u2019apparecchio…" : "Attiva su questo apparecchio"}
+            </button>
+            <button className="btn-app chiaro" onClick={() => router.replace(prossimaTappa())} disabled={attivando}>
+              Non adesso
+            </button>
+            <p className="muted" style={{ margin: 0, fontSize: 12, textAlign: "center" }}>
+              Puoi farlo quando vuoi da Impostazioni.
+            </p>
+            {err ? <p style={{ color: "var(--signal)", fontSize: 14, margin: "2px 4px", textAlign: "center" }}>{err}</p> : null}
+          </div>
+        )}
+
+        {!attesa && hasAccounts() && !inviata && !modo && !proponiImpronta && (
           <div className="entra-morbido" style={{ display: "grid", gap: 12, animationDelay: "600ms" }}>
             {/* Un tasto solo per il primo ingresso e per tutti quelli dopo:
                 OAuth non distingue "iscriviti" da "accedi".
@@ -176,7 +250,31 @@ export default function SchermataAccesso() {
             </button>
             ) : null}
 
-            {googleAcceso ? (
+            {/* Entrare con la faccia: solo a chi ha un apparecchio che sa
+                farlo. A chi non ce l'ha non si mostra un tasto che non
+                funziona. */}
+            {improntaPronta ? (
+              <button
+                className="btn-app chiaro"
+                disabled={conImpronta}
+                onClick={entraConLaFaccia}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 8V6a2 2 0 0 1 2-2h2" />
+                  <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+                  <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
+                  <path d="M8 20H6a2 2 0 0 1-2-2v-2" />
+                  <path d="M9 10v1" />
+                  <path d="M15 10v1" />
+                  <path d="M9.5 15c.7.7 1.6 1 2.5 1s1.8-.3 2.5-1" />
+                </svg>
+                {conImpronta ? "Aspetto l\u2019apparecchio…" : "Entra con Face ID o impronta"}
+              </button>
+            ) : null}
+
+            {(googleAcceso || improntaPronta) ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "2px 0" }}>
                 <span style={{ height: 1, background: "var(--line)" }} />
                 <span className="muted" style={{ fontSize: 12 }}>oppure</span>

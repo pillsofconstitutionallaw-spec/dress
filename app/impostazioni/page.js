@@ -10,14 +10,20 @@ import { controllaPassword, LUNGHEZZA_MINIMA } from "@/lib/password";
 import { RETAILERS } from "@/lib/data";
 import {
   apiFetch,
+  apparecchiRegistrati,
   cambiaEmail,
   cambiaPassword,
   completaProfilo,
   deleteAccount,
+  entraConImpronta,
   esciDaTuttiIDispositivi,
   getUser,
   hasAccounts,
+  passkeyAttive,
+  questoApparecchioSaFarlo,
+  registraQuestoApparecchio,
   signOut,
+  togliApparecchio,
 } from "@/lib/session";
 
 // I colori fra cui scegliere la propria faccia. Pochi e decisi: una tavolozza
@@ -47,6 +53,11 @@ export default function Impostazioni() {
   const [negozi, setNegozi] = useState([]);
   const [password, setPassword] = useState({ nuova: "", ripeti: "" });
   const [email, setEmail] = useState("");
+
+  // Face ID e impronta: tre cose separate, e servono tutte e tre.
+  // Se il progetto le ha accese, se questo apparecchio sa farlo, e quali
+  // apparecchi hai già registrato.
+  const [impronta, setImpronta] = useState({ accese: false, puo: false, apparecchi: [] });
 
   const [salvando, setSalvando] = useState("");
   const [err, setErr] = useState("");
@@ -91,12 +102,48 @@ export default function Impostazioni() {
       } catch (e) {
         if (vivo) setErr(e.message);
       }
+      try {
+        const [accese, puo] = await Promise.all([passkeyAttive(), questoApparecchioSaFarlo()]);
+        const apparecchi = accese ? await apparecchiRegistrati() : [];
+        if (vivo) setImpronta({ accese, puo, apparecchi });
+      } catch {
+        /* niente Face ID: la pagina funziona lo stesso */
+      }
+
       if (vivo) setCaricamento(false);
     })();
     return () => {
       vivo = false;
     };
   }, []);
+
+  async function aggiungiImpronta() {
+    setErr("");
+    setDetto("");
+    setSalvando("impronta");
+    try {
+      await registraQuestoApparecchio();
+      const aggiornati = await apparecchiRegistrati();
+      setImpronta((i) => ({ ...i, apparecchi: aggiornati }));
+      avvisa("Fatto. Da adesso su questo apparecchio entri senza password.");
+    } catch (e) {
+      setErr(e.message);
+    }
+    setSalvando("");
+  }
+
+  async function rimuoviImpronta(id) {
+    if (!window.confirm("Tolgo questa chiave: su quell'apparecchio tornerai a entrare con la password. Procedo?")) return;
+    setErr("");
+    try {
+      await togliApparecchio(id);
+      const aggiornati = await apparecchiRegistrati();
+      setImpronta((i) => ({ ...i, apparecchi: aggiornati }));
+      avvisa("Tolta.");
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
 
   const cambia = (campo) => (e) => setCampi((c) => ({ ...c, [campo]: e.target.value }));
 
@@ -396,6 +443,52 @@ export default function Impostazioni() {
           <button className="btn ghost" onClick={salvaPassword} disabled={salvando === "password"} style={{ justifySelf: "start" }}>
             {salvando === "password" ? "Cambio…" : "Cambia password"}
           </button>
+        </section>
+
+        <section style={{ display: "grid", gap: 10 }}>
+          <strong style={{ fontSize: 15 }}>Face ID e impronta</strong>
+          <p className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
+            Al posto della password puoi usare la faccia o il dito. La chiave resta dentro questo
+            apparecchio e non esce mai: a noi arriva solo che ti ha riconosciuto, mai la tua
+            impronta né il tuo viso. La password resta valida: questa si aggiunge, non la sostituisce.
+          </p>
+
+          {impronta.apparecchi.length ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              {impronta.apparecchi.map((a) => (
+                <div key={a.id} className="card" style={{ padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{a.friendly_name || "Un apparecchio"}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      Aggiunto il {new Date(a.created_at).toLocaleDateString("it-IT")}
+                      {a.last_used_at ? ` · usato il ${new Date(a.last_used_at).toLocaleDateString("it-IT")}` : " · mai usato"}
+                    </div>
+                  </div>
+                  <button className="btn ghost" onClick={() => rimuoviImpronta(a.id)} style={{ padding: "6px 12px", fontSize: 13 }}>
+                    Togli
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {/* Tre motivi diversi per non poterlo offrire, e tre frasi diverse:
+              "non funziona" senza dire perché è la risposta che fa perdere
+              tempo a chi legge. */}
+          {!impronta.accese ? (
+            <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
+              Non è ancora attivo su questa installazione di Dress.
+            </p>
+          ) : !impronta.puo ? (
+            <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
+              Questo apparecchio non ha un lettore d&apos;impronta né il riconoscimento del viso — o il
+              browser non lo mette a disposizione. Provalo dal telefono.
+            </p>
+          ) : (
+            <button className="btn ghost" onClick={aggiungiImpronta} disabled={salvando === "impronta"} style={{ justifySelf: "start" }}>
+              {salvando === "impronta" ? "Aspetto l\u2019apparecchio…" : "Attiva su questo apparecchio"}
+            </button>
+          )}
         </section>
 
         <section style={{ display: "grid", gap: 8 }}>
