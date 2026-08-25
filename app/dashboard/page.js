@@ -252,6 +252,7 @@ export default function Dashboard() {
   // due aspetti diversi — e per sapere dove si poteva andare bisognava
   // leggerle tutte e due. Adesso è una, e ogni voce dice cosa ci trovi.
   const destinazioni = [
+    { href: "/tuo-stile", titolo: "I tuoi colori e i tuoi stili", detta: "La tua palette, e i capi veri di ogni stile" },
     { href: "/outfit", titolo: "I tuoi completi", detta: "Uno per stagione, nei tuoi colori" },
     { href: "/offers", titolo: "In sconto adesso", detta: "I ribassi veri dei negozi in catalogo" },
     { href: "/cerca", titolo: "Cerca un capo", detta: "Per marca o modello, filtrato sui tuoi colori" },

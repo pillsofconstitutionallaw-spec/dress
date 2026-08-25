@@ -16,7 +16,10 @@ const SENZA_CORNICE = ["/", "/auth/confirmed"];
 
 const VOCI = [
   {
-    href: "/start",
+    // "Stile" portava al questionario, cioè a rifare una cosa già fatta.
+    // Adesso porta al suo risultato: i colori e gli stili. Chi l'analisi non
+    // l'ha ancora fatta trova lì il tasto per farla.
+    href: "/tuo-stile",
     label: "Stile",
     icona: (
       <>
