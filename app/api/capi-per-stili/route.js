@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
-import { paroleDelloStile } from "@/lib/stiliCapi";
+import { paroleDellaFamiglia, paroleDelloStile } from "@/lib/stiliCapi";
 import { arricchisci, coloriVoluti, distribuisci, senzaDoppioni } from "@/lib/capiPalette";
 import { ruoloDelCapo } from "@/lib/periodiAnno";
 
@@ -28,7 +28,7 @@ export async function POST(req) {
   const { body, error: badJson } = await readJson(req);
   if (badJson) return badJson;
 
-  const { palette, stili = [], genere = null, escludiFast = false, perStile = 4 } = body || {};
+  const { palette, stili = [], genere = null, escludiFast = false, perStile = 4, min = null, max = null } = body || {};
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
@@ -42,8 +42,10 @@ export async function POST(req) {
 
   const { data, error } = await supabase.rpc("capi_per_palette", {
     palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
-    prezzo_min: null,
-    prezzo_max: null,
+    // Il budget dichiarato nel questionario: consigliare un cappotto da
+    // seicento euro a chi ne ha detti cinquanta non è un consiglio.
+    prezzo_min: min ? Number(min) : null,
+    prezzo_max: max ? Number(max) : null,
     genere_voluto: genere || null,
     escludi_fast: Boolean(escludiFast),
     // Largo: da qui in poi si scarta per stile, e uno stile di nicchia in un
@@ -71,15 +73,44 @@ export async function POST(req) {
   const quanti = Math.min(8, Math.max(1, Number(perStile) || 4));
   const fuori = {};
 
+  // Ogni stile deve avere le sue foto.
+  //
+  // Con le sole parole dello stile, "Total black" su una palette salvia
+  // trovava un capo, "Gorpcore" uno: tre riquadri vuoti in mezzo a schede
+  // piene sembrano un guasto, e chi guarda non sceglie. Quindi si prova in
+  // tre giri, e si scende di precisione solo quando serve.
+  const libero = (c) => !presi.has(c.id);
+  const conParole = (chiavi) => (c) => {
+    if (!libero(c)) return false;
+    const t = `${c.titolo || ""} ${c.categoria || ""}`.toLowerCase();
+    return chiavi.some((k) => t.includes(k));
+  };
+
   for (const nome of nomi) {
-    const chiavi = paroleDi.get(nome) || [];
-    const suoi = capi.filter((c) => {
-      if (presi.has(c.id)) return false;
-      const t = `${c.titolo || ""} ${c.categoria || ""}`.toLowerCase();
-      return chiavi.some((k) => t.includes(k));
-    });
-    const scelti = distribuisci(suoi, voluti).slice(0, quanti);
-    for (const c of scelti) presi.add(c.id);
+    const scelti = [];
+    const aggiungi = (candidati) => {
+      for (const c of distribuisci(candidati, voluti)) {
+        if (scelti.length >= quanti) break;
+        if (scelti.some((x) => x.id === c.id)) continue;
+        scelti.push(c);
+        presi.add(c.id);
+      }
+    };
+
+    // 1. le parole dello stile.
+    aggiungi(capi.filter(conParole(paroleDi.get(nome) || [])));
+
+    // 2. quelle della sua famiglia: capi che a chi ha scelto quello stile
+    //    non stonano, anche se non lo nominano.
+    if (scelti.length < quanti) {
+      aggiungi(capi.filter(conParole(paroleDellaFamiglia(nome).map((k) => k.toLowerCase()))));
+    }
+
+    // 3. e se anche la famiglia è a secco, i capi più vicini ai suoi colori.
+    //    Meno preciso, ma è pur sempre roba che gli sta bene addosso — e
+    //    tre foto valgono più di tre buchi.
+    if (scelti.length < quanti) aggiungi(capi.filter(libero));
+
     fuori[nome] = scelti;
   }
 

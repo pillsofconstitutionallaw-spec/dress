@@ -5,6 +5,7 @@ import Link from "next/link";
 import { paletteAggiornata } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
 import { apiFetch, getUser } from "@/lib/session";
+import { fasciaDaBudget } from "@/lib/ricerca";
 import Gruppo from "@/components/Gruppo";
 import StileConCapi from "@/components/StileConCapi";
 
@@ -17,6 +18,7 @@ import StileConCapi from "@/components/StileConCapi";
 export default function TuoStile() {
   const [analisi, setAnalisi] = useState(null);
   const [profilo, setProfilo] = useState(null);
+  const [budget, setBudget] = useState(null);
   const [caricamento, setCaricamento] = useState(true);
 
   // Prima il browser, poi il profilo: chi ha un account e cambia dispositivo
@@ -30,6 +32,7 @@ export default function TuoStile() {
           if (vivo) {
             setAnalisi(s.result);
             setProfilo(s.profile || null);
+            setBudget(s.budget || null);
             setCaricamento(false);
           }
           return;
@@ -44,6 +47,7 @@ export default function TuoStile() {
           if (vivo && profile?.palette?.length) {
             setAnalisi({ palette: profile.palette, ...(profile.dati || {}) });
             setProfilo(profile.dati?.profilo || null);
+            setBudget(profile.dati?.profilo?.budget || null);
           }
         }
       } catch {
@@ -73,6 +77,9 @@ export default function TuoStile() {
         genere: profilo?.sex === "female" ? "donna" : profilo?.sex === "male" ? "uomo" : null,
         escludiFast: true,
         perStile: 3,
+        // Dentro quello che hai detto di poter spendere: sotto, perché
+        // nessuno spende esattamente la cifra pensata, e un po' sopra.
+        ...(budget ? fasciaDaBudget(budget) : {}),
       }),
     })
       .then((r) => r.json())
@@ -81,7 +88,7 @@ export default function TuoStile() {
     return () => {
       vivo = false;
     };
-  }, [analisi?.palette, analisi?.stili, profilo?.sex]);
+  }, [analisi?.palette, analisi?.stili, profilo?.sex, budget]);
 
   const scegliStile = useCallback(
     (nome) => {
@@ -164,7 +171,7 @@ export default function TuoStile() {
       {stili.length ? (
         <Gruppo
           titolo="I tuoi stili"
-          detta="In ordine, dal più adatto. Sotto ognuno, capi veri di quello stile nei tuoi colori: guardali, e scegli quello che ti somiglia."
+          detta="In ordine, dal più adatto. Sotto ognuno, capi veri del catalogo nei tuoi colori e dentro il tuo budget: guardali, e scegli quello che ti somiglia."
         >
           {stili.slice(0, 5).map((st, i) => (
             <StileConCapi
