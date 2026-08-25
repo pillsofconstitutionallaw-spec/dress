@@ -197,7 +197,7 @@ export default function Impostazioni() {
     try {
       await cambiaPassword(password.nuova);
       setPassword({ nuova: "", ripeti: "" });
-      avvisa("Password cambiata.");
+      avvisa("Password cambiata. Vale da adesso, e qui resti dentro: non devi rientrare. Sugli altri dispositivi la vecchia sessione resta aperta finché non usi «Esci da tutti i dispositivi» qui sotto.");
     } catch (e) {
       setErr(e.message);
     }
