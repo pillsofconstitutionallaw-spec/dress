@@ -72,7 +72,7 @@ export default function TuoStile() {
         stili: nomi,
         genere: profilo?.sex === "female" ? "donna" : profilo?.sex === "male" ? "uomo" : null,
         escludiFast: true,
-        perStile: 4,
+        perStile: 3,
       }),
     })
       .then((r) => r.json())

@@ -40,55 +40,71 @@ export default function StileConCapi({ stile, posizione, spiegazione, scelto, ca
       </div>
 
       {spiegazione ? <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{spiegazione}</p> : null}
-      {stile.perche ? (
-        <p className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
-          <em>Perché a te:</em> {stile.perche}
-        </p>
-      ) : null}
 
-      {/* Finché i capi arrivano, quattro rettangoli grigi: così la pagina non
-          salta sotto le dita mentre si legge. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 2 }}>
-        {inArrivo
-          ? [0, 1, 2, 3].map((i) => (
-              <div key={i} style={{ aspectRatio: "3/4", background: "var(--stone)", opacity: 1 - i * 0.15 }} />
-            ))
-          : capi.map((capo) => (
-              <a
-                key={capo.id}
-                href={capo.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "block", color: "inherit", textDecoration: "none" }}
-              >
-                <div style={{ aspectRatio: "3/4", background: "var(--stone)", overflow: "hidden" }}>
-                  {capo.immagine ? (
-                    <img
-                      src={capo.immagine}
-                      alt={capo.titolo}
-                      loading="lazy"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : null}
-                </div>
-                <div className="muted" style={{ fontSize: 11, marginTop: 4, lineHeight: 1.3 }}>
-                  {chiLoVende(capo)}
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 500 }}>
-                  {capo.prezzo ? `${Math.round(capo.prezzo)} €` : ""}
-                </div>
-              </a>
-            ))}
+      {/* Il perché, e dentro il perché le foto.
+          Stavano sotto, come una riga a parte: la ragione da un lato e le
+          prove dall'altro. Ma le foto SONO la ragione — "questo stile ti sta
+          bene" e "ecco tre capi tuoi di questo stile" sono la stessa frase
+          detta in due modi, e vanno lette insieme. */}
+      <div
+        style={{
+          borderLeft: "2px solid var(--ink)",
+          paddingLeft: 14,
+          display: "grid",
+          gap: 12,
+          marginTop: 2,
+        }}
+      >
+        <p className="eyebrow" style={{ margin: 0 }}>Perché è adatto a te</p>
+
+        {stile.perche ? (
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{stile.perche}</p>
+        ) : null}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          {inArrivo
+            ? [0, 1, 2].map((i) => (
+                <div key={i} style={{ aspectRatio: "3/4", background: "var(--stone)", opacity: 1 - i * 0.18 }} />
+              ))
+            : capi.slice(0, 3).map((capo) => (
+                <a
+                  key={capo.id}
+                  href={capo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "block", color: "inherit", textDecoration: "none" }}
+                >
+                  <div style={{ aspectRatio: "3/4", background: "var(--stone)", overflow: "hidden" }}>
+                    {capo.immagine ? (
+                      <img
+                        src={capo.immagine}
+                        alt={capo.titolo}
+                        loading="lazy"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 5, lineHeight: 1.3 }}>
+                    {chiLoVende(capo)}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 500 }}>
+                    {capo.prezzo ? `${Math.round(capo.prezzo)} €` : ""}
+                  </div>
+                </a>
+              ))}
+        </div>
+
+        {!inArrivo && capi.length === 0 ? (
+          <p className="muted" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>
+            Di questo stile, nei tuoi colori, in catalogo non c&apos;è ancora niente da mostrarti. Il
+            consiglio resta valido: mancano i capi, non lo stile.
+          </p>
+        ) : (
+          <p className="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+            Capi veri, dei tuoi colori. Toccali per vederli sul sito del negozio.
+          </p>
+        )}
       </div>
-
-      {/* Se di quello stile, nei tuoi colori, il catalogo non ha niente, lo si
-          dice: quattro riquadri vuoti senza spiegazione sembrano un guasto. */}
-      {!inArrivo && capi.length === 0 ? (
-        <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
-          Di questo stile, nei tuoi colori, in catalogo non c&apos;è ancora niente. Il consiglio resta
-          valido: mancano i capi, non lo stile.
-        </p>
-      ) : null}
 
       <button
         className={scelto ? "btn" : "btn ghost"}
