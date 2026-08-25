@@ -43,9 +43,19 @@ export default function Dashboard() {
   const online = Boolean(user && confirmed);
 
   // ---- dati locali (funzionano anche senza account) -------------------
+  // Le istantanee del profilo finite nell'elenco dei completi.
+  //
+  // Una versione vecchia le scriveva lì, con l'ora grezza come titolo:
+  // "Profilo - 2026-08-14T13:22:41.802Z", in mezzo ai completi salvati. Il
+  // codice che le creava non c'è più, ma quelle già salvate stanno ancora nel
+  // browser di chi le ha. Si nascondono senza cancellarle: sono dati di
+  // qualcun altro, e nel dubbio non si buttano.
+  const eUnCompleto = (voce) =>
+    Boolean(voce) && !(voce.profile && !voce.capi?.length) && !/^.+ - \d{4}-\d{2}-\d{2}T/.test(String(voce.title || ""));
+
   const loadLocal = useCallback(() => {
     try {
-      setSaved(JSON.parse(localStorage.getItem("dress:savedItems") || "[]"));
+      setSaved(JSON.parse(localStorage.getItem("dress:savedItems") || "[]").filter(eUnCompleto));
       setFavorites(JSON.parse(localStorage.getItem("dress:favorites") || "[]"));
     } catch {
       /* niente da recuperare */

@@ -271,15 +271,6 @@ export default function Start() {
     }
   }
 
-  function saveProfile() {
-    try {
-      const item = { title: `${profile.name || 'Profilo'} - ${new Date().toISOString()}`, profile, palette: result?.palette || [], note: '' };
-      const cur = JSON.parse(localStorage.getItem('dress:savedItems') || '[]');
-      const next = [item, ...cur].slice(0, 50);
-      localStorage.setItem('dress:savedItems', JSON.stringify(next));
-    } catch {}
-  }
-
   const outfits = result ? fallbackOutfits(mode, profile) : [];
 
   return (
