@@ -9,7 +9,6 @@ import Gruppo from "@/components/Gruppo";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
   apiFetch,
-  deleteAccount,
   getUser,
   hasAccounts,
   onAuthChange,
@@ -18,16 +17,10 @@ import {
   signOut,
 } from "@/lib/session";
 
-const RETAILER_TOGGLES = ["Zara", "Vinted", "COS", "Arket", "Nike", "Puma", "New Balance", "Asics", "Lotto"];
 
-function labelOf(item) {
-  if (typeof item === "string") return item;
-  return item?.label || item?.name || item?.id || "senza nome";
-}
 
 export default function Dashboard() {
   const [saved, setSaved] = useState([]);
-  const [favorites, setFavorites] = useState([]);
   const [user, setUser] = useState(null);
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
@@ -36,7 +29,6 @@ export default function Dashboard() {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [matchRes, setMatchRes] = useState(null);
-  const [deleting, setDeleting] = useState(false);
 
   const { capi: capiPreferiti, pronto: preferitiPronti } = usaPreferiti();
   const confirmed = Boolean(user?.email_confirmed_at || user?.confirmed_at);
@@ -56,7 +48,6 @@ export default function Dashboard() {
   const loadLocal = useCallback(() => {
     try {
       setSaved(JSON.parse(localStorage.getItem("dress:savedItems") || "[]").filter(eUnCompleto));
-      setFavorites(JSON.parse(localStorage.getItem("dress:favorites") || "[]"));
     } catch {
       /* niente da recuperare */
     }
@@ -86,7 +77,6 @@ export default function Dashboard() {
         const { profile } = await apiFetch("/api/profile/get");
         if (!alive || !profile) return;
         setSaved(profile.saved_outfits || []);
-        setFavorites(profile.favorites || []);
       } catch (e) {
         setErr(e.message);
       }
@@ -105,21 +95,6 @@ export default function Dashboard() {
     }
   }
 
-  async function toggleFavorite(site) {
-    const next = favorites.some((f) => labelOf(f) === site)
-      ? favorites.filter((f) => labelOf(f) !== site)
-      : [...favorites, site];
-    setFavorites(next);
-    persistLocal("dress:favorites", next);
-    if (!online) return;
-    try {
-      const data = await apiFetch("/api/favorites/toggle", { method: "POST", body: { item: site } });
-      setFavorites(data.favorites || []);
-      persistLocal("dress:favorites", data.favorites || []);
-    } catch (e) {
-      setErr(e.message);
-    }
-  }
 
   async function saveOutfit(outfit) {
     if (!online) {
@@ -221,29 +196,6 @@ export default function Dashboard() {
     loadLocal();
   }
 
-  async function onDelete() {
-    setErr("");
-    setNotice("");
-    const typed = window.prompt(
-      `Questa operazione è definitiva: spariscono account, palette, preferiti e outfit salvati.\n\nPer confermare scrivi la tua email (${user.email}):`,
-    );
-    if (!typed) return;
-    setDeleting(true);
-    try {
-      const data = await deleteAccount(typed);
-      setUser(null);
-      setSaved([]);
-      setFavorites([]);
-      setNotice(data.message || "Account eliminato.");
-    } catch (e) {
-      setErr(
-        e.code === "CONFIRM_EMAIL_MISMATCH"
-          ? "L'email scritta non corrisponde: account non eliminato."
-          : e.message,
-      );
-    }
-    setDeleting(false);
-  }
 
   // Le destinazioni dell'app, in un elenco solo.
   //
@@ -317,31 +269,34 @@ export default function Dashboard() {
         </>
       )}
 
-      {online && (
-        <>
-          <p className="muted">
-            Collegato come <strong>{user.email}</strong>.
-          </p>
-          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-            <button className="btn ghost" onClick={onSignOut}>Esci</button>
-            <button
-              className="btn ghost"
-              onClick={onDelete}
-              disabled={deleting}
-              style={{ color: "var(--signal)" }}
-            >
-              {deleting ? "Elimino…" : "Elimina account"}
-            </button>
-          </div>
-        </>
-      )}
     </section>
   );
 
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 960 }}>
-      <h1 className="h2">Il tuo spazio personale</h1>
-      <p className="muted">I capi che hai messo da parte, i completi salvati, i negozi che segui.</p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <h1 className="h2" style={{ margin: 0 }}>Il tuo spazio personale</h1>
+          <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
+            I capi che hai messo da parte e i completi salvati.
+          </p>
+        </div>
+
+        {/* La rotella. Le impostazioni non sono una sezione di casa tua: sono
+            una stanza a parte, e ci si va quando serve. */}
+        <Link
+          href="/impostazioni"
+          aria-label="Impostazioni"
+          title="Impostazioni"
+          style={{ padding: 8, marginTop: 2, color: "var(--greige)", flex: "0 0 auto" }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </Link>
+      </div>
 
       {err ? <p style={{ color: "var(--signal)", marginTop: 12 }}>{err}</p> : null}
       {notice ? <p className="muted" style={{ marginTop: 12 }}>{notice}</p> : null}
@@ -406,24 +361,6 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* ---------------- Preferiti ---------------- */}
-      <section>
-        <h2 className="h3">Negozi che segui</h2>
-        <p className="muted">Segna i tuoi negozi per ricevere offerte mirate.</p>
-        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          {RETAILER_TOGGLES.map((site) => {
-            const on = favorites.some((f) => labelOf(f) === site);
-            return (
-              <button key={site} className={on ? "btn" : "btn ghost"} onClick={() => toggleFavorite(site)}>
-                {site}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <strong>Segui:</strong> {favorites.map(labelOf).join(", ") || "nessuno"}
-        </div>
-      </section>
       </Gruppo>
 
       <Gruppo
@@ -489,11 +426,6 @@ export default function Dashboard() {
       </nav>
       </Gruppo>
 
-      {online ? (
-        <Gruppo titolo="Impostazioni">
-          {sezioneAccount}
-        </Gruppo>
-      ) : null}
     </div>
   );
 }
