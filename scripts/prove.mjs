@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
-import { analizzaColori } from "@/lib/analisiFoto";
+import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
@@ -300,4 +300,125 @@ test("ogni stagione esiste davvero e porta con sé i suoi colori", async () => {
     assert.ok(r.palette.length >= 5, `palette vuota o corta per ${t.id} (${r.season})`);
     assert.ok(r.descrizione, `stagione senza descrizione per ${t.id}`);
   }
+});
+
+// --------------------------------------------------------------------------
+// La lettura della foto.
+//
+// Era il pezzo che nessuna prova poteva toccare: misurava i pixel su un
+// canvas, cioè su un foglio che esiste solo dentro un browser, e le prove
+// girano senza schermo. Adesso la lettura è tagliata in due — chi procura i
+// pixel e chi ci ragiona sopra — e la seconda metà, che è quella che decide,
+// si prova costruendo la faccia qui sotto.
+//
+// Fuori resta solo il browser che apre un JPEG: se sbaglia lui, non è un
+// difetto nostro.
+// --------------------------------------------------------------------------
+const LATO = 96;
+const tra = (v, a, b) => v > a && v < b;
+
+// Le stesse zone che guarda l'analisi: fronte, e le due guance.
+const zonaViso = (x, y) =>
+  (tra(y, 0.20, 0.34) && tra(x, 0.34, 0.66)) ||
+  (tra(y, 0.44, 0.62) && (tra(x, 0.24, 0.40) || tra(x, 0.60, 0.76)));
+
+/**
+ * Una faccia finta, nel formato in cui il browser consegna una vera: una fila
+ * di numeri, quattro caselle per pixel — rosso, verde, blu, opacità.
+ *
+ * Serve a poter costruire i casi che nella vita capitano e in una cartella di
+ * fotografie no: la stessa persona sotto la lampadina di casa, la foto fatta
+ * al buio, l'inquadratura da troppo lontano.
+ */
+function faccia({ pelle, capelli = [42, 34, 30], sfondo = [180, 179, 178], tinta = [1, 1, 1], buio = 1 }) {
+  const d = new Uint8ClampedArray(LATO * LATO * 4);
+  for (let y = 0; y < LATO; y++) {
+    for (let x = 0; x < LATO; x++) {
+      const colore = zonaViso(x / LATO, y / LATO) ? pelle : y / LATO < 0.18 ? capelli : sfondo;
+      const i = (y * LATO + x) * 4;
+      for (let k = 0; k < 3; k++) d[i + k] = Math.min(255, Math.round(colore[k] * tinta[k] * buio));
+      d[i + 3] = 255;
+    }
+  }
+  return d;
+}
+
+const misura = (opzioni) => misuraDaiPixel(daiPixelGrezzi(faccia(opzioni), LATO));
+const angolo = (c) => Math.round((Math.atan2(c.b, c.a) * 180) / Math.PI);
+
+// Sotto i 48 gradi la pelle tira al rosa, sopra i 55 al giallo.
+const PELLE_FREDDA = [232, 186, 178];
+const PELLE_CALDA = [232, 196, 152];
+// Una lampadina di casa: toglie blu. Lieve abbastanza da poter essere corretta.
+const LAMPADINA = [1, 1, 0.86];
+
+test("la pelle si riconosce dal colore, e il cielo e l'erba no", () => {
+  assert.equal(sembraPelle({ L: 70, a: 14, b: 20 }), true, "un incarnato chiaro");
+  assert.equal(sembraPelle({ L: 40, a: 16, b: 22 }), true, "un incarnato scuro");
+  assert.equal(sembraPelle({ L: 70, a: -20, b: 10 }), false, "verde");
+  assert.equal(sembraPelle({ L: 70, a: 5, b: -30 }), false, "blu");
+  assert.equal(sembraPelle({ L: 8, a: 12, b: 18 }), false, "troppo scuro per essere misurato");
+  assert.equal(sembraPelle({ L: 98, a: 12, b: 18 }), false, "bruciato");
+});
+
+test("senza niente di neutro da cui capire la luce, non si inventa una correzione", () => {
+  // Tutti i pixel colorati: nessuno può fare da bianco di riferimento.
+  const tuttoRosso = Array.from({ length: 400 }, () => ({ r: 220, g: 40, b: 40 }));
+  const esito = correggiLuce(tuttoRosso);
+  assert.equal(esito.affidabile, false);
+  assert.deepEqual(esito.fattori, { r: 1, g: 1, b: 1 }, "ha corretto qualcosa che non poteva sapere");
+});
+
+test("una faccia in luce buona si misura: pelle chiara, capelli scuri, contrasto netto", () => {
+  const r = misura({ pelle: PELLE_FREDDA });
+  assert.ok(!r.fallita);
+  assert.ok(r.pelle.L > 70, `pelle troppo scura: ${r.pelle.L}`);
+  assert.ok(r.capelli.L < 25, `capelli troppo chiari: ${r.capelli.L}`);
+  assert.ok(r.contrasto > 45);
+  assert.equal(r.condizioni.utilizzabile, true);
+  assert.equal(r.condizioni.problemi.length, 0);
+  assert.ok(r.campioni.pelle > 200, "ha trovato pochissima pelle su una faccia intera");
+});
+
+test("la correzione della luce salva il verdetto, non lo aggiusta soltanto", () => {
+  // È il passaggio che decide tutto: una lampadina di casa butta giallo su
+  // ogni cosa, e senza toglierlo si misura il giallo della lampadina e lo si
+  // scambia per il sottotono della persona.
+  const buona = misura({ pelle: PELLE_FREDDA });
+  const sottoLaLampadina = misura({ pelle: PELLE_FREDDA, tinta: LAMPADINA });
+
+  assert.equal(sottoLaLampadina.luce.affidabile, true, "non ha nemmeno provato a correggere");
+  // Senza correzione questo stesso scatto misurerebbe 62 gradi, cioè "caldo":
+  // la palette di un'altra persona, data con la faccia di chi è sicuro.
+  assert.ok(angolo(sottoLaLampadina.pelle) < 48, `misurato ${angolo(sottoLaLampadina.pelle)}°, cioè non più freddo`);
+  assert.ok(
+    Math.abs(angolo(buona.pelle) - angolo(sottoLaLampadina.pelle)) <= 3,
+    `la lampadina ha spostato la misura di ${Math.abs(angolo(buona.pelle) - angolo(sottoLaLampadina.pelle))} gradi`,
+  );
+});
+
+test("quando la dominante è troppo forte lo dice, invece di tirare a indovinare", () => {
+  const r = misura({ pelle: PELLE_FREDDA, tinta: [1.22, 1, 0.72] });
+  assert.equal(r.luce.affidabile, false);
+  assert.ok(r.condizioni.problemi.some((p) => /bianco o neutro/.test(p)), "non ha spiegato perché");
+});
+
+test("una foto al buio viene rifiutata con la ragione giusta", () => {
+  const r = misura({ pelle: PELLE_FREDDA, buio: 0.28 });
+  assert.equal(r.condizioni.utilizzabile, false);
+  assert.ok(r.condizioni.problemi.some((p) => /troppo scura/.test(p)));
+});
+
+test("se nell'inquadratura non c'è un viso, l'analisi si ferma", () => {
+  // Uno sfondo e basta: nessun pixel di pelle dove la pelle dovrebbe stare.
+  const r = misura({ pelle: [180, 179, 178] });
+  assert.equal(r.fallita, true, "ha misurato un incarnato dove non c'era una faccia");
+  assert.ok(r.condizioni.problemi.some((p) => /troppo poco spazio/.test(p)));
+});
+
+test("pelle rosata e pelle dorata cadono su lati opposti della soglia", () => {
+  const fredda = angolo(misura({ pelle: PELLE_FREDDA }).pelle);
+  const calda = angolo(misura({ pelle: PELLE_CALDA }).pelle);
+  assert.ok(fredda < 48, `la rosata misura ${fredda}°`);
+  assert.ok(calda > 55, `la dorata misura ${calda}°`);
 });
