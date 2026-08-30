@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import ColorePelle from "@/components/ColorePelle";
+import Drappeggio from "@/components/Drappeggio";
 import Gruppo from "@/components/Gruppo";
+import TestArmocromia from "@/components/TestArmocromia";
 import { EYES, FAMIGLIE_STILI, HAIR, spiegaStile } from "@/lib/data";
 import { fileToDataUrl } from "@/lib/img";
 import { FORME } from "@/lib/proporzioni";
@@ -32,7 +34,53 @@ const COLORI_PROFILO = [
 ];
 
 const VUOTO = {
-  height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "", comment: "",
+  height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "",
+};
+
+// La correzione a mano, tradotta in numeri.
+//
+// Il motore accettava già una correzione che scavalca tutto — "nessuna misura
+// vale quanto una persona che si guarda allo specchio", diceva il commento —
+// ma nessuna pagina gliela passava: era una promessa senza il tasto per
+// mantenerla. Questi sono i valori con cui la si mantiene.
+//
+// Non si chiede un numero: si chiede la cosa che una persona sa di sé. Poi la
+// traduciamo noi, perché "quanto sei luminoso in scala Lab" non è una domanda.
+const LUCE = { chiara: 74, media: 58, scura: 36 };
+const CONTRASTO = { netto: 48, morbido: 16 };
+
+const SCELTE_CORREZIONE = [
+  {
+    campo: "sottotono",
+    voce: "Sottotono",
+    detta: "L'oro ti illumina o ti spegne? Il caldo tira al dorato, il freddo al rosato.",
+    opzioni: [{ id: "caldo", nome: "Caldo" }, { id: "freddo", nome: "Freddo" }],
+    valore: (id) => id,
+  },
+  {
+    campo: "luce",
+    voce: "Quanto sei chiaro",
+    detta: "Nel complesso, pelle e capelli insieme: non solo la pelle.",
+    opzioni: [{ id: "chiara", nome: "Chiaro" }, { id: "media", nome: "Medio" }, { id: "scura", nome: "Scuro" }],
+    valore: (id) => LUCE[id],
+  },
+  {
+    campo: "contrasto",
+    voce: "Contrasto",
+    detta: "La distanza fra i tuoi capelli e la tua pelle. Netta come il bianco e nero, o sfumata.",
+    opzioni: [{ id: "netto", nome: "Netto" }, { id: "morbido", nome: "Morbido" }],
+    valore: (id) => CONTRASTO[id],
+  },
+];
+
+// Dal numero salvato alla voce accesa: serve a riaprire la pagina trovando
+// selezionato quello che si era scelto, invece di tre caselle vuote.
+const idScelto = (campo, correzione) => {
+  const v = correzione?.[campo];
+  if (v == null) return "";
+  if (campo === "sottotono") return v;
+  const tabella = campo === "luce" ? LUCE : CONTRASTO;
+  return Object.keys(tabella).find((k) => tabella[k] === v) || "";
 };
 
 const nomeForma = (id) => FORME.find((f) => f.id === id)?.nome || null;
@@ -107,7 +155,17 @@ export default function Profilo() {
   const [bozzaBudget, setBozzaBudget] = useState("");
   const [modificaInfo, setModificaInfo] = useState(false);
 
+  // Le risposte al drappeggio pesano più di ogni domanda del questionario
+  // (il confronto oro/argento vale 3.4 contro il 2.4 della domanda più
+  // pesante): rigenerare senza poterle rifare voleva dire rigenerare col
+  // pezzo più importante bloccato.
   const [testRisposte, setTestRisposte] = useState({});
+  const [bozzaTest, setBozzaTest] = useState({});
+  const [mostraDrappeggio, setMostraDrappeggio] = useState(false);
+
+  const [correzione, setCorrezione] = useState(null);
+  const [bozzaCorrezione, setBozzaCorrezione] = useState({});
+
   const [risultato, setRisultato] = useState(null);
 
   const avvisa = useCallback((testo) => {
@@ -131,6 +189,9 @@ export default function Profilo() {
         setBudget(sessione.budget || "");
         setBozzaBudget(sessione.budget || "");
         setTestRisposte(sessione.testRisposte || {});
+        setBozzaTest(sessione.testRisposte || {});
+        setCorrezione(sessione.correzione || null);
+        setBozzaCorrezione(sessione.correzione || {});
         setRisultato(sessione.result || null);
       }
 
@@ -165,7 +226,14 @@ export default function Profilo() {
             setBudget(profile.dati.profilo.budget || "");
             setBozzaBudget(profile.dati.profilo.budget || "");
           }
-          if (!sessione?.testRisposte && profile?.dati?.testArmocromia) setTestRisposte(profile.dati.testArmocromia);
+          if (!sessione?.testRisposte && profile?.dati?.testArmocromia) {
+            setTestRisposte(profile.dati.testArmocromia);
+            setBozzaTest(profile.dati.testArmocromia);
+          }
+          if (!sessione?.correzione && profile?.dati?.correzione) {
+            setCorrezione(profile.dati.correzione);
+            setBozzaCorrezione(profile.dati.correzione);
+          }
           if (!sessione?.result && profile?.palette?.length) {
             setRisultato({ palette: profile.palette, ...(profile.dati || {}) });
           }
@@ -233,6 +301,76 @@ export default function Profilo() {
   }
 
   /**
+   * Rifà l'analisi e la salva ovunque debba stare.
+   *
+   * Una procedura sola per due tasti — «Salva e rigenera» e «Applica la
+   * correzione» — perché fanno la stessa cosa con dati diversi, e due copie
+   * della stessa procedura prima o poi si comportano in due modi diversi.
+   */
+  async function rigenera({ profilo, foto: nuoveFoto, budget: nuovoBudget, test, corr, quale, detto: messaggio }) {
+    setErr("");
+    setDetto("");
+    setMancanze([]);
+    setSalvando(quale);
+    try {
+      const { risultato: nuovo, avvisi } = await eseguiAnalisi({
+        profile: profilo,
+        closeup: nuoveFoto.closeup,
+        fullbody: nuoveFoto.fullbody,
+        testRisposte: test,
+        correzione: corr,
+      });
+
+      // Lo stile che avevi scelto resta scelto, se è ancora fra i consigliati:
+      // cambiare l'altezza non è un motivo per perderlo.
+      const primaScelto = risultato?.stileScelto || null;
+      const restaScelto = (nuovo.stili || []).some((st) => st.nome === primaScelto) ? primaScelto : null;
+      const completo = { ...nuovo, stileScelto: restaScelto };
+
+      setInfo(profilo);
+      setFoto(nuoveFoto);
+      setBudget(nuovoBudget);
+      setTestRisposte(test);
+      setCorrezione(corr);
+      setRisultato(completo);
+      setMancanze(avvisi);
+
+      aggiornaSessione({
+        profile: profilo,
+        closeup: nuoveFoto.closeup,
+        fullbody: nuoveFoto.fullbody,
+        budget: nuovoBudget,
+        testRisposte: test,
+        correzione: corr,
+        result: completo,
+      });
+      const daSalvare = { profile: profilo, budget: nuovoBudget, testRisposte: test, correzione: corr, stileScelto: restaScelto };
+      await salvaAnalisi({ risultato: completo, ...daSalvare });
+
+      avvisa(
+        `${messaggio}: ${completo.season}.` +
+          (avvisi.length ? " Qui sotto c'è cosa lo renderebbe ancora più preciso." : ""),
+      );
+      setSalvando("");
+
+      // Le parole, se l'AI risponde. Il risultato è già completo senza, e
+      // aspettarla col tasto spento terrebbe fermo chi ha già finito.
+      const parole = await arricchisciConAI(completo, profilo);
+      if (parole) {
+        const arricchito = { ...completo, ...parole };
+        setRisultato(arricchito);
+        aggiornaSessione({ result: arricchito });
+        await salvaAnalisi({ risultato: arricchito, ...daSalvare });
+      }
+      return true;
+    } catch (e) {
+      setErr("Non sono riuscito a rifare l'analisi. Se hai cambiato una foto, riprova con una più luminosa.");
+      setSalvando("");
+      return false;
+    }
+  }
+
+  /**
    * Il salvataggio che rigenera tutto.
    *
    * Non importa se hai cambiato dieci righe o solo il colore degli occhi: da
@@ -241,66 +379,49 @@ export default function Profilo() {
    * da cui dipende un risultato — e finora non succedeva.
    */
   async function salvaInformazioni() {
-    setErr("");
-    setDetto("");
-    setMancanze([]);
-    setSalvando("info");
-    try {
-      const { risultato: nuovo, avvisi } = await eseguiAnalisi({
-        profile: bozza,
-        closeup: bozzaFoto.closeup,
-        fullbody: bozzaFoto.fullbody,
-        testRisposte,
-      });
+    const fatto = await rigenera({
+      profilo: bozza,
+      foto: bozzaFoto,
+      budget: bozzaBudget,
+      test: bozzaTest,
+      corr: correzione,
+      quale: "info",
+      detto: "Rifatto tutto con i dati nuovi",
+    });
+    if (fatto) setModificaInfo(false);
+  }
 
-      // Lo stile che avevi scelto resta scelto, se è ancora fra i consigliati:
-      // cambiare l'altezza non è un motivo per perderlo.
-      const primaScelto = risultato?.stileScelto || null;
-      const restaScelto = (nuovo.stili || []).some((s) => s.nome === primaScelto) ? primaScelto : null;
-      const completo = { ...nuovo, stileScelto: restaScelto };
-
-      setInfo(bozza);
-      setFoto(bozzaFoto);
-      setBudget(bozzaBudget);
-      setRisultato(completo);
-      setModificaInfo(false);
-      setMancanze(avvisi);
-
-      aggiornaSessione({
-        profile: bozza,
-        closeup: bozzaFoto.closeup,
-        fullbody: bozzaFoto.fullbody,
-        budget: bozzaBudget,
-        testRisposte,
-        result: completo,
-      });
-      await salvaAnalisi({ risultato: completo, profile: bozza, budget: bozzaBudget, testRisposte, stileScelto: restaScelto });
-
-      avvisa(
-        `Rifatto tutto con i dati nuovi: ${completo.season}.` +
-          (avvisi.length ? " Qui sotto c'è cosa lo renderebbe ancora più preciso." : ""),
-      );
-      setSalvando("");
-
-      // Le parole, se l'AI risponde. Il risultato è già completo senza, e
-      // aspettarla col tasto spento terrebbe fermo chi ha già finito.
-      const parole = await arricchisciConAI(completo, bozza);
-      if (parole) {
-        const arricchito = { ...completo, ...parole };
-        setRisultato(arricchito);
-        aggiornaSessione({ result: arricchito });
-        await salvaAnalisi({ risultato: arricchito, profile: bozza, budget: bozzaBudget, testRisposte, stileScelto: restaScelto });
-      }
-    } catch (e) {
-      setErr("Non sono riuscito a rifare l'analisi. Se hai cambiato una foto, riprova con una più luminosa.");
-      setSalvando("");
+  /** La correzione a mano: comanda su tutto, e da qui si toglie. */
+  function applicaCorrezione() {
+    const pulita = {};
+    for (const { campo, valore } of SCELTE_CORREZIONE) {
+      const id = bozzaCorrezione[campo];
+      if (id) pulita[campo] = valore(id);
     }
+    rigenera({
+      profilo: info,
+      foto,
+      budget,
+      test: testRisposte,
+      corr: Object.keys(pulita).length ? pulita : null,
+      quale: "correzione",
+      detto: "Corretto",
+    });
+  }
+
+  function togliCorrezione() {
+    setBozzaCorrezione({});
+    rigenera({
+      profilo: info, foto, budget, test: testRisposte, corr: null,
+      quale: "correzione", detto: "Correzione tolta, torna la misura",
+    });
   }
 
   function annullaInformazioni() {
     setBozza(info);
     setBozzaFoto(foto);
     setBozzaBudget(budget);
+    setBozzaTest(testRisposte);
     setModificaInfo(false);
     setErr("");
     setDetto("");
@@ -316,6 +437,7 @@ export default function Profilo() {
   }
 
   const tono = tonoPelle(info.pelle);
+  const quanteRisposte = Object.values(bozzaTest).filter((v) => v !== undefined && v !== null).length;
 
   return (
     <div className="wrap" style={{ paddingTop: 56, paddingBottom: 40, maxWidth: 720 }}>
@@ -482,6 +604,44 @@ export default function Profilo() {
                 <ColorePelle valore={bozza.pelle} onCambia={(id) => setBozza((b) => ({ ...b, pelle: id }))} />
               </div>
 
+              {/* Il drappeggio pesa più di ogni domanda del questionario, ed è
+                  l'unico momento in cui uno GUARDA sé stesso accanto a un
+                  colore invece di ricordare. Rigenerare senza poterlo rifare
+                  voleva dire tenere bloccato il pezzo che conta di più.
+                  Chiuso di suo: è lungo, e chi è venuto a correggere
+                  l'altezza non deve scavalcarlo. */}
+              <div className="field">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <span className="label">Il drappeggio e le domande</span>
+                  <button className="btn ghost" type="button" onClick={() => setMostraDrappeggio((v) => !v)}
+                    style={{ padding: "6px 12px", fontSize: 12.5 }}>
+                    {mostraDrappeggio ? "Chiudi" : quanteRisposte ? "Rifallo" : "Fallo"}
+                  </button>
+                </div>
+                <span className="muted" style={{ fontSize: 12.5, display: "block", marginTop: 6, lineHeight: 1.45 }}>
+                  {quanteRisposte
+                    ? `Hai risposto a ${quanteRisposte} ${quanteRisposte === 1 ? "domanda" : "domande"}. Pesano più della foto, e restano valide finché non le cambi.`
+                    : "Non l'hai mai fatto. Sono le domande che fa un armocromista prima di appoggiarti i teli sotto il viso, e pesano più della foto."}
+                </span>
+
+                {mostraDrappeggio ? (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ marginBottom: 22 }}>
+                      <Drappeggio
+                        foto={bozzaFoto.closeup}
+                        scelte={bozzaTest}
+                        onScelta={(id, v) => setBozzaTest((r) => ({ ...r, [id]: v }))}
+                      />
+                    </div>
+                    <TestArmocromia
+                      risposte={bozzaTest}
+                      onRisposta={(id, v) => setBozzaTest((r) => ({ ...r, [id]: v }))}
+                      compatto
+                    />
+                  </div>
+                ) : null}
+              </div>
+
               <label className="field"><span className="label">Sesso</span>
                 <select className="control" value={bozza.sex} onChange={cambiaBozza("sex")}>
                   <option value="">Preferisco non specificare</option>
@@ -544,6 +704,66 @@ export default function Profilo() {
               ))}
             </div>
             <Link href="/tuo-stile" className="btn ghost" style={{ justifySelf: "start" }}>Vedi colori e stili</Link>
+          </section>
+
+          {/* La correzione a mano.
+              Il motore la accettava da sempre — e il commento accanto diceva
+              che nessuna misura vale quanto una persona che si guarda allo
+              specchio — ma nessuna pagina gliela passava: chi leggeva una
+              stagione che non era la sua poteva solo rifare il questionario e
+              sperare in un risultato diverso. Adesso ha l'ultima parola, e
+              può ritirarla. */}
+          <section style={{ display: "grid", gap: 14 }}>
+            <div>
+              <strong style={{ fontSize: 15 }}>Non ti somiglia? Correggila tu</strong>
+              <p className="muted" style={{ margin: "6px 0 0", fontSize: 13.5, lineHeight: 1.5 }}>
+                La misura può sbagliare: la luce di una stanza, una foto storta, un caso al limite.
+                Quello che vedi allo specchio vale di più, e qui comanda. Cambia solo quello di cui
+                sei sicuro: il resto resta come l&apos;abbiamo misurato.
+              </p>
+            </div>
+
+            {correzione ? (
+              <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, borderLeft: "2px solid var(--ink)", paddingLeft: 12 }}>
+                Adesso comanda la tua correzione, non la misura. Si vede anche nel risultato, dove
+                al posto di com&apos;è stato deciso c&apos;è scritto «tua correzione».
+              </p>
+            ) : null}
+
+            {SCELTE_CORREZIONE.map((scelta) => {
+              const attuale = bozzaCorrezione[scelta.campo] || "";
+              return (
+                <div key={scelta.campo} style={{ display: "grid", gap: 7 }}>
+                  <span className="label">{scelta.voce}</span>
+                  <span className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>{scelta.detta}</span>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="button" className={!attuale ? "btn" : "btn ghost"}
+                      onClick={() => setBozzaCorrezione((c) => ({ ...c, [scelta.campo]: "" }))}
+                      style={{ padding: "6px 14px", fontSize: 13 }}>
+                      Come misurato
+                    </button>
+                    {scelta.opzioni.map((o) => (
+                      <button key={o.id} type="button" className={attuale === o.id ? "btn" : "btn ghost"}
+                        onClick={() => setBozzaCorrezione((c) => ({ ...c, [scelta.campo]: o.id }))}
+                        style={{ padding: "6px 14px", fontSize: 13 }}>
+                        {o.nome}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn" onClick={applicaCorrezione} disabled={salvando === "correzione"}>
+                {salvando === "correzione" ? "Rifaccio…" : "Applica la correzione"}
+              </button>
+              {correzione ? (
+                <button className="btn ghost" onClick={togliCorrezione} disabled={salvando === "correzione"}>
+                  Torna alla misura
+                </button>
+              ) : null}
+            </div>
           </section>
         </Gruppo>
       ) : (

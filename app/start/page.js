@@ -49,7 +49,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", comment: "", sex: "" });
+  const [profile, setProfile] = useState({ height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -66,6 +66,10 @@ export default function Start() {
   const [avvisi, setAvvisi] = useState([]);
   const [testRisposte, setTestRisposte] = useState({});
   const [mostraTest, setMostraTest] = useState(false);
+  // La correzione a mano si fa dal profilo, ma vale dappertutto: se la
+  // scordassimo qui, rifare l'analisi da questa pagina riporterebbe di
+  // soppiatto la stagione che la persona aveva già rifiutato.
+  const [correzione, setCorrezione] = useState(null);
 
   const set = (k) => (e) => setProfile((p) => ({ ...p, [k]: e.target.value }));
 
@@ -83,6 +87,7 @@ export default function Start() {
         if (s.budget) setBudget(s.budget);
         if (s.result) setResult(s.result);
         if (s.testRisposte) setTestRisposte(s.testRisposte);
+        if (s.correzione) setCorrezione(s.correzione);
       }
     } catch (e) {
       // ignore
@@ -100,10 +105,10 @@ export default function Start() {
 
   useEffect(() => {
     try {
-      const s = { profile, closeup, fullbody, step, mode, budget, result, testRisposte };
+      const s = { profile, closeup, fullbody, step, mode, budget, result, testRisposte, correzione };
       localStorage.setItem("dress:session", JSON.stringify(s));
     } catch (e) {}
-  }, [profile, closeup, fullbody, step, mode, budget, result, testRisposte]);
+  }, [profile, closeup, fullbody, step, mode, budget, result, testRisposte, correzione]);
 
   async function onPhoto(setter, e) {
     const file = e.target.files?.[0];
@@ -175,7 +180,7 @@ export default function Start() {
       // L'analisi la facciamo qui nel telefono: misura la foto, calcola la
       // stagione, sceglie i cinque stili. Non serve rete, non serve una
       // chiave, non può esaurirsi. E la foto non esce da qui.
-      const { risultato, avvisi: mancanze } = await eseguiAnalisi({ profile, closeup, fullbody, testRisposte });
+      const { risultato, avvisi: mancanze } = await eseguiAnalisi({ profile, closeup, fullbody, testRisposte, correzione });
       setAvvisi(mancanze);
 
       // Sotto la soglia di certezza non affermiamo: apriamo il drappeggio.
@@ -187,7 +192,7 @@ export default function Start() {
 
       // Palette e stili si salvano: rifare l'analisi vorrebbe dire richiedere
       // le foto ogni volta, e nessuno lo farebbe.
-      salvaAnalisi({ risultato, profile, budget, testRisposte });
+      salvaAnalisi({ risultato, profile, budget, testRisposte, correzione });
 
       // Poi, se l'AI risponde, arrivano solo le PAROLE.
       const parole = await arricchisciConAI(risultato, profile);
@@ -537,7 +542,7 @@ export default function Start() {
                       onClick={() => {
                         const nuovo = scelto ? null : st.nome;
                         setResult((r) => ({ ...r, stileScelto: nuovo }));
-                        salvaAnalisi({ risultato: { ...result, stileScelto: nuovo }, profile, budget, testRisposte, stileScelto: nuovo });
+                        salvaAnalisi({ risultato: { ...result, stileScelto: nuovo }, profile, budget, testRisposte, correzione, stileScelto: nuovo });
                       }}
                       className="card"
                       style={{
