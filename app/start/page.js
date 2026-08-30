@@ -6,12 +6,12 @@ import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
 import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
 import { FORME } from "@/lib/proporzioni";
-import { leggiVestiti, stiliDaiVestiti } from "@/lib/leggiVestiti";
 import BrandMark from "@/components/BrandMark";
-import { apiFetch, getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
-import { analizzaColori } from "@/lib/analisiFoto";
+import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
 import { principali } from "@/lib/stagioni";
-import { consigliaStili } from "@/lib/consigliaStili";
+import { arricchisciConAI, eseguiAnalisi, salvaAnalisi } from "@/lib/analisiCompleta";
+import { tonoPelle } from "@/lib/pelle";
+import ColorePelle from "@/components/ColorePelle";
 import TestArmocromia from "@/components/TestArmocromia";
 import Drappeggio from "@/components/Drappeggio";
 
@@ -49,7 +49,7 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", weight: "", forma: "", hair: "", eyes: "", style: "", comment: "", sex: "" });
+  const [profile, setProfile] = useState({ height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", comment: "", sex: "" });
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -82,6 +82,7 @@ export default function Start() {
         if (s.mode) setMode(s.mode);
         if (s.budget) setBudget(s.budget);
         if (s.result) setResult(s.result);
+        if (s.testRisposte) setTestRisposte(s.testRisposte);
       }
     } catch (e) {
       // ignore
@@ -99,10 +100,10 @@ export default function Start() {
 
   useEffect(() => {
     try {
-      const s = { profile, closeup, fullbody, step, mode, budget, result };
+      const s = { profile, closeup, fullbody, step, mode, budget, result, testRisposte };
       localStorage.setItem("dress:session", JSON.stringify(s));
     } catch (e) {}
-  }, [profile, closeup, fullbody, step, mode, budget, result]);
+  }, [profile, closeup, fullbody, step, mode, budget, result, testRisposte]);
 
   async function onPhoto(setter, e) {
     const file = e.target.files?.[0];
@@ -171,103 +172,30 @@ export default function Start() {
     setErr("");
     setAvvisi([]);
     try {
-      // 1. L'analisi la facciamo noi, qui nel telefono: misura la foto,
-      //    calcola la stagione, sceglie i cinque stili. Non serve rete, non
-      //    serve una chiave, non può esaurirsi. E la foto non esce da qui.
-      const nostra = await analizzaColori({ profile, closeup, fullbody, testRisposte });
-      // La data di nascita viene dall'iscrizione, non la chiediamo due volte.
-      let dataNascita = null;
-      try {
-        const u = await getUser();
-        dataNascita = u?.user_metadata?.data_nascita || null;
-      } catch {
-        /* senza account l'età semplicemente non entra nel calcolo */
-      }
-      // Come ti vesti già, letto dalla foto a figura intera: uno stylist
-      // non chiede che stile hai, guarda.
-      const vestiti = fullbody ? await leggiVestiti(fullbody) : null;
-      const stili = consigliaStili(nostra, { ...profile, dataNascita }, stiliDaiVestiti(vestiti));
-
-      // L'utente deve sapere cosa gli manca e cosa cambia, invece di ricevere
-      // un risultato più debole senza capire perché.
-      const mancanze = [];
-      // Se le condizioni non permettono di misurare, si dice — come farebbe
-      // un armocromista che ti sposta vicino alla finestra invece di tirare
-      // a indovinare.
-      for (const problema of nostra.misura?.condizioni?.problemi || []) mancanze.push(problema);
-      if (!closeup) {
-        mancanze.push("Senza il primo piano non abbiamo misurato il tuo incarnato: la stagione è dedotta dai dati che hai scritto, quindi meno precisa. Aggiungi una foto del viso in luce naturale.");
-      } else if (!nostra.misura?.daFoto) {
-        mancanze.push("La foto del viso non era leggibile — spesso è la luce artificiale o il viso troppo piccolo nell'inquadratura. Riprova vicino a una finestra.");
-      }
-      if (!fullbody) {
-        mancanze.push("Manca la foto a figura intera: senza, la lettura dello stile si basa solo su quello che hai dichiarato.");
-      }
+      // L'analisi la facciamo qui nel telefono: misura la foto, calcola la
+      // stagione, sceglie i cinque stili. Non serve rete, non serve una
+      // chiave, non può esaurirsi. E la foto non esce da qui.
+      const { risultato, avvisi: mancanze } = await eseguiAnalisi({ profile, closeup, fullbody, testRisposte });
       setAvvisi(mancanze);
 
       // Sotto la soglia di certezza non affermiamo: apriamo il drappeggio.
       // È la regola che tiene l'analisi quasi sempre giusta — non rispondere
       // vale più di rispondere male.
-      if (nostra.daConfermare) setMostraTest(true);
-      const base = { ...nostra, stili, styleReading: null };
-      setResult(base);
+      if (risultato.daConfermare) setMostraTest(true);
+      setResult(risultato);
       setStep(4);
 
       // Palette e stili si salvano: rifare l'analisi vorrebbe dire richiedere
       // le foto ogni volta, e nessuno lo farebbe.
-      salvaAnalisi(base);
+      salvaAnalisi({ risultato, profile, budget, testRisposte });
 
-      // 2. Poi, se l'AI è disponibile, chiediamo solo le PAROLE: la lettura
-      //    dello stile e i capi da cui partire. Se non risponde, l'utente non
-      //    se ne accorge — ha già tutto quello che conta.
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // Si mandano i NUMERI, non le immagini.
-          body: JSON.stringify({ profile, misura: { season: nostra.season, palette: nostra.palette, ...nostra.misura } }),
-        });
-        const aiuto = await res.json();
-        if (res.ok && aiuto?.source && aiuto.source !== "fallback" && aiuto.source !== "demo") {
-          setResult((r) => ({
-            ...r,
-            styleReading: aiuto.styleReading || r.styleReading,
-            stili: r.stili.map((s) => {
-              const suo = (aiuto.stili || []).find((x) => x.nome === s.nome);
-              return suo?.capi?.length ? { ...s, capi: suo.capi, perche: suo.perche || s.perche } : s;
-            }),
-          }));
-        }
-      } catch {
-        /* l'analisi nostra è già completa */
-      }
+      // Poi, se l'AI risponde, arrivano solo le PAROLE.
+      const parole = await arricchisciConAI(risultato, profile);
+      if (parole) setResult((r) => ({ ...r, ...parole }));
     } catch (e) {
       setErr("Non sono riuscito a leggere la foto. Riprova con una più luminosa, o vai avanti senza.");
     } finally {
       setLoading(false);
-    }
-  }
-
-  // Salva l'esito dell'analisi sul profilo, se c'è un account.
-  async function salvaAnalisi(esito, stileScelto) {
-    try {
-      await apiFetch("/api/profile/save", {
-        method: "POST",
-        body: {
-          palette: esito.palette,
-          dati: {
-            season: esito.season,
-            misura: esito.misura,
-            stili: esito.stili,
-            stileScelto: stileScelto ?? esito.stileScelto ?? null,
-            profilo: { ...profile, budget },
-            testArmocromia: testRisposte,
-            aggiornato: new Date().toISOString(),
-          },
-        },
-      });
-    } catch {
-      /* senza account resta tutto nel browser */
     }
   }
 
@@ -405,6 +333,14 @@ export default function Start() {
             </select>
           </label>
 
+          {/* Il colore della pelle si sceglie guardandolo, non nominandolo:
+              nell'elenco a tendina finiva "oliva" anche chi ha la pelle rosa
+              tenue, e da lì usciva la palette di un'altra persona. */}
+          <div className="field">
+            <span className="label">Colore della pelle</span>
+            <ColorePelle valore={profile.pelle} onCambia={(id) => setProfile((p) => ({ ...p, pelle: id }))} />
+          </div>
+
           <label className="field">
             <span className="label">Sesso</span>
             <select className="control" value={profile.sex} onChange={(e) => setProfile((p) => ({ ...p, sex: e.target.value }))}>
@@ -474,7 +410,7 @@ export default function Start() {
           <div className="summary-card" style={{ marginBottom: 24, maxWidth: 620 }}>
             <p className="eyebrow" style={{ marginBottom: 8 }}>Riepilogo</p>
             <p className="muted" style={{ margin: 0, fontSize: 15 }}>
-              {profile.height || "—"} cm · {profile.weight ? `${profile.weight} kg · ` : ""}capelli {profile.hair || "—"} · occhi {profile.eyes || "—"} · stile {profile.style || "—"}.
+              {profile.height || "—"} cm · {profile.weight ? `${profile.weight} kg · ` : ""}capelli {profile.hair || "—"} · occhi {profile.eyes || "—"} · pelle {tonoPelle(profile.pelle)?.nome || "—"} · stile {profile.style || "—"}.
             </p>
           </div>
           <div style={{ display: "flex", gap: 12 }}>
@@ -489,6 +425,19 @@ export default function Start() {
           <div className="summary-card" style={{ marginBottom: 24 }}>
             <p className="eyebrow">La tua palette</p>
             {result.season ? <h1 className="h2" style={{ marginTop: 10 }}>{result.season}</h1> : null}
+
+            {/* Da dove esce questa stagione: il colore della pelle, in
+                chiaro e col suo quadratino. È il dato che la decide più di
+                ogni altro, e finora non si vedeva da nessuna parte. */}
+            {tonoPelle(profile.pelle) ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+                <span aria-hidden="true" style={{ width: 26, height: 26, background: tonoPelle(profile.pelle).hex, border: "1px solid rgba(0,0,0,0.14)", flex: "0 0 26px" }} />
+                <span className="muted" style={{ fontSize: 13 }}>
+                  Pelle <strong style={{ color: "var(--ink)" }}>{tonoPelle(profile.pelle).nome}</strong>
+                  {result.misura?.sottotono ? `, sottotono ${result.misura.sottotono}` : ""}.
+                </span>
+              </div>
+            ) : null}
 
             {/* Il giudizio dell'utente vale più della misura: se la stagione
                 non gli somiglia, si rifà con le domande dell'armocromista. */}
@@ -537,6 +486,18 @@ export default function Start() {
                     onRisposta={(id, v) => setTestRisposte((r) => ({ ...r, [id]: v }))}
                     compatto
                   />
+
+                  {/* Qui dentro perché è qui che si viene quando il risultato
+                      non somiglia, e un colore della pelle scelto male è la
+                      prima cosa che lo spiega. */}
+                  <div style={{ marginTop: 22, display: "grid", gap: 8 }}>
+                    <strong style={{ fontSize: 15, lineHeight: 1.35 }}>Il colore della tua pelle</strong>
+                    <ColorePelle
+                      valore={profile.pelle}
+                      onCambia={(id) => setProfile((p) => ({ ...p, pelle: id }))}
+                      compatto
+                    />
+                  </div>
                   <button className="btn" style={{ marginTop: 16 }} onClick={analyze} disabled={loading}>
                     {loading ? "Rifaccio…" : "Rifai l'analisi"}
                   </button>
@@ -576,7 +537,7 @@ export default function Start() {
                       onClick={() => {
                         const nuovo = scelto ? null : st.nome;
                         setResult((r) => ({ ...r, stileScelto: nuovo }));
-                        salvaAnalisi({ ...result, stileScelto: nuovo }, nuovo);
+                        salvaAnalisi({ risultato: { ...result, stileScelto: nuovo }, profile, budget, testRisposte, stileScelto: nuovo });
                       }}
                       className="card"
                       style={{

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { paletteAggiornata } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
+import { tonoPelle } from "@/lib/pelle";
 import { apiFetch, getUser } from "@/lib/session";
 import { fasciaDaBudget } from "@/lib/ricerca";
 import Gruppo from "@/components/Gruppo";
@@ -111,6 +112,10 @@ export default function TuoStile() {
 
   const palette = analisi?.palette?.length ? paletteAggiornata(analisi) : [];
   const stili = analisi?.stili || [];
+  // Il colore della pelle è il dato che decide la stagione più di ogni altro:
+  // mostrarlo qui, col suo quadratino, è il modo di far vedere DA DOVE viene
+  // la palette — e di accorgersi al volo se è quello sbagliato.
+  const tono = tonoPelle(profilo?.pelle || analisi?.misura?.pelleDichiarata);
 
   if (caricamento) {
     return (
@@ -152,6 +157,16 @@ export default function TuoStile() {
       ) : null}
 
       <Gruppo titolo="I tuoi colori" detta="I cinque che ti stanno meglio. Sono questi a filtrare tutto il resto dell’app.">
+        {tono ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span aria-hidden="true" style={{ width: 30, height: 30, background: tono.hex, border: "1px solid rgba(0,0,0,0.14)", flex: "0 0 30px" }} />
+            <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>
+              Partono da qui: pelle <strong style={{ color: "var(--ink)" }}>{tono.nome}</strong>
+              {analisi?.misura?.sottotono ? `, sottotono ${analisi.misura.sottotono}` : ""}.{" "}
+              <Link href="/profilo">Non è la tua?</Link>
+            </p>
+          </div>
+        ) : null}
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
           {palette.map((c) => (
             <div key={c.hex} className="card" style={{ overflow: "hidden" }}>
@@ -189,11 +204,15 @@ export default function TuoStile() {
 
       <Gruppo titolo="Non ti convince">
         <div style={{ display: "grid", gap: 10 }}>
-          <Link href="/start" className="btn-app chiaro">Rifai l&apos;analisi</Link>
+          {/* Prima si poteva solo ricominciare da zero. Ma quasi sempre la
+              cosa sbagliata è una sola — la foto, i capelli, la pelle — e per
+              quella basta cambiarla. */}
+          <Link href="/profilo" className="btn-app">Cambia le tue informazioni</Link>
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Se hai cambiato capelli, o la foto non era buona. I capi che hai messo da parte restano
-            dove sono.
+            Hai cambiato capelli, o la foto non era buona: cambi quella riga nel profilo e la
+            palette si rifà da sé. I capi che hai messo da parte restano dove sono.
           </p>
+          <Link href="/start" className="btn-app chiaro" style={{ marginTop: 6 }}>Oppure rifai tutto da capo</Link>
         </div>
       </Gruppo>
     </div>

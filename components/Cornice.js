@@ -67,6 +67,21 @@ const VOCI = [
       </>
     ),
   },
+  {
+    // Il profilo stava dentro Impostazioni, sotto la rotella, in mezzo alla
+    // password e alla cancellazione dell'account. Ma la propria faccia, le
+    // proprie foto e i dati da cui esce la palette non sono impostazioni:
+    // sono le cose che si guardano, e vanno dove si guarda.
+    href: "/profilo",
+    label: "Profilo",
+    icona: (
+      <>
+        <rect x="4" y="4" width="16" height="16" rx="0.5" />
+        <circle cx="12" cy="10" r="2.6" />
+        <path d="M7.2 18.4c.6-2.3 2.5-3.6 4.8-3.6s4.2 1.3 4.8 3.6" />
+      </>
+    ),
+  },
 ];
 
 export default function Cornice({ children }) {
@@ -174,8 +189,8 @@ export default function Cornice({ children }) {
                 }}
               >
                 <svg
-                  width="23"
-                  height="23"
+                  width={VOCI.length > 5 ? 21 : 23}
+                  height={VOCI.length > 5 ? 21 : 23}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -186,7 +201,10 @@ export default function Cornice({ children }) {
                 >
                   {v.icona}
                 </svg>
-                <span style={{ fontSize: 11, letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{v.label}</span>
+                {/* Con sei voci "Guardaroba" non ci sta più: il carattere lo
+                    decide il numero di colonne, invece di traboccare fuori
+                    dallo schermo su un telefono stretto. */}
+                <span style={{ fontSize: VOCI.length > 5 ? 9.5 : 11, letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{v.label}</span>
               </Link>
             );
           })}

@@ -4,8 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Gruppo from "@/components/Gruppo";
-import Avatar from "@/components/Avatar";
-import { fileToDataUrl } from "@/lib/img";
 import { controllaPassword, LUNGHEZZA_MINIMA } from "@/lib/password";
 import { RETAILERS } from "@/lib/data";
 import {
@@ -13,7 +11,6 @@ import {
   apparecchiRegistrati,
   cambiaEmail,
   cambiaPassword,
-  completaProfilo,
   deleteAccount,
   entraConImpronta,
   esciDaTuttiIDispositivi,
@@ -26,14 +23,6 @@ import {
   signOut,
   togliApparecchio,
 } from "@/lib/session";
-
-// I colori fra cui scegliere la propria faccia. Pochi e decisi: una tavolozza
-// da cui non si può sbagliare vale più di un selettore con sedici milioni di
-// tinte in cui si finisce sempre sul grigio.
-const COLORI_PROFILO = [
-  "#1B2A41", "#5C1F26", "#B98F5E", "#9AA88B",
-  "#3F4A3C", "#7A5C8E", "#B5654A", "#111213",
-];
 
 // I nomi come li ha salvati chi seguiva già un negozio: in elenco Vinted si
 // chiama "Vinted (second-hand)", ma nei preferiti di chi c'era prima è
@@ -50,7 +39,6 @@ export default function Impostazioni() {
   const [profilo, setProfilo] = useState(null);
   const [caricamento, setCaricamento] = useState(true);
 
-  const [campi, setCampi] = useState({ nome: "", cognome: "", username: "", dataNascita: "", avatar: null, colore: COLORI_PROFILO[0] });
   const [negozi, setNegozi] = useState([]);
   const [password, setPassword] = useState({ nuova: "", ripeti: "" });
   const [email, setEmail] = useState("");
@@ -91,14 +79,6 @@ export default function Impostazioni() {
         const { profile } = await apiFetch("/api/profile/get");
         if (!vivo) return;
         setProfilo(profile);
-        setCampi({
-          nome: profile?.name || "",
-          cognome: profile?.cognome || "",
-          username: profile?.username || "",
-          dataNascita: profile?.data_nascita || "",
-          avatar: profile?.avatar || null,
-          colore: profile?.dati?.coloreProfilo || COLORI_PROFILO[0],
-        });
         setNegozi(Array.isArray(profile?.favorites) ? profile.favorites : []);
       } catch (e) {
         if (vivo) setErr(e.message);
@@ -147,48 +127,6 @@ export default function Impostazioni() {
     } catch (e) {
       setErr(e.message);
     }
-  }
-
-  const cambia = (campo) => (e) => setCampi((c) => ({ ...c, [campo]: e.target.value }));
-
-  async function scegliFoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      // Piccola: è un quadratino di ottantaquattro pixel, non un poster. Una
-      // foto da tre megabyte nella colonna del profilo sarebbe una foto da
-      // tre megabyte scaricata a ogni apertura.
-      const piccola = await fileToDataUrl(file, 320, 0.8);
-      setCampi((c) => ({ ...c, avatar: piccola }));
-      avvisa("Foto pronta. Premi «Salva il profilo» per tenerla.");
-    } catch {
-      setErr("Immagine non leggibile.");
-    }
-  }
-
-  async function salvaProfilo() {
-    setErr("");
-    setDetto("");
-    setSalvando("profilo");
-    try {
-      await completaProfilo({
-        nome: campi.nome,
-        cognome: campi.cognome,
-        username: campi.username,
-        dataNascita: campi.dataNascita,
-        avatar: campi.avatar,
-      });
-      // Il colore sta nel campo libero del profilo: non è un dato di
-      // sistema, e non merita una colonna sua.
-      await apiFetch("/api/profile/save", {
-        method: "POST",
-        body: { dati: { ...(profilo?.dati || {}), coloreProfilo: campi.colore } },
-      });
-      avvisa("Profilo salvato.");
-    } catch (e) {
-      setErr(e.message);
-    }
-    setSalvando("");
   }
 
   async function salvaPassword() {
@@ -288,7 +226,8 @@ export default function Impostazioni() {
       /* niente da togliere */
     }
     try {
-      await apiFetch("/api/profile/save", { method: "POST", body: { palette: null, dati: {} } });
+      // Qui si azzera davvero: `dati` va svuotato, non fuso con quello che c'era.
+      await apiFetch("/api/profile/save", { method: "POST", body: { palette: null, dati: {}, sostituisciDati: true } });
     } catch {
       /* senza account bastava il browser */
     }
@@ -344,72 +283,20 @@ export default function Impostazioni() {
         </Gruppo>
       ) : null}
 
+      {/* Il profilo non sta più qui. Foto, nome e — soprattutto — i dati da
+          cui esce la palette non sono impostazioni: sono la roba che si
+          guarda, e adesso ha la sua voce nel menu in basso. Qui resta solo
+          l'indicazione, perché chi li cercava in questa pagina li cercherà
+          ancora per un po'. */}
       {utente ? (
-      <Gruppo titolo="Profilo" detta="Come ti chiami e che faccia hai dentro l’app.">
-        <section style={{ display: "grid", gap: 14 }}>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <Avatar foto={campi.avatar} nome={campi.nome} cognome={campi.cognome} colore={campi.colore} />
-            <div style={{ display: "grid", gap: 8 }}>
-              <label className="btn ghost" style={{ cursor: "pointer", justifySelf: "start", padding: "6px 14px", fontSize: 13 }}>
-                {campi.avatar ? "Cambia foto" : "Scegli una foto"}
-                <input type="file" accept="image/*" onChange={scegliFoto} style={{ display: "none" }} />
-              </label>
-              {campi.avatar ? (
-                <button
-                  className="btn ghost"
-                  onClick={() => setCampi((c) => ({ ...c, avatar: null }))}
-                  style={{ justifySelf: "start", padding: "6px 14px", fontSize: 13 }}
-                >
-                  Togli la foto
-                </button>
-              ) : (
-                <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>Senza foto restano le tue iniziali.</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <span className="label" style={{ display: "block", marginBottom: 8 }}>Colore</span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {COLORI_PROFILO.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  aria-label={`Colore ${c}`}
-                  onClick={() => setCampi((x) => ({ ...x, colore: c }))}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    background: c,
-                    border: campi.colore === c ? "2px solid var(--ink)" : "1px solid var(--line)",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <label className="field">
-            <span className="label">Nome</span>
-            <input className="control" value={campi.nome} onChange={cambia("nome")} />
-          </label>
-          <label className="field">
-            <span className="label">Cognome</span>
-            <input className="control" value={campi.cognome} onChange={cambia("cognome")} />
-          </label>
-          <label className="field">
-            <span className="label">Nome utente</span>
-            <input className="control" value={campi.username} onChange={cambia("username")} />
-          </label>
-          <label className="field">
-            <span className="label">Data di nascita</span>
-            <input className="control" type="date" value={campi.dataNascita || ""} onChange={cambia("dataNascita")} />
-          </label>
-
-          <button className="btn" onClick={salvaProfilo} disabled={salvando === "profilo"} style={{ justifySelf: "start" }}>
-            {salvando === "profilo" ? "Salvo…" : "Salva il profilo"}
-          </button>
+      <Gruppo titolo="Profilo" detta="Si è spostato: ha una voce sua nel menu in basso.">
+        <section style={{ display: "grid", gap: 10 }}>
+          <p className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
+            Foto, nome, colore, e le informazioni da cui escono i tuoi colori — altezza, capelli,
+            occhi, pelle, le due foto dell&apos;analisi. Da lì si modificano quando vuoi, anche una
+            riga sola, e la palette si rifà da sé.
+          </p>
+          <Link className="btn" href="/profilo" style={{ justifySelf: "start" }}>Vai al profilo</Link>
         </section>
       </Gruppo>
       ) : null}
@@ -540,6 +427,11 @@ export default function Impostazioni() {
           <p className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
             Cancella palette, stagione e stili, e riparte dal questionario e dalle foto. I capi che
             hai messo da parte e i completi salvati restano dove sono.
+          </p>
+          <p className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
+            Se però devi solo correggere qualcosa — una foto venuta male, il colore degli occhi,
+            la pelle scelta male — non serve azzerare niente: <Link href="/profilo">nel profilo</Link>{" "}
+            cambi quella riga e basta, e la palette si rifà da sola.
           </p>
           <button className="btn ghost" onClick={azzeraAnalisi} style={{ justifySelf: "start" }}>
             Azzera e ricomincia
