@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
+import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -510,6 +511,18 @@ test("l'ordine dentro una fascia non si tocca: a decidere di colore è un altro"
   assert.deepEqual(perChiCerca([a, b, c], "uomo").map((x) => x.titolo), [a, b, c].map((x) => x.titolo));
 });
 
+test("un capo di colore «jeans» non è un paio di jeans", () => {
+  // Trovato cercando "jeans baggy" sul catalogo vero: fra i risultati c'era
+  // "Selvino — Maglia Uomo Mezza Zip in Lana Merinos", che di jeans ha solo
+  // il nome del colore. Non va tolta — chi scrive "camicia bianca" il bianco
+  // lo trova lì — ma non può stare davanti a un paio di jeans veri.
+  const maglia = { titolo: "Selvino - Maglia Uomo Mezza Zip in Lana Merinos", categoria: "MAGLIA", colore_nome: "JEANS" };
+  const jeans = { titolo: "Freazy Loose Jeans - Scarab", categoria: "PANTALONI", colore_nome: "Verde" };
+  const ordinati = comeLoHaiChiamato([maglia, jeans], "jeans baggy");
+  assert.equal(ordinati[0].titolo, jeans.titolo, "la maglia sta ancora davanti ai jeans");
+  assert.equal(ordinati.length, 2, "la maglia è sparita del tutto invece di scendere");
+});
+
 test("la casella «che capo cerchi» adesso filtra davvero", () => {
   const catalogo = [PANTALONE, CAMICIA_UOMO, TSHIRT_UOMO];
   assert.deepEqual(comeLoHaiChiamato(catalogo, "pantalone").map((c) => c.titolo), [PANTALONE.titolo]);
@@ -521,4 +534,47 @@ test("la casella «che capo cerchi» adesso filtra davvero", () => {
   // Casella vuota, catalogo intero: non è un filtro che si applica da solo.
   assert.equal(comeLoHaiChiamato(catalogo, "").length, 3);
   assert.equal(comeLoHaiChiamato(catalogo, null).length, 3);
+});
+
+// --------------------------------------------------------------------------
+// La ricerca fuori dal catalogo.
+//
+// Il tasto diceva "cerca nei 48 negozi scelti" e ce li infilava davvero
+// tutti, Kocca e Pinko compresi, che di roba da uomo non ne hanno una. E la
+// parola "uomo" a Google non arrivava proprio: il genere si fermava
+// all'ingresso, e la ricerca partiva senza.
+// --------------------------------------------------------------------------
+test("il genere entra nelle parole cercate, e prima non ci entrava", () => {
+  assert.equal(descriviCapo({ capo: "camicia", colore: "blu navy" }), "camicia blu navy");
+  assert.equal(descriviCapo({ capo: "camicia", colore: "blu navy", genere: "uomo" }), "camicia da uomo blu navy");
+  assert.equal(descriviCapo({ capo: "camicia", genere: "donna" }), "camicia da donna");
+  // Chi non lo dichiara cerca come prima, non "da undefined".
+  assert.equal(descriviCapo({ capo: "camicia", genere: "" }), "camicia");
+});
+
+test("un uomo non viene mandato dentro un negozio che vende solo da donna", () => {
+  const soloDonna = NEGOZI.filter((n) => n.genere === "donna").map((n) => n.nome);
+  assert.ok(soloDonna.length, "nessun negozio è marcato: il filtro non avrebbe niente da fare");
+
+  const perUnUomo = negoziPerGenere(NEGOZI, "uomo").map((n) => n.nome);
+  for (const nome of soloDonna) assert.ok(!perUnUomo.includes(nome), `${nome} è ancora in elenco`);
+
+  // I negozi che vendono a tutti restano: il filtro toglie, non seleziona.
+  assert.ok(perUnUomo.includes("COS"));
+  assert.ok(perUnUomo.length > NEGOZI.length / 2);
+
+  // E senza un genere scelto non si toglie niente.
+  assert.equal(negoziPerGenere(NEGOZI, "").length, NEGOZI.length);
+});
+
+test("l'indirizzo di ricerca porta con sé sia la parola sia i soli negozi giusti", () => {
+  // Gli spazi in una query diventano "+", e decodeURIComponent non li
+  // rimette: leggere il parametro è più onesto che leggere la stringa.
+  const grezzo = urlNeiNegozi({ capo: "cappotto", genere: "uomo", negozi: ["gutteridge.com"] });
+  const url = new URL(grezzo).searchParams.get("q");
+  assert.ok(url.includes("cappotto da uomo"), url);
+  assert.ok(url.includes("site:gutteridge.com"), url);
+  // Senza niente da cercare non si apre una ricerca vuota.
+  assert.equal(urlNeiNegozi({ capo: "", genere: "uomo", negozi: ["a.it"] }), null);
+  assert.equal(urlNeiNegozi({ capo: "cappotto", negozi: [] }), null);
 });

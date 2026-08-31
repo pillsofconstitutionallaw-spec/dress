@@ -65,9 +65,13 @@ export async function POST(req) {
   const richiesti = comeLoHaiChiamato(capi, capo);
 
   const quantiNeVoglio = Math.min(120, Math.max(12, Number(quanti) || 48));
-  // Con un colore solo non c'è niente da distribuire: distribuire vorrebbe
-  // dire ripescare gli altri colori, cioè disfare la scelta appena fatta.
-  const ordinati = soloQuesto.length
+  // La distribuzione serve a non dare dodici capi tutti dello stesso colore
+  // quando non è stato chiesto niente. Ma quando qualcosa è stato chiesto,
+  // rimescola: girando fra un colore e l'altro rimetteva in alto capi meno
+  // pertinenti, e una maglia di COLORE jeans risaliva all'ottavo posto fra i
+  // "jeans baggy". Chi ha scritto cosa cerca vuole prima quello, e i colori
+  // se li guarda nell'ordine che viene.
+  const ordinati = soloQuesto.length || paroleCapo?.length
     ? senzaDoppioni(richiesti)
     : distribuisci(senzaDoppioni(richiesti), voluti);
 

@@ -80,8 +80,6 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
             </div>
 
             <div style={{ display: "grid", gap: 5, minWidth: 0 }}>
-              <span className="eyebrow" style={{ fontSize: 10 }}>{capo.negozio}</span>
-
               <span style={{ fontSize: 15, lineHeight: 1.3, fontWeight: 500 }}>{capo.titolo}</span>
 
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
@@ -93,6 +91,33 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
                 ) : null}
               </div>
 
+              {/* Da chi lo compri, subito sotto quanto costa.
+                  Stava sopra il titolo, in grigio chiaro e minuscolo: la
+                  prima riga della scheda è quella che si legge di sfuggita,
+                  e il nome del negozio ci passava sotto gli occhi senza
+                  essere visto. Sotto il prezzo diventa la seconda cosa che
+                  si guarda, che è l'ordine in cui si decide: quanto costa,
+                  e da chi. */}
+              <span
+                style={{
+                  justifySelf: "start",
+                  fontFamily: "var(--font-display), system-ui, sans-serif",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  fontSize: 10,
+                  padding: "3px 8px",
+                  border: "1px solid var(--line)",
+                  background: "var(--stone)",
+                  color: "var(--ink)",
+                  whiteSpace: "nowrap",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {capo.negozio}
+              </span>
+
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                 {capo.colore_hex ? (
                   <span
@@ -100,8 +125,14 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
                     style={{ width: 12, height: 12, background: capo.colore_hex, border: "1px solid var(--line)" }}
                   />
                 ) : null}
+                {/* "JEANS" da solo, sotto una maglia, si legge come se fosse
+                    il capo. È un nome di colore: va detto che è un colore. */}
                 <span className="muted" style={{ fontSize: 12 }}>
-                  {capo.colore_palette ? `il tuo ${capo.colore_palette.toLowerCase()}` : capo.colore_nome || ""}
+                  {capo.colore_palette
+                    ? `il tuo ${capo.colore_palette.toLowerCase()}`
+                    : capo.colore_nome
+                      ? `colore ${capo.colore_nome.toLowerCase()}`
+                      : ""}
                 </span>
                 {capo.qualita ? (
                   <span className="muted" style={{ fontSize: 12 }}>· tessuto {capo.qualita}/100</span>

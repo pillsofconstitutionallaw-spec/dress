@@ -4,7 +4,7 @@ import { paletteAggiornata } from "@/lib/stagioni";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { NEGOZI, fasciaDaBudget, urlNeiNegozi, urlShopping } from "@/lib/ricerca";
+import { NEGOZI, fasciaDaBudget, negoziPerGenere, urlNeiNegozi, urlShopping } from "@/lib/ricerca";
 import CapiTrovati from "@/components/CapiTrovati";
 
 export default function Cerca() {
@@ -95,16 +95,21 @@ export default function Cerca() {
     };
   }, [palette, min, max, genere, stile, capo, colore, escludiFast]);
 
+  // Anche la ricerca fuori tiene conto di chi sei: prima il tasto diceva
+  // "cerca nei 48 negozi scelti" e ce li infilava tutti, Kocca e Pinko
+  // compresi, che di roba da uomo non ne hanno. E alla ricerca su Google la
+  // parola "uomo" non arrivava proprio.
   const negoziAmmessi = useMemo(
-    () => NEGOZI.filter((n) => (escludiFast ? !n.fast : true)),
-    [escludiFast],
+    () => negoziPerGenere(NEGOZI, genere).filter((n) => (escludiFast ? !n.fast : true)),
+    [escludiFast, genere],
   );
 
-  const linkShopping = urlShopping({ capo, colore, taglia, min, max });
+  const linkShopping = urlShopping({ capo, colore, taglia, genere, min, max });
   const linkNegozi = urlNeiNegozi({
     capo,
     colore,
     taglia,
+    genere,
     negozi: negoziAmmessi.map((n) => n.dominio),
   });
 
@@ -289,55 +294,32 @@ export default function Cerca() {
         </p>
       )}
 
-      <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-        <a
-          className="btn"
-          href={linkNegozi || undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled={!linkNegozi}
-          style={!linkNegozi ? { pointerEvents: "none", opacity: 0.4 } : undefined}
-        >
-          Cerca nei {negoziAmmessi.length} negozi scelti
-        </a>
-        <a
-          className="btn ghost"
-          href={linkShopping || undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled={!linkShopping}
-          style={!linkShopping ? { pointerEvents: "none", opacity: 0.4 } : undefined}
-        >
-          Confronta i prezzi ovunque
-        </a>
-      </div>
+      {/* Ultima riga, e piccola. Cercare fuori è quello che si fa quando qui
+          non si è trovato niente: va in fondo, in una riga. Prima erano due
+          tasti grossi seguiti dall'elenco di quarantotto domini — nomi da
+          leggere invece che capi da guardare, e quello che ogni negozio ha
+          davvero si scopre solo vedendolo, non leggendone l'indirizzo. */}
+      <p className="muted" style={{ marginTop: 36, paddingTop: 18, borderTop: "1px solid var(--line)", fontSize: 13, lineHeight: 1.65 }}>
+        {capo.trim() || colore ? (
+          <>
+            Non l&apos;hai trovato qui?{" "}
+            {linkNegozi ? (
+              <a href={linkNegozi} target="_blank" rel="noopener noreferrer">
+                Cercalo nei {negoziAmmessi.length} negozi scelti
+              </a>
+            ) : null}
+            {linkNegozi && linkShopping ? ", oppure " : null}
+            {linkShopping ? (
+              <a href={linkShopping} target="_blank" rel="noopener noreferrer">confronta i prezzi su Google</a>
+            ) : null}
+            .
+            {genere ? ` La ricerca fuori parte già “da ${genere}”, e i negozi che vendono solo all’altro sesso restano fuori.` : ""}
+          </>
+        ) : (
+          "Scrivi che capo cerchi: qui sopra trovi quello che c’è in catalogo, e in fondo il link per cercarlo fuori."
+        )}
+      </p>
 
-      {!capo ? (
-        <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>Scrivi almeno che capo cerchi.</p>
-      ) : null}
-
-      <section style={{ marginTop: 40, borderTop: "1px solid var(--line)", paddingTop: 24 }}>
-        <h2 className="h4">Se qui non c’è, cerchiamo fuori</h2>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-          {NEGOZI.map((n) => {
-            const attivo = negoziAmmessi.includes(n);
-            return (
-              <span
-                key={n.dominio}
-                className="eyebrow"
-                style={{
-                  border: "1px solid var(--line)",
-                  padding: "6px 10px",
-                  opacity: attivo ? 1 : 0.35,
-                  textDecoration: attivo ? "none" : "line-through",
-                }}
-              >
-                {n.nome}{n.fast ? " · fast" : ""}
-              </span>
-            );
-          })}
-        </div>
-      </section>
     </div>
   );
 }
