@@ -459,6 +459,29 @@ test("i capi da bambino non sono di un altro genere: sono di un'altra persona", 
   }
 });
 
+test("«baby» è anche un colore e una maglietta da adulta, non solo un'età", () => {
+  // Trovati guardando i titoli veri prima di scrivere sul catalogo: con la
+  // regola golosa sparivano dall'app un bikini, una gonna vintage, un paio di
+  // décolleté e due magliette da donna, tutti scambiati per capi da neonato.
+  for (const titolo of [
+    "Raine Crochet Tie Side Bikini Bottoms In Baby Blue",
+    "Vintage 1990s Baby Pink Iridescent Lace-up Skirt - XS",
+    "Kaiia Studio Baby Tee Baby Pink",
+    "Core Butterfly Baby Tee",
+    "Baby doll in pizzo nero",
+  ]) {
+    assert.notEqual(perChiE({ titolo, genere: null }), "bambino", `scambiato per un capo da bambino: ${titolo}`);
+  }
+
+  // Ma "baby" davanti a qualunque altra cosa resta un'età.
+  for (const titolo of ["GREEN BABY SWIM SHORTS", "4006 BABY ECOFUR - Sneaker - Kid unisex", "Baby Pants"]) {
+    assert.equal(perChiE({ titolo, genere: null }), "bambino", `non riconosciuto: ${titolo}`);
+  }
+
+  // E "boyfriend" non è un bambino: la parola dentro un'altra parola non conta.
+  assert.notEqual(perChiE({ titolo: "Boyfriend jeans a vita alta", genere: null }), "bambino");
+});
+
 test("chi cerca da uomo non vede roba da donna, e i dubbi li vede in fondo", () => {
   const catalogo = [REGGISENO, SNEAKER_BIMBO, PANTALONE, TSHIRT_UOMO, SANDALO_BIMBA, CAMICIA_UOMO];
   const visti = perChiCerca(catalogo, "uomo").map((c) => c.titolo);

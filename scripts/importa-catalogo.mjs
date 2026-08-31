@@ -264,7 +264,9 @@ function deduciGenere(prodotto) {
 
   // I bambini per primi: un capo da bambino non è "di un altro genere", è di
   // un'altra persona, e non va offerto a nessuno degli adulti che usano Dress.
-  if (/\b(bambin[oaie]|bimb[oaie]|kids?|baby|babies|infant|toddler|junior|jr|girls?|boys?|neonat[oi]|newborn|child|children)\b/.test(testo)) {
+  // "baby" da solo era troppo goloso: prendeva "Baby Blue" e "Baby Pink",
+  // che sono colori, e "Baby Tee", che è una maglietta da adulta.
+  if (/\b(bambin[oaie]|bimb[oaie]|kids?|infant|toddler|junior|jr|girls?|boys?|neonat[oi]|newborn|child|children)\b|\bbab(y|ies)\b(?!\s*(blue|blu|pink|rosa|tee|doll|girl))/.test(testo)) {
     return "bambino";
   }
 

@@ -10,3 +10,7 @@
 .claude/settings.json
 .claude/settings.local.json
 .vercel
+
+# Le copie che scrive scripts/sistema-genere.mjs prima di toccare il catalogo:
+# servono a disfare, non a essere pubblicate.
+genere-prima-*.json

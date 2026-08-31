@@ -63,7 +63,7 @@ as $$
       -- persona, e non c'è nessun adulto a cui vada bene vederseli proporre.
       and not (
         coalesce(p.genere,'') = 'bambino'
-        or p.titolo ~* '\m(bambin[oaie]|bimb[oaie]|kids?|baby|babies|infant|toddler|junior|girls?|boys?|neonat[oi]|newborn)\M'
+        or p.titolo ~* '\m(bambin[oaie]|bimb[oaie]|kids?|infant|toddler|junior|girls?|boys?|neonat[oi]|newborn)\M|\mbab(y|ies)\M(?!\s*(blue|blu|pink|rosa|tee|doll|girl))'
       )
       and (not escludi_fast or not p.fast_fashion)
       and (

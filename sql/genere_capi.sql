@@ -21,7 +21,7 @@ begin;
 -- "kid" o "baby" quel capo non è di un adulto.
 update public.prodotti
    set genere = 'bambino'
- where titolo ~* '\m(bambin[oaie]|bimb[oaie]|kids?|baby|babies|infant|toddler|junior|girls?|boys?|neonat[oi]|newborn)\M'
+ where titolo ~* '\m(bambin[oaie]|bimb[oaie]|kids?|infant|toddler|junior|girls?|boys?|neonat[oi]|newborn)\M|\mbab(y|ies)\M(?!\s*(blue|blu|pink|rosa|tee|doll|girl))'
    and coalesce(genere,'') <> 'bambino';
 
 -- Poi donna e uomo, ma solo quando il titolo lo dice ed è l'unico dei due a
