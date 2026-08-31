@@ -51,7 +51,20 @@ as $$
       and p.colore_b between li.bmin and li.bmax
       and (prezzo_min is null or p.prezzo >= prezzo_min)
       and (prezzo_max is null or p.prezzo <= prezzo_max)
+      -- Il genere. Il vecchio filtro finiva con "or p.genere is null", e
+      -- quel pezzo lo apriva a tutti: un capo su tre non ha il genere
+      -- scritto — 22.966 su 68.897 — perché molti negozi non lo pubblicano,
+      -- e passavano tutti senza pagare pegno, ordinati solo per colore. Chi
+      -- impostava "uomo" si ritrovava reggiseni e pigiami da donna.
+      -- Restano, perché escluderli toglierebbe un terzo del catalogo, ma
+      -- vanno in fondo: la pertinenza qui sotto se ne occupa.
       and (genere_voluto is null or p.genere = genere_voluto or p.genere = 'unisex' or p.genere is null)
+      -- I capi da bambino non sono di un altro genere: sono di un'altra
+      -- persona, e non c'è nessun adulto a cui vada bene vederseli proporre.
+      and not (
+        coalesce(p.genere,'') = 'bambino'
+        or p.titolo ~* '\m(bambin[oaie]|bimb[oaie]|kids?|baby|babies|infant|toddler|junior|girls?|boys?|neonat[oi]|newborn)\M'
+      )
       and (not escludi_fast or not p.fast_fashion)
       and (
         parole is null
@@ -87,7 +100,18 @@ as $$
   from migliori m
   join public.prodotti p on p.id = m.id
   where m.distanza <= 34
-  order by m.distanza asc, p.qualita desc nulls last
+  -- Prima per chi è il capo, poi per quanto il colore corrisponde.
+  -- L'ordine dei due conta: col colore per primo, i capi senza genere si
+  -- infilavano fra quelli giusti ogni volta che erano di una tinta più
+  -- vicina, ed è esattamente com'è finito un reggiseno in mezzo.
+  order by (case
+              when genere_voluto is null then 0
+              when p.genere = genere_voluto then 0
+              when p.genere = 'unisex' then 1
+              else 2
+            end) asc,
+           m.distanza asc,
+           p.qualita desc nulls last
   limit quanti;
 $$;
 grant execute on function public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[]) to anon, authenticated;

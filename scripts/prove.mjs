@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
+import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -421,4 +422,80 @@ test("pelle rosata e pelle dorata cadono su lati opposti della soglia", () => {
   const calda = angolo(misura({ pelle: PELLE_CALDA }).pelle);
   assert.ok(fredda < 48, `la rosata misura ${fredda}°`);
   assert.ok(calda > 55, `la dorata misura ${calda}°`);
+});
+
+// --------------------------------------------------------------------------
+// Per chi è questo capo.
+//
+// Chi impostava "uomo" si ritrovava reggiseni, pigiami da donna e sneaker da
+// neonato. I casi qui sotto sono quelli veri, copiati dal catalogo: se un
+// giorno tornano a passare, questa è la riga che si accende.
+// --------------------------------------------------------------------------
+const REGGISENO = { titolo: "Dames 1-pack Triangle top", genere: "uomo", negozio: "Muchachomalo" };
+const SNEAKER_BIMBO = { titolo: "2750 BABY CLASSIC - Le Superga - Sneaker - Kid unisex - Blue", genere: null };
+const SANDALO_BIMBA = { titolo: "1200-macramej - Sandals - Sandal - Girl - White", genere: null };
+const PANTALONE = { titolo: "PANTALONE DA ABITO OVER FIT CIPOLLA", genere: null, negozio: "Sonny Bono" };
+const TSHIRT_UOMO = { titolo: "Mens Midweight T-Shirt", genere: null, negozio: "Pangaia" };
+const CAMICIA_UOMO = { titolo: "Camicia in lino", genere: "uomo", negozio: "Fusaro" };
+
+test("quello che dice il capo vale più di quello che dichiara il negozio", () => {
+  // Il negozio è segnato "uomo" perché vende soprattutto boxer da uomo. Ma
+  // "dames", in olandese, vuol dire donna, e questo capo lo dice di sé.
+  assert.equal(perChiE(REGGISENO), "donna");
+  // "Mens" al plurale: la vecchia regola cercava \bmen\b e non agganciava.
+  assert.equal(perChiE(TSHIRT_UOMO), "uomo");
+  // Chi non dice niente resta quello che ha dichiarato il negozio.
+  assert.equal(perChiE(CAMICIA_UOMO), "uomo");
+  assert.equal(perChiE(PANTALONE), null);
+});
+
+test("i capi da bambino non sono di un altro genere: sono di un'altra persona", () => {
+  assert.equal(perChiE(SNEAKER_BIMBO), "bambino");
+  assert.equal(perChiE(SANDALO_BIMBA), "bambino");
+  // Non hanno una pertinenza: si tolgono, per chiunque stia guardando.
+  for (const genere of ["uomo", "donna", null]) {
+    assert.equal(pertinenza(SNEAKER_BIMBO, genere), null, `passa con genere ${genere}`);
+    assert.equal(pertinenza(SANDALO_BIMBA, genere), null, `passa con genere ${genere}`);
+  }
+});
+
+test("chi cerca da uomo non vede roba da donna, e i dubbi li vede in fondo", () => {
+  const catalogo = [REGGISENO, SNEAKER_BIMBO, PANTALONE, TSHIRT_UOMO, SANDALO_BIMBA, CAMICIA_UOMO];
+  const visti = perChiCerca(catalogo, "uomo").map((c) => c.titolo);
+
+  assert.ok(!visti.includes(REGGISENO.titolo), "il reggiseno è ancora lì");
+  assert.ok(!visti.includes(SNEAKER_BIMBO.titolo), "la scarpa da neonato è ancora lì");
+  assert.ok(!visti.includes(SANDALO_BIMBA.titolo), "il sandalo da bambina è ancora lì");
+
+  // Quelli senza genere scritto restano — buttarli via toglierebbe un terzo
+  // del catalogo — ma dopo quelli di cui siamo sicuri.
+  assert.deepEqual(visti, [TSHIRT_UOMO.titolo, CAMICIA_UOMO.titolo, PANTALONE.titolo]);
+});
+
+test("senza un genere scelto si toglie solo la roba da bambino", () => {
+  const catalogo = [REGGISENO, SNEAKER_BIMBO, CAMICIA_UOMO];
+  const visti = perChiCerca(catalogo, null).map((c) => c.titolo);
+  assert.deepEqual(visti, [REGGISENO.titolo, CAMICIA_UOMO.titolo]);
+});
+
+test("l'ordine dentro una fascia non si tocca: a decidere di colore è un altro", () => {
+  // Arrivano già ordinati per quanto il colore corrisponde. Riordinare per
+  // genere non deve rimescolare chi sta nella stessa fascia.
+  const a = { titolo: "Camicia uomo A", genere: "uomo" };
+  const b = { titolo: "Camicia uomo B", genere: "uomo" };
+  const c = { titolo: "Camicia uomo C", genere: "uomo" };
+  assert.deepEqual(perChiCerca([a, b, c], "uomo").map((x) => x.titolo), [a, b, c].map((x) => x.titolo));
+});
+
+test("la casella «che capo cerchi» adesso filtra davvero", () => {
+  const catalogo = [PANTALONE, CAMICIA_UOMO, TSHIRT_UOMO];
+  assert.deepEqual(comeLoHaiChiamato(catalogo, "pantalone").map((c) => c.titolo), [PANTALONE.titolo]);
+  // Basta che una parola agganci: chi scrive "giubbino North Face" cerca un
+  // giubbino, e pretendere tutte e tre le parole vorrebbe dire non trovare mai.
+  assert.equal(comeLoHaiChiamato(catalogo, "camicia di lino").length, 1);
+  // Le parole di una lettera o due non contano: "di", "in", "da".
+  assert.equal(comeLoHaiChiamato(catalogo, "di in da").length, 3);
+  // Casella vuota, catalogo intero: non è un filtro che si applica da solo.
+  assert.equal(comeLoHaiChiamato(catalogo, "").length, 3);
+  assert.equal(comeLoHaiChiamato(catalogo, null).length, 3);
 });

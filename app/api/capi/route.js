@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
-import { arricchisci, coloriVoluti, distribuisci, senzaDoppioni } from "@/lib/capiPalette";
+import { arricchisci, coloriVoluti, comeLoHaiChiamato, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
 import { paroleDelloStile } from "@/lib/stiliCapi";
 
 export const runtime = "nodejs";
@@ -18,13 +18,27 @@ export async function POST(req) {
   const { body, error: badJson } = await readJson(req);
   if (badJson) return badJson;
 
-  const { palette, min, max, genere, stile = null, escludiFast = false, quanti = 48 } = body || {};
+  const { palette, min, max, genere, stile = null, capo = null, colore = null, escludiFast = false, quanti = 48 } = body || {};
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
 
-  const voluti = coloriVoluti(palette);
-  if (!voluti.length) return NextResponse.json({ error: "PALETTE_SENZA_COLORI" }, { status: 400 });
+  const tutti = coloriVoluti(palette);
+  if (!tutti.length) return NextResponse.json({ error: "PALETTE_SENZA_COLORI" }, { status: 400 });
+
+  // Un colore scelto è una richiesta, non un suggerimento: chi apre la
+  // tendina e dice "blu navy" vuole i capi blu navy, non la palette intera
+  // con i blu navy in mezzo. Se il nome non si riconosce si cerca in tutta
+  // la palette, perché rispondere niente sarebbe peggio.
+  const soloQuesto = colore ? tutti.filter((c) => c.nome === colore) : [];
+  const voluti = soloQuesto.length ? soloQuesto : tutti;
+
+  // Le parole della casella "che capo cerchi". Sono quelle che restringono di
+  // più, quindi è a loro che conviene far fare la scrematura nel database:
+  // lo stile, se c'è anche quello, riordina dopo.
+  const paroleCapo = String(capo || "").trim()
+    ? String(capo).toLowerCase().split(/[^a-zà-ù0-9]+/i).filter((x) => x.length > 2)
+    : null;
 
   const { data, error } = await supabase.rpc("capi_per_palette", {
     palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
@@ -39,15 +53,27 @@ export async function POST(req) {
     // quattrocento ogni volta la renderebbe lentissima per niente.
     quanti: Math.min(400, Math.max(80, (Number(body?.quanti) || 48) * 8)),
     // Le parole dello stile scelto: senza, si cerca in tutto il catalogo.
-    parole: stile ? paroleDelloStile(stile) : null,
+    parole: paroleCapo?.length ? paroleCapo : stile ? paroleDelloStile(stile) : null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const capi = arricchisci(data, voluti).sort((a, b) => a.scarto - b.scarto);
 
+  // Chi ha scritto che capo cerca lo ha scritto per essere ascoltato: il
+  // database screma all'ingrosso, qui si tiene solo quello che c'entra.
+  const richiesti = comeLoHaiChiamato(capi, capo);
+
   const quantiNeVoglio = Math.min(120, Math.max(12, Number(quanti) || 48));
-  const scelti = distribuisci(senzaDoppioni(capi), voluti).slice(0, quantiNeVoglio);
+  // Con un colore solo non c'è niente da distribuire: distribuire vorrebbe
+  // dire ripescare gli altri colori, cioè disfare la scelta appena fatta.
+  const ordinati = soloQuesto.length
+    ? senzaDoppioni(richiesti)
+    : distribuisci(senzaDoppioni(richiesti), voluti);
+
+  // Per ultimo chi sta guardando: via i capi da bambino e quelli del genere
+  // sbagliato, e i capi senza genere scritto in fondo invece che in mezzo.
+  const scelti = perChiCerca(ordinati, genere).slice(0, quantiNeVoglio);
 
   return NextResponse.json({ ok: true, capi: scelti, quanti: scelti.length });
 }

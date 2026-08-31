@@ -81,7 +81,7 @@ export const NEGOZI = [
   // intimo e lingerie
   { nome: "Cosabella", host: "cosabella.com", fast: false, genere: "donna" },
   { nome: "Bluebella", host: "bluebella.com", fast: false, genere: "donna" },
-  { nome: "Lounge", host: "loungeunderwear.com", fast: false },
+  { nome: "Lounge", host: "loungeunderwear.com", fast: false, genere: "donna" },
   { nome: "Honey Birdette", host: "honeybirdette.com", fast: false, genere: "donna" },
   { nome: "Nuudii", host: "nuudiisystem.com", fast: false, genere: "donna" },
   { nome: "Boody", host: "boody.com", fast: false },
@@ -167,6 +167,17 @@ export const NEGOZI = [
   { nome: "Armedangels", host: "armedangels.com", fast: false },
   { nome: "Ecoalf", host: "ecoalf.com", fast: false },
   { nome: "Thinking Mu", host: "thinkingmu.com", fast: false },
+
+  // aggiunti dopo, tutti provati: pubblicano il catalogo in chiaro su
+  // /products.json, che è la sola condizione per stare qui. Chi non ce
+  // l'ha — Nudie Jeans, Asket, Veja, Dedicated, Octopus — resta fuori dal
+  // catalogo e si raggiunge solo con la ricerca.
+  { nome: "Blanks", host: "blanks.it", fast: false },
+  { nome: "Pangaia", host: "thepangaia.com", fast: false },
+  { nome: "Knowledge Cotton Apparel", host: "knowledgecottonapparel.com", fast: false },
+  { nome: "MUD Jeans", host: "mudjeans.eu", fast: false },
+  { nome: "Komodo", host: "komodo.co.uk", fast: false },
+  { nome: "Slam Jam", host: "slamjam.com", fast: false },
 ];
 
 // Quanti capi al massimo per negozio: meglio molti negozi con qualche
@@ -236,10 +247,29 @@ function valoreOpzione(prodotto, variante, regex) {
   return variante?.[`option${i + 1}`] || null;
 }
 
+// Per chi è questo capo, letto da come il negozio lo chiama.
+//
+// La versione di prima conosceva quattro parole italiane e quattro inglesi al
+// singolare, e sbagliava proprio dove i negozi scrivono di più:
+//
+//   "Mens Midweight T-Shirt"   → \bmen\b non aggancia "mens"  → niente
+//   "Dames 1-pack Triangle top" → l'olandese non era previsto  → niente
+//   "Sneaker - Kid unisex"      → i bambini non erano previsti → niente
+//
+// E quando qui non usciva niente vinceva il genere dichiarato dal negozio,
+// che parla di sé in generale: così un reggiseno finiva schedato "uomo",
+// perché Muchachomalo vende soprattutto boxer da uomo.
 function deduciGenere(prodotto) {
   const testo = `${prodotto.title} ${prodotto.product_type} ${(prodotto.tags || []).join(" ")}`.toLowerCase();
-  const donna = /\bdonna\b|\bwoman\b|\bwomen\b|femminile/.test(testo);
-  const uomo = /\buomo\b|\bman\b|\bmen\b|maschile/.test(testo);
+
+  // I bambini per primi: un capo da bambino non è "di un altro genere", è di
+  // un'altra persona, e non va offerto a nessuno degli adulti che usano Dress.
+  if (/\b(bambin[oaie]|bimb[oaie]|kids?|baby|babies|infant|toddler|junior|jr|girls?|boys?|neonat[oi]|newborn|child|children)\b/.test(testo)) {
+    return "bambino";
+  }
+
+  const donna = /\b(donn[ae]|femminile|wom[ae]n|womens|woman's|women's|lad(y|ies)|dames|femmes?|mujer|damen)\b/.test(testo);
+  const uomo = /\b(uomo|uomini|maschile|m[ae]n|mens|man's|men's|heren|hommes?|hombre|herren)\b/.test(testo);
   if (donna && !uomo) return "donna";
   if (uomo && !donna) return "uomo";
   if (donna && uomo) return "unisex";

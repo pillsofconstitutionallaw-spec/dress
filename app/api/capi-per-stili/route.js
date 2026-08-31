@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { paroleDellaFamiglia, paroleDelloStile } from "@/lib/stiliCapi";
-import { arricchisci, coloriVoluti, distribuisci, senzaDoppioni } from "@/lib/capiPalette";
+import { arricchisci, coloriVoluti, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
 import { ruoloDelCapo } from "@/lib/periodiAnno";
 
 export const runtime = "nodejs";
@@ -60,10 +60,17 @@ export async function POST(req) {
   // candele e oggetti da casa: hanno un colore come tutto il resto, e senza
   // questo filtro finivano fra i capi di uno stile. Chi non ha un ruolo
   // riconoscibile — sopra, sotto, scarpe, accessorio — non è un capo.
-  const capi = senzaDoppioni(
-    arricchisci(data, voluti)
-      .filter((c) => ruoloDelCapo(c.titolo, c.categoria))
-      .sort((a, b) => a.scarto - b.scarto),
+  // E per la stessa ragione: chi ha detto di essere uomo non deve trovare
+  // reggiseni sotto i suoi stili, e nessuno deve trovarci scarpe da neonato.
+  // Il genere scritto nel catalogo manca su un capo su tre, quindi non basta
+  // chiederlo al database: qui si guarda anche cosa dice il titolo.
+  const capi = perChiCerca(
+    senzaDoppioni(
+      arricchisci(data, voluti)
+        .filter((c) => ruoloDelCapo(c.titolo, c.categoria))
+        .sort((a, b) => a.scarto - b.scarto),
+    ),
+    genere,
   );
 
   // Un capo va a un solo stile: lo stesso maglione mostrato sotto tutti e

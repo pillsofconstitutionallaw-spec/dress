@@ -58,16 +58,29 @@ export default function Cerca() {
   }, []);
 
   // I capi veri del catalogo: si cercano da soli appena c'è la palette.
+  //
+  // Che capo cerchi e di che colore adesso arrivano fin qui. Prima le due
+  // caselle servivano solo a comporre i link verso Google: si sceglieva "blu
+  // navy", i capi sotto restavano gli stessi, e sembrava che la scelta non
+  // contasse niente — infatti non contava.
   useEffect(() => {
     if (!palette.length) return;
     let vivo = true;
     setCercando(true);
-    (async () => {
+    // Si scrive una lettera alla volta: senza una pausa partirebbe una
+    // ricerca per ogni tasto premuto.
+    const quando = setTimeout(async () => {
       try {
         const res = await fetch("/api/capi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ palette, min, max, genere, stile: stile || null, escludiFast, quanti: 48 }),
+          body: JSON.stringify({
+            palette, min, max, genere,
+            stile: stile || null,
+            capo: capo.trim() || null,
+            colore: colore || null,
+            escludiFast, quanti: 48,
+          }),
         });
         const dati = await res.json();
         if (vivo && dati?.ok) setCapi(dati.capi || []);
@@ -75,11 +88,12 @@ export default function Cerca() {
         /* resta la ricerca su Google */
       }
       if (vivo) setCercando(false);
-    })();
+    }, capo ? 400 : 0);
     return () => {
       vivo = false;
+      clearTimeout(quando);
     };
-  }, [palette, min, max, genere, stile, escludiFast]);
+  }, [palette, min, max, genere, stile, capo, colore, escludiFast]);
 
   const negoziAmmessi = useMemo(
     () => NEGOZI.filter((n) => (escludiFast ? !n.fast : true)),
@@ -185,6 +199,22 @@ export default function Cerca() {
           </label>
         </div>
 
+        <div>
+          <span className="label" style={{ display: "block", marginBottom: 8 }}>Per chi</span>
+          <div className="chips">
+            {[["uomo", "Uomo"], ["donna", "Donna"], ["", "Tutti"]].map(([id, nome]) => (
+              <button key={id || "tutti"} type="button" className="chip" onClick={() => setGenere(id)}
+                style={{ cursor: "pointer", background: genere === id ? "var(--ink)" : undefined, color: genere === id ? "var(--paper)" : undefined, borderColor: genere === id ? "var(--ink)" : undefined }}>
+                {nome}
+              </button>
+            ))}
+          </div>
+          <p className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.45 }}>
+            Parte da come ti sei presentato nel profilo. I capi da bambino restano fuori sempre; un
+            terzo del catalogo non dichiara per chi è, e quelli li trovi in fondo.
+          </p>
+        </div>
+
         <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <input type="checkbox" checked={escludiFast} onChange={(e) => setEscludiFast(e.target.checked)} />
           <span className="muted">Escludi il fast fashion dalla ricerca</span>
@@ -225,22 +255,37 @@ export default function Cerca() {
         <section style={{ marginTop: 34 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
             <h2 className="h3" style={{ margin: 0 }}>
-              {stile ? `${stile}, nei tuoi colori` : "Dalla tua palette"}
+              {colore ? `Tutto il ${colore.toLowerCase()}` : stile ? `${stile}, nei tuoi colori` : "Dalla tua palette"}
             </h2>
             {capi.length ? <span className="muted" style={{ fontSize: 13 }}>{capi.length} capi</span> : null}
           </div>
           <CapiTrovati capi={capi} caricamento={cercando} />
           <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
-            Sono capi veri, con il prezzo di adesso, presi dai cataloghi dei negozi. Ordinati per
-            quanto il colore corrisponde ai tuoi.
+            Sono capi veri, con il prezzo di adesso, presi dai cataloghi dei negozi.
+            {[
+              capo.trim() ? `che c'entrano con «${capo.trim()}»` : null,
+              colore ? `del tuo ${colore.toLowerCase()}` : null,
+              stile ? `di stile ${stile}` : null,
+              genere ? `da ${genere}` : null,
+            ].filter(Boolean).length
+              ? ` Filtrati: ${[
+                  capo.trim() ? `«${capo.trim()}»` : null,
+                  colore ? colore.toLowerCase() : null,
+                  stile || null,
+                  genere || null,
+                ].filter(Boolean).join(" · ")}.`
+              : " Ordinati per quanto il colore corrisponde ai tuoi."}
           </p>
         </section>
       )}
 
       {palette.length > 0 && !cercando && capi.length === 0 && (
         <p className="muted" style={{ marginTop: 30 }}>
-          In catalogo non c’è ancora niente dei tuoi colori dentro questa fascia di prezzo. Prova ad
-          allargarla, oppure cerca fuori con i tasti qui sotto.
+          {capo.trim()
+            ? `In catalogo non c’è niente che somigli a «${capo.trim()}» dentro questi filtri. Prova con una parola più generica — “giubbino” invece di “giubbino North Face” — oppure cercalo fuori con i tasti qui sotto.`
+            : colore
+              ? `Di ${colore.toLowerCase()} non c’è niente dentro questa fascia di prezzo. Prova un altro colore della tua palette, o allarga il prezzo.`
+              : "In catalogo non c’è ancora niente dei tuoi colori dentro questa fascia di prezzo. Prova ad allargarla, oppure cerca fuori con i tasti qui sotto."}
         </p>
       )}
 
