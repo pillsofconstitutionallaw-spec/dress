@@ -13,6 +13,7 @@ import { controllaDataNascita, controllaPassword, controllaUsername } from "@/li
 import { sembraEmail } from "@/lib/identificativo";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
+import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -577,4 +578,69 @@ test("l'indirizzo di ricerca porta con sé sia la parola sia i soli negozi giust
   // Senza niente da cercare non si apre una ricerca vuota.
   assert.equal(urlNeiNegozi({ capo: "", genere: "uomo", negozi: ["a.it"] }), null);
   assert.equal(urlNeiNegozi({ capo: "cappotto", negozi: [] }), null);
+});
+
+// --------------------------------------------------------------------------
+// Le parole con cui la stessa cosa si chiama in modi diversi.
+//
+// Metà dei negozi scrive in inglese e chi cerca scrive in italiano. Contato
+// sul catalogo: "stivali" compare in 39 titoli, "boots" in 542. Chi scriveva
+// stivali vedeva un capo su quattordici, e non poteva accorgersene — una
+// pagina non dice mai quello che non ti sta mostrando.
+// --------------------------------------------------------------------------
+// Come fa la ricerca vera: basta che una delle parole si ritrovi. Chi ne
+// ritrova due va più in alto, ma questo lo decide l'ordinamento, non il
+// filtro — e infatti la prima versione di questa riga pretendeva che
+// combaciassero tutte, ed era più severa dell'app che doveva descrivere.
+const trova = (cercato, titolo) =>
+  regoleDa(cercato).some((gruppo) => gruppo.some((regola) => regola.test(titolo)));
+
+test("una parola porta con sé la sua famiglia, in tutte e due le lingue", () => {
+  assert.ok(trova("stivali", "Chelsea Boots black"));
+  assert.ok(trova("maglione", "Lambswool crew neck sweater"));
+  assert.ok(trova("cappotto", "Wool Coat - Navy"));
+  assert.ok(trova("scarpe", "Retro Runner Sneakers"));
+  assert.ok(trova("felpa", "Organic Hoodie Grey"));
+  // E al contrario: chi scrive inglese trova l'italiano.
+  assert.ok(trova("boots", "Stivaletti in pelle"));
+});
+
+test("chi cerca una camicia non vuole una t-shirt né una felpa", () => {
+  // "shirt" sta dentro "t-shirt", "sweatshirt" e "overshirt": col confronto
+  // per pezzi di parola una ricerca di camicie restituiva magliette.
+  assert.ok(trova("camicia", "Oxford Linen Shirt"));
+  assert.ok(!trova("camicia", "Basic T-Shirt in cotone"));
+  assert.ok(!trova("camicia", "Grey Sweatshirt"));
+  // Ma chi la maglietta la vuole, la trova.
+  assert.ok(trova("maglietta", "Basic T-Shirt in cotone"));
+});
+
+test("«baggy» trova anche chi si chiama loose, wide o relaxed", () => {
+  for (const titolo of ["Freazy Loose Jeans", "Wide Leg Trousers", "Relaxed Fit Denim", "Oversized Jeans"]) {
+    assert.ok(trova("jeans baggy", titolo), `non trovato: ${titolo}`);
+  }
+
+  // "Slim Fit Jeans" resta trovabile — jeans lo è — ma sta sotto a chi è
+  // anche largo: chi scrive due parole ne vuole due, e chi ne azzecca una
+  // sola viene dopo, non viene buttato.
+  const larghi = { titolo: "Freazy Loose Jeans", categoria: "PANTALONI" };
+  const stretti = { titolo: "Slim Fit Jeans", categoria: "PANTALONI" };
+  const ordinati = comeLoHaiChiamato([stretti, larghi], "jeans baggy");
+  assert.equal(ordinati[0].titolo, larghi.titolo);
+  assert.equal(ordinati.length, 2);
+});
+
+test("le parole passate al database esistono davvero", () => {
+  // Le famiglie sono scritte come regole, e il database non le capisce: gli
+  // vanno passate parole. Togliendo le parentesi alla cieca da "stival[ei]"
+  // usciva "stivalei", che non compare in nessun titolo di questo mondo, e
+  // la famiglia si riduceva in silenzio alla sola parola scritta.
+  const parole = paroleEspanse("stivali");
+  assert.ok(parole.includes("boot"), parole.join(","));
+  for (const p of parole) {
+    assert.ok(/^[a-zà-ù0-9 ]+$/.test(p), `parola con caratteri da regola dentro: ${p}`);
+    assert.ok(p.length > 2);
+  }
+  assert.ok(paroleEspanse("camicia").includes("shirt"));
+  assert.deepEqual(paroleEspanse(""), []);
 });

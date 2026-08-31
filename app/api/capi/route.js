@@ -3,6 +3,7 @@ import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { arricchisci, coloriVoluti, comeLoHaiChiamato, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
 import { paroleDelloStile } from "@/lib/stiliCapi";
+import { paroleEspanse } from "@/lib/sinonimi";
 
 export const runtime = "nodejs";
 
@@ -36,9 +37,11 @@ export async function POST(req) {
   // Le parole della casella "che capo cerchi". Sono quelle che restringono di
   // più, quindi è a loro che conviene far fare la scrematura nel database:
   // lo stile, se c'è anche quello, riordina dopo.
-  const paroleCapo = String(capo || "").trim()
-    ? String(capo).toLowerCase().split(/[^a-zà-ù0-9]+/i).filter((x) => x.length > 2)
-    : null;
+  // Con la famiglia dietro: chi scrive "stivali" deve pescare anche i boots,
+  // che in catalogo sono quattordici volte tanti. Qui si è larghi apposta —
+  // serve solo a non leggere tutto il catalogo — e a stringere ci pensa
+  // comeLoHaiChiamato, che sa distinguere una camicia da una t-shirt.
+  const paroleCapo = String(capo || "").trim() ? paroleEspanse(capo) : null;
 
   const { data, error } = await supabase.rpc("capi_per_palette", {
     palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
