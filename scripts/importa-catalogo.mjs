@@ -206,6 +206,30 @@ const FIBRE_POVERE = { poliestere: 25, acrilico: 20, nylon: 35, poliammide: 35, 
 
 // Legge la composizione dichiarata nella descrizione e ne ricava un punteggio
 // onesto: non è una misura di qualità, è quello che dice l'etichetta.
+/**
+ * La descrizione del capo, tenuta per cercarci dentro e mai per mostrarla.
+ *
+ * È lì che i negozi scrivono come veste un capo: un jeans largo chiamato
+ * "Model 512" nel titolo non dice niente, ma nella scheda c'è scritto
+ * "vestibilità ampia". Senza, quel capo era introvabile per chiunque non ne
+ * sapesse già il nome.
+ *
+ * Seicento caratteri: la vestibilità e i materiali stanno nelle prime righe,
+ * e il resto è la poesia del negozio. Su settantamila capi la differenza fra
+ * seicento caratteri e tutto il testo sono decine di megabyte di roba che
+ * nessuno leggerà mai — né una persona, perché non la mostriamo, né la
+ * ricerca, perché quello che cerca è già passato.
+ */
+function testoDescrizione(html) {
+  if (!html) return null;
+  const pulito = String(html)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z]+;|&#\d+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return pulito ? pulito.slice(0, 600) : null;
+}
+
 function analizzaTessuto(testo) {
   if (!testo) return { tessuto: null, qualita: null };
   const pulito = String(testo).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").toLowerCase();
@@ -319,6 +343,9 @@ function normalizza(prodotto, negozio) {
     // si comprano New Balance e Adidas, ed è quello che l'utente cerca.
     marca: prodotto.vendor && prodotto.vendor !== negozio.nome ? String(prodotto.vendor).slice(0, 80) : null,
     genere: deduciGenere(prodotto) || negozio.genere || null,
+    // Si salva, non si mostra: serve solo a far trovare i capi che nel
+    // titolo non dicono come vestono.
+    descrizione: testoDescrizione(prodotto.body_html),
     taglie,
     colore_nome: coloreNome || null,
     colore_hex: hex,

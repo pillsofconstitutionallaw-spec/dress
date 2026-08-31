@@ -524,6 +524,32 @@ test("un capo di colore «jeans» non è un paio di jeans", () => {
   assert.equal(ordinati.length, 2, "la maglia è sparita del tutto invece di scendere");
 });
 
+test("la descrizione fa trovare, non fa classifica", () => {
+  // Si salva per cercarci dentro e non si mostra mai: è lì che i negozi
+  // scrivono come veste un capo, e un jeans largo chiamato solo "Model 512"
+  // nel titolo non lo dice.
+  const anonimo = { titolo: "Model 512", categoria: "PANTALONI", descrizione: "Jeans dalla vestibilità ampia, gamba dritta." };
+  assert.equal(comeLoHaiChiamato([anonimo], "jeans baggy").length, 1, "introvabile anche con la descrizione");
+
+  // Ma i negozi ci scrivono dentro anche con cosa abbinare il capo: "sta
+  // bene su un jeans" compare sulla scheda di una camicia. Deve restare
+  // trovabile e stare sotto, non sparire e non salire.
+  const camicia = { titolo: "Camicia Oxford", categoria: "CAMICIE", descrizione: "Sta bene su un jeans o su un pantalone chino." };
+  const jeans = { titolo: "Carpenter Jeans", categoria: "PANTALONI", descrizione: "" };
+  const ordinati = comeLoHaiChiamato([camicia, jeans], "jeans");
+  assert.equal(ordinati[0].titolo, jeans.titolo, "la camicia sta davanti ai jeans");
+  assert.equal(ordinati.length, 2, "la camicia è sparita invece di scendere");
+});
+
+test("senza descrizione salvata non cambia niente", () => {
+  // La colonna si riempie alla prossima importazione: fino ad allora arriva
+  // vuota, o non arriva affatto perché la funzione del database è ancora
+  // quella vecchia. Non deve rompersi né inventarsi punteggi.
+  const senza = { titolo: "Carpenter Jeans", categoria: "PANTALONI" };
+  const vuota = { titolo: "Loose Jeans", categoria: "PANTALONI", descrizione: null };
+  assert.equal(comeLoHaiChiamato([senza, vuota], "jeans").length, 2);
+});
+
 test("la casella «che capo cerchi» adesso filtra davvero", () => {
   const catalogo = [PANTALONE, CAMICIA_UOMO, TSHIRT_UOMO];
   assert.deepEqual(comeLoHaiChiamato(catalogo, "pantalone").map((c) => c.titolo), [PANTALONE.titolo]);

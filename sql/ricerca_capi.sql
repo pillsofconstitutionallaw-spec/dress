@@ -1,3 +1,27 @@
+-- =====================================================================
+-- La ricerca dei capi per palette.
+--
+-- Da incollare nell'editor SQL di Supabase. È tutto in una transazione: o
+-- entra tutto, o non entra niente e resta quello che c'era. Rifarlo due
+-- volte non fa danni.
+--
+-- La funzione cambia quello che restituisce (una colonna in più), e per
+-- questo va tolta e rifatta invece che sostituita: PostgreSQL non lascia
+-- cambiare il tipo di ritorno di una funzione che esiste già.
+-- =====================================================================
+
+begin;
+
+-- La descrizione dei capi: si salva per cercarci dentro, non si mostra mai.
+-- È lì che i negozi scrivono come veste un capo — un jeans largo chiamato
+-- "Model 512" nel titolo non dice niente, ma nella scheda c'è scritto
+-- "vestibilità ampia" — e senza, quel capo era introvabile per chi non ne
+-- sapesse già il nome. La riempie scripts/importa-catalogo.mjs alla prossima
+-- importazione; finché è vuota non cambia niente, e niente si rompe.
+alter table public.prodotti add column if not exists descrizione text;
+
+drop function if exists public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[]);
+
 create or replace function public.capi_per_palette(
   palette      jsonb,
   prezzo_min   numeric default null,
@@ -13,6 +37,7 @@ returns table (
   taglie text[], colore_nome text, colore_hex text,
   colore_l real, colore_a real, colore_b real,
   tessuto text, qualita smallint, fast_fashion boolean,
+  descrizione text,
   distanza real
 )
 language sql stable
@@ -72,7 +97,12 @@ as $$
           select 1 from unnest(parole) k
           where p.titolo ilike '%' || k || '%'
              or coalesce(p.categoria,'') ilike '%' || k || '%'
+             or coalesce(p.marca,'') ilike '%' || k || '%'
              or coalesce(p.colore_nome,'') ilike '%' || k || '%'
+             -- La descrizione entra qui e basta: serve a non lasciare fuori
+             -- il capo che nel titolo non dice come veste. Quanto conta lo
+             -- decide chi ordina, e conta pochissimo.
+             or coalesce(p.descrizione,'') ilike '%' || k || '%'
         )
       )
   ),
@@ -96,7 +126,7 @@ as $$
          p.prezzo, p.prezzo_pieno, p.categoria, p.genere,
          p.taglie, p.colore_nome, p.colore_hex,
          p.colore_l, p.colore_a, p.colore_b,
-         p.tessuto, p.qualita, p.fast_fashion, m.distanza
+         p.tessuto, p.qualita, p.fast_fashion, p.descrizione, m.distanza
   from migliori m
   join public.prodotti p on p.id = m.id
   where m.distanza <= 34
@@ -115,3 +145,5 @@ as $$
   limit quanti;
 $$;
 grant execute on function public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[]) to anon, authenticated;
+
+commit;
