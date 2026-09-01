@@ -529,6 +529,20 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
   }
 });
 
+test("«Le Mans» è un posto, non un uomo", () => {
+  // Otto cappellini New Era della 24 Ore di Le Mans uscivano solo a chi
+  // cerca da uomo. «mans» stava nell'elenco per il possessivo scritto senza
+  // apostrofo, e in centomila capi non ne aggancia nemmeno uno da uomo: le
+  // uniche nove volte che compare è la città francese.
+  for (const titolo of ["24HR Le Mans Print White 9FORTY Adjustable Cap", "Le Mans Oversized T Shirt"]) {
+    assert.equal(perChiE({ titolo, genere: null }), null, titolo);
+  }
+
+  // «Womans» invece un capo ce l'ha davvero, ed è di New Era pure lui.
+  const cappello = "New York Yankees Womans MLB Cosy Leopard Brown 9FORTY Adjustable Cap";
+  assert.equal(perChiE({ titolo: cappello, genere: null }), "donna");
+});
+
 test("il nome del capo dice che capo è, non quanti anni ha chi lo mette", () => {
   // 173 capi segnati «bambino» dal negozio uscivano come da donna, perché si
   // chiamano SKIRT o DRESS: ottanta gonne e vestiti da bambina di Sofie
