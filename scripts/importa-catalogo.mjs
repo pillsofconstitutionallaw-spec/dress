@@ -197,12 +197,73 @@ async function scarica(host, pagina) {
 
 // ── normalizzazione ──────────────────────────────────────────────────
 
-const FIBRE_PREGIATE = {
-  cashmere: 100, seta: 95, lino: 90, lana: 88, "lana merino": 92, alpaca: 90,
-  mohair: 85, cotone: 75, "cotone biologico": 85, canapa: 85, viscosa: 55,
-  lyocell: 70, tencel: 70, modal: 60, cupro: 60,
+// Quanto vale una fibra secondo l'etichetta. Non è una misura di qualità: è
+// quello che il negozio dichiara, messo in un numero confrontabile.
+//
+// I nomi stanno in tutte le lingue in cui i negozi li scrivono, e le sigle
+// (CO, PL, EA) sono quelle stampate sulle etichette di composizione. Non è un
+// vezzo: la tabella parlava solo italiano, e 23.322 capi su 32.525 avevano la
+// composizione letta e nessun punteggio — quasi tre quarti di chi un'etichetta
+// ce l'ha. Il punteggio si vede sotto il capo e ordina la ricerca, quindi
+// erano tre quarti del catalogo etichettato in fondo a ogni parità.
+//
+// Qui dentro ci sono solo traduzioni di voci che c'erano già. La pelle, il
+// camoscio e la gomma sono materiali che questa tabella non ha mai avuto:
+// dargli un numero è una decisione su cosa vale, non una traduzione, e non la
+// prendo di nascosto dentro una correzione. Restano senza punteggio.
+const FIBRE = {
+  cashmere: 100, cachemire: 100, kaschmir: 100, kashmir: 100, ws: 100,
+  seta: 95, silk: 95, silke: 95, soie: 95, seda: 95, se: 95,
+  "lana merino": 92, "lana merinos": 92, "merino wool": 92, merinould: 92, merino: 92,
+  lino: 90, linen: 90, lin: 90, "hør": 90, leinen: 90, linnen: 90, li: 90,
+  alpaca: 90, alpacauld: 90,
+  lana: 88, wool: 88, uld: 88, wolle: 88, laine: 88, lambswool: 88, lammeuld: 88, wo: 88, wv: 88,
+  mohair: 85,
+  "cotone biologico": 85, "organic cotton": 85, "algodón orgánico": 85, "algodon organico": 85,
+  "økologisk bomuld": 85, "biologisch katoen": 85, "coton biologique": 85,
+  canapa: 85, hemp: 85,
+  cotone: 75, cotton: 75, "algodón": 75, algodon: 75, bomuld: 75, baumwolle: 75, coton: 75, katoen: 75, co: 75,
+  lyocell: 70, tencel: 70, modal: 60, mo: 60, cupro: 60,
+  viscosa: 55, viscose: 55, viskose: 55, rayon: 55, vi: 55,
+  elastan: 40, elastane: 40, elasthane: 40, elastano: 40, elastaan: 40, spandex: 40, ea: 40, el: 40,
+  nylon: 35, poliammide: 35, polyamide: 35, poliamida: 35, polyamid: 35, pa: 35,
+  poliestere: 25, polyester: 25, "poliéster": 25, poliester: 25, pl: 25, pes: 25,
+  acrilico: 20, acrylic: 20, acryl: 20, akryl: 20, "fibra acrilica": 20, ac: 20,
+  poliuretano: 15, polyurethane: 15, pu: 15,
 };
-const FIBRE_POVERE = { poliestere: 25, acrilico: 20, nylon: 35, poliammide: 35, elastan: 40, elastane: 40, "pu": 15, poliuretano: 15 };
+
+// Le fibre si provano dalla più lunga alla più corta: «lana merino» vale più
+// della lana, e cercando in ordine di elenco vinceva sempre «lana» — le due
+// voci più precise che avevamo erano codice morto, e 362 capi ne pagavano il
+// prezzo.
+const FIBRE_DALLA_PIU_LUNGA = Object.keys(FIBRE).sort((a, b) => b.length - a.length);
+
+// La fibra dev'essere una parola intera. "leather" contiene "ea", che è la
+// sigla dell'elastan: senza confine, 584 capi in pelle diventerebbero
+// elastan. E si cerca dentro tutto il nome, non solo all'inizio, perché il
+// nome si porta dietro quello che il negozio ha scritto dopo — "cotton
+// washing instructions" — e a volte anche quello che viene prima: "di cotone
+// biologico certificato".
+// Le sigle di due o tre lettere valgono solo in testa al nome, dove
+// l'etichetta le scrive: subito dopo la percentuale. Sono anche parole comuni
+// nelle lingue dei negozi — «el» è l'articolo spagnolo, «se» la congiunzione
+// italiana — e cercandole in mezzo a una frase si prendono le frasi. "95%
+// menos de agua que el a", che è l'acqua risparmiata da Thinking Mu,
+// diventava un capo fatto al 95% di elastan.
+const SIGLA = 3;
+
+function valutaFibra(nome) {
+  for (const fibra of FIBRE_DALLA_PIU_LUNGA) {
+    const i = fibra.length <= SIGLA ? (nome.startsWith(fibra) ? 0 : -1) : nome.indexOf(fibra);
+    if (i < 0) continue;
+    const prima = nome[i - 1];
+    const dopo = nome[i + fibra.length];
+    const attaccataPrima = prima !== undefined && /[a-zà-ÿ]/.test(prima);
+    const attaccataDopo = dopo !== undefined && /[a-zà-ÿ]/.test(dopo);
+    if (!attaccataPrima && !attaccataDopo) return FIBRE[fibra];
+  }
+  return null;
+}
 
 // Legge la composizione dichiarata nella descrizione e ne ricava un punteggio
 // onesto: non è una misura di qualità, è quello che dice l'etichetta.
@@ -230,7 +291,7 @@ function testoDescrizione(html) {
   return pulito ? pulito.slice(0, 600) : null;
 }
 
-function analizzaTessuto(testo) {
+export function analizzaTessuto(testo) {
   if (!testo) return { tessuto: null, qualita: null };
   const pulito = String(testo).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").toLowerCase();
 
@@ -244,15 +305,19 @@ function analizzaTessuto(testo) {
   let somma = 0;
   let peso = 0;
   for (const f of trovate) {
-    const chiave = Object.keys({ ...FIBRE_PREGIATE, ...FIBRE_POVERE }).find((k) => f.nome.startsWith(k));
-    if (!chiave) continue;
-    const valore = FIBRE_PREGIATE[chiave] ?? FIBRE_POVERE[chiave];
+    const valore = valutaFibra(f.nome);
+    if (valore === null) continue;
     somma += valore * f.perc;
     peso += f.perc;
   }
 
   const tessuto = trovate.map((f) => `${f.perc}% ${f.nome}`).join(", ").slice(0, 200);
-  return { tessuto, qualita: peso ? Math.round(somma / peso) : null };
+  // La media è pesata sulle fibre che riconosciamo, quindi dice qualcosa solo
+  // se ne riconosciamo abbastanza. "70% angora, 10% lana" prendeva 88 — il
+  // punteggio della lana pura — su un capo di cui capivamo un decimo: non era
+  // un voto sbagliato, era il voto di un altro capo. Sotto metà capo non si dà.
+  const MEZZO_CAPO = 50;
+  return { tessuto, qualita: peso >= MEZZO_CAPO ? Math.round(somma / peso) : null };
 }
 
 // Un prezzo che arriva da un negozio può essere qualunque cosa: un errore di

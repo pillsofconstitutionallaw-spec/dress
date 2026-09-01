@@ -19,7 +19,7 @@ import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPel
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
-import { deduciGenere } from "@/scripts/importa-catalogo.mjs";
+import { analizzaTessuto, deduciGenere } from "@/scripts/importa-catalogo.mjs";
 
 // --------------------------------------------------------------------------
 // Il bivio del login: è la riga da cui dipende tutto il resto dell'accesso.
@@ -528,6 +528,68 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
     assert.equal(pertinenza({ titolo, genere: null }, "uomo"), 2, titolo);
     assert.equal(pertinenza({ titolo, genere: null }, "donna"), 2, titolo);
   }
+});
+
+test("la composizione si legge in tutte le lingue in cui la scrivono", () => {
+  // Su 32.525 capi con la composizione letta, 23.322 non avevano un
+  // punteggio: la tabella delle fibre conosceva solo l'italiano, e i negozi
+  // scrivono "cotton", "polyester", "økologisk bomuld", "algodón orgánico".
+  // Il punteggio si vede — è la scritta «tessuto 75/100» sotto il capo — e
+  // ordina la ricerca: senza, quel capo finisce in fondo a ogni parità.
+  assert.equal(analizzaTessuto("100% cotton").qualita, 75);
+  assert.equal(analizzaTessuto("100% økologisk bomuld").qualita, 85);
+  assert.equal(analizzaTessuto("100% algodón orgánico").qualita, 85);
+  assert.equal(analizzaTessuto("95% polyester, 5% elastane").qualita, 26);
+
+  // Le sigle delle etichette di composizione sono nomi anche loro: questa
+  // è di Luigi Fusaro, con la coda di frase che il negozio ci ha attaccato.
+  assert.equal(analizzaTessuto("69% PL 29% VI 2% EL il modello indossa").qualita, 34);
+});
+
+test("la fibra più precisa vince su quella generica", () => {
+  // "100% lana merinos" prendeva 88, il punteggio della lana normale: la
+  // ricerca si fermava alla prima voce che combaciava, e «lana» viene prima
+  // di «lana merino» nell'elenco. Le due voci più precise che avevamo erano
+  // codice morto, e 362 capi ne pagavano il prezzo.
+  assert.equal(analizzaTessuto("100% lana merinos").qualita, 92);
+  assert.equal(analizzaTessuto("100% organic cotton").qualita, 85);
+  assert.equal(analizzaTessuto("100% cotone").qualita, 75);
+});
+
+test("una fibra è una parola intera, non una sillaba dentro un'altra", () => {
+  // "leather" contiene "ea", che sull'etichetta è la sigla dell'elastan:
+  // senza un confine, 584 capi in pelle verrebbero valutati come elastan.
+  // La pelle non è in tabella, e finché non c'è resta senza punteggio.
+  assert.equal(analizzaTessuto("100% leather").qualita, null);
+  assert.equal(analizzaTessuto("100% leather").tessuto, "100% leather");
+
+  // Il nome si porta dietro quello che il negozio ha scritto dopo, quindi
+  // la fibra si cerca dentro e non solo all'inizio.
+  assert.equal(analizzaTessuto("100% cotton washing instructions").qualita, 75);
+  assert.equal(analizzaTessuto("100% di cotone biologico certificato").qualita, 85);
+});
+
+test("una sigla vale solo dove sta la fibra: subito dopo la percentuale", () => {
+  // "95% menos de agua que el a" è una frase di Thinking Mu — il 95% di
+  // acqua risparmiata — e «el» lì è l'articolo spagnolo, non la sigla
+  // dell'elastan. Trentatré capi sarebbero diventati 95% elastan.
+  assert.equal(analizzaTessuto("95% menos de agua que el a").qualita, null);
+
+  // Sull'etichetta la sigla viene subito dopo la percentuale, ed è lì che
+  // vale: questa è di Luigi Fusaro, con la coda di frase attaccata dopo.
+  assert.equal(analizzaTessuto("100% PL misure").qualita, 25);
+});
+
+test("il punteggio si dà solo se abbiamo capito almeno metà del capo", () => {
+  // La media è pesata sulle fibre che riconosciamo. "70% angora, 10% lana"
+  // prendeva 88 — il punteggio della lana pura — su un capo di cui
+  // riconoscevamo un decimo: 266 capi avevano un voto costruito così, e non
+  // era un voto sbagliato, era il voto di un altro capo.
+  assert.equal(analizzaTessuto("70% angora e, 10% lana regala una mano").qualita, null);
+  assert.equal(analizzaTessuto("95% rws, 5% kashmir håndvask").qualita, null);
+
+  // Metà basta: qui il resto è una fodera che non sappiamo valutare.
+  assert.equal(analizzaTessuto("55% alpacauld").qualita, 90);
 });
 
 test("un capo può nominarne un altro senza esserlo: la camicia con la cravatta", () => {
