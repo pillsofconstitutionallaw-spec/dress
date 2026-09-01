@@ -283,23 +283,45 @@ function valoreOpzione(prodotto, variante, regex) {
 // E quando qui non usciva niente vinceva il genere dichiarato dal negozio,
 // che parla di sé in generale: così un reggiseno finiva schedato "uomo",
 // perché Muchachomalo vende soprattutto boxer da uomo.
-function deduciGenere(prodotto) {
-  const testo = `${prodotto.title} ${prodotto.product_type} ${(prodotto.tags || []).join(" ")}`.toLowerCase();
+// I bambini per primi: un capo da bambino non è "di un altro genere", è di
+// un'altra persona, e non va offerto a nessuno degli adulti che usano Dress.
+// "baby" da solo era troppo goloso: prendeva "Baby Blue" e "Baby Pink",
+// che sono colori, e "Baby Tee", che è una maglietta da adulta.
+const BAMBINO = /\b(bambin[oaie]|bimb[oaie]|kids?|infant|toddler|junior|jr|girls?|boys?|neonat[oi]|newborn|child|children)\b|\bbab(y|ies)\b(?!\s*(blue|blu|pink|rosa|tee|doll|girl))/;
+const DONNA = /\b(donn[ae]|femminile|wom[ae]n|womens|woman's|women's|lad(y|ies)|dames|femmes?|mujer|damen)\b/;
+const UOMO = /\b(uomo|uomini|maschile|m[ae]n|mens|man's|men's|heren|hommes?|hombre|herren)\b/;
 
-  // I bambini per primi: un capo da bambino non è "di un altro genere", è di
-  // un'altra persona, e non va offerto a nessuno degli adulti che usano Dress.
-  // "baby" da solo era troppo goloso: prendeva "Baby Blue" e "Baby Pink",
-  // che sono colori, e "Baby Tee", che è una maglietta da adulta.
-  if (/\b(bambin[oaie]|bimb[oaie]|kids?|infant|toddler|junior|jr|girls?|boys?|neonat[oi]|newborn|child|children)\b|\bbab(y|ies)\b(?!\s*(blue|blu|pink|rosa|tee|doll|girl))/.test(testo)) {
-    return "bambino";
-  }
-
-  const donna = /\b(donn[ae]|femminile|wom[ae]n|womens|woman's|women's|lad(y|ies)|dames|femmes?|mujer|damen)\b/.test(testo);
-  const uomo = /\b(uomo|uomini|maschile|m[ae]n|mens|man's|men's|heren|hommes?|hombre|herren)\b/.test(testo);
+function leggiGenere(testo) {
+  if (BAMBINO.test(testo)) return "bambino";
+  const donna = DONNA.test(testo);
+  const uomo = UOMO.test(testo);
   if (donna && !uomo) return "donna";
   if (uomo && !donna) return "uomo";
   if (donna && uomo) return "unisex";
   return null;
+}
+
+// Le etichette in cui il negozio scrive il genere nel campo apposta, e non
+// dentro il nome di una collezione: "filter_Gender:womens" di Shopify e
+// qualunque altra scritta allo stesso modo. Del tag si legge solo il valore.
+const CAMPO_GENERE = /gender/i;
+const valoreTag = (tag) => String(tag).slice(String(tag).indexOf(":") + 1);
+
+export function deduciGenere(prodotto) {
+  const etichette = prodotto.tags || [];
+
+  // Quando il negozio lo dichiara nel campo del genere non c'è niente da
+  // indovinare, e quel campo batte le parole pescate nel mucchio. Boody
+  // chiama la sua collezione da donna "womens-baby": 359 capi su 516 —
+  // reggiseni e slip da adulta — finivano schedati bambino per quella parola.
+  const campo = etichette.filter((tag) => CAMPO_GENERE.test(String(tag).split(":")[0])).map(valoreTag).join(" ").toLowerCase();
+  // "unisex" qui è una risposta, non un'assenza di risposta. Fuori di qui non
+  // lo cerchiamo: nel mucchio la parola arriva anche dai nomi delle collezioni.
+  if (/\bunisex\b/.test(campo)) return "unisex";
+  const dalCampo = leggiGenere(campo);
+  if (dalCampo) return dalCampo;
+
+  return leggiGenere(`${prodotto.title} ${prodotto.product_type} ${etichette.join(" ")}`.toLowerCase());
 }
 
 function normalizza(prodotto, negozio) {
@@ -474,15 +496,20 @@ async function importa(negozio) {
   return salvati;
 }
 
-const scelta = process.argv[2];
-const daFare = !scelta || scelta === "--tutti" ? NEGOZI : NEGOZI.filter((n) => n.nome.toLowerCase().includes(scelta.toLowerCase()));
+// Solo quando lo si lancia dalla riga di comando. Senza questa condizione,
+// importare una funzione da qui per provarla farebbe partire l'importazione
+// di tutti i negozi: una prova non deve andare a bussare a cento cataloghi.
+if (import.meta.main) {
+  const scelta = process.argv[2];
+  const daFare = !scelta || scelta === "--tutti" ? NEGOZI : NEGOZI.filter((n) => n.nome.toLowerCase().includes(scelta.toLowerCase()));
 
-if (!daFare.length) {
-  console.error(`Nessun negozio corrisponde a "${scelta}".`);
-  process.exit(1);
+  if (!daFare.length) {
+    console.error(`Nessun negozio corrisponde a "${scelta}".`);
+    process.exit(1);
+  }
+
+  console.log(`Importo ${daFare.length} negozi.\n`);
+  let totale = 0;
+  for (const n of daFare) totale += await importa(n);
+  console.log(`\nTotale: ${totale} capi in catalogo.`);
 }
-
-console.log(`Importo ${daFare.length} negozi.\n`);
-let totale = 0;
-for (const n of daFare) totale += await importa(n);
-console.log(`\nTotale: ${totale} capi in catalogo.`);

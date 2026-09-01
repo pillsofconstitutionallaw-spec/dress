@@ -19,6 +19,7 @@ import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPel
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
+import { deduciGenere } from "@/scripts/importa-catalogo.mjs";
 
 // --------------------------------------------------------------------------
 // Il bivio del login: è la riga da cui dipende tutto il resto dell'accesso.
@@ -527,6 +528,33 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
     assert.equal(pertinenza({ titolo, genere: null }, "uomo"), 2, titolo);
     assert.equal(pertinenza({ titolo, genere: null }, "donna"), 2, titolo);
   }
+});
+
+test("il campo del genere batte le parole pescate fra le etichette", () => {
+  // Boody chiama la sua collezione da donna «womens-baby», e 359 capi su
+  // 516 — reggiseni e slip da adulta — finivano schedati bambino per quella
+  // parola lì dentro. Lo stesso capo però porta l'etichetta col campo
+  // apposta, e quella dice womens: quando il negozio lo scrive nel campo
+  // del genere non c'è niente da indovinare.
+  const reggiseno = {
+    title: "Wireless T-Shirt Bra - Emerald Green",
+    product_type: "Bras",
+    tags: ["filter_Collection:womens-baby", "filter_Gender:womens", "content_SizeGuide:womens-bras-BD"],
+  };
+  assert.equal(deduciGenere(reggiseno), "donna");
+
+  // E quando il campo dice davvero baby, il capo resta da bambino.
+  const tutina = {
+    title: "Long Sleeve Bodysuit - Chalk",
+    product_type: "Baby",
+    tags: ["filter_Gender:baby", "filter_Range:boody-baby"],
+  };
+  assert.equal(deduciGenere(tutina), "bambino");
+
+  // "unisex" è una risposta, non un'assenza di risposta: chi cerca da uomo
+  // i capi unisex li vede, e prima di quelli che non dicono niente.
+  const calze = { title: "Everyday Sock", product_type: "Socks", tags: ["filter_Gender:unisex"] };
+  assert.equal(deduciGenere(calze), "unisex");
 });
 
 test("«dress» non è sempre un vestito: ci sono i calzini da abito e un colore", () => {
