@@ -492,9 +492,11 @@ test("chi cerca da uomo non vede roba da donna, e i dubbi li vede in fondo", () 
   assert.ok(!visti.includes(SNEAKER_BIMBO.titolo), "la scarpa da neonato è ancora lì");
   assert.ok(!visti.includes(SANDALO_BIMBA.titolo), "il sandalo da bambina è ancora lì");
 
-  // Quelli senza genere scritto restano — buttarli via toglierebbe un terzo
-  // del catalogo — ma dopo quelli di cui siamo sicuri.
-  assert.deepEqual(visti, [TSHIRT_UOMO.titolo, CAMICIA_UOMO.titolo, PANTALONE.titolo]);
+  // E chi non dice per chi è, fuori. Per un po' era rimasto in fondo, ma
+  // "in fondo" vuol dire comunque dentro: chi ha detto di essere un uomo
+  // continuava a vedersi proporre pigiami, solo più in basso.
+  assert.ok(!visti.includes(PANTALONE.titolo), "un capo senza genere è ancora in elenco");
+  assert.deepEqual(visti, [TSHIRT_UOMO.titolo, CAMICIA_UOMO.titolo]);
 });
 
 test("senza un genere scelto si toglie solo la roba da bambino", () => {

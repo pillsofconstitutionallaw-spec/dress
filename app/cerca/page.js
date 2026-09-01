@@ -215,8 +215,9 @@ export default function Cerca() {
             ))}
           </div>
           <p className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.45 }}>
-            Parte da come ti sei presentato nel profilo. I capi da bambino restano fuori sempre; un
-            terzo del catalogo non dichiara per chi è, e quelli li trovi in fondo.
+            Parte da come ti sei presentato nel profilo. Restano fuori i capi dell&apos;altro sesso, quelli
+            da bambino, e quelli che non dicono per chi sono — un terzo del catalogo, ma quello che
+            resta è comunque più di quanto se ne guardi in una vita. Con «Tutti» torna tutto.
           </p>
         </div>
 
