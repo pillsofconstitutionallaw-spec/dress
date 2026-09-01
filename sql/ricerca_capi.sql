@@ -75,7 +75,17 @@ as $$
     from voluti
   ),
   ammessi as (
-    select p.*
+    -- Solo le colonne che servono a misurare i colori, non tutta la riga.
+    --
+    -- Qui c'era "select p.*", e finché la descrizione era vuota non costava
+    -- niente. Riempiendola sono arrivati 19,6 MB di testo — 408 caratteri
+    -- per capo su cinquantamila capi — che questo passaggio si trascinava
+    -- fino in fondo senza che nessuno li guardasse: i passaggi dopo usano
+    -- cinque colonne, e la riga vera la si rilegge comunque alla fine,
+    -- ritrovandola per id. La ricerca è passata da 1,7 a 2,3 secondi il
+    -- giorno in cui il campo si è riempito, e la causa non era il campo:
+    -- era questa riga, che chiedeva tutto da sempre.
+    select p.id, p.colore_l, p.colore_a, p.colore_b, p.colori
     from public.prodotti p, limiti li
     where p.disponibile
       and p.colore_l between li.lmin and li.lmax
