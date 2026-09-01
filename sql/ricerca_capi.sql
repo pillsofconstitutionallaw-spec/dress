@@ -20,6 +20,13 @@ begin;
 -- importazione; finché è vuota non cambia niente, e niente si rompe.
 alter table public.prodotti add column if not exists descrizione text;
 
+-- Tutte e due le versioni. Nel database ne era rimasta una vecchia a sei
+-- parametri, senza "parole": PostgreSQL le tiene volentieri tutte e due, ma
+-- PostgREST non sa quale scegliere quando chi chiama non nomina "parole", e
+-- risponde PGRST203 invece di cercare. L'app la nomina sempre, quindi non se
+-- ne accorgeva nessuno — ed è il tipo di trabocchetto che si scopre il
+-- giorno in cui si scrive una chiamata nuova.
+drop function if exists public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int);
 drop function if exists public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[]);
 
 create or replace function public.capi_per_palette(
@@ -147,3 +154,14 @@ $$;
 grant execute on function public.capi_per_palette(jsonb, numeric, numeric, text, boolean, int, text[]) to anon, authenticated;
 
 commit;
+
+-- ── la verifica ──────────────────────────────────────────────────────
+-- Deve uscire UNA riga sola, con sette parametri e descrizione = true.
+-- Due righe vuol dire che la vecchia versione è ancora lì; descrizione a
+-- false vuol dire che è stata incollata una copia vecchia di questo file.
+select
+  pg_get_function_arguments(p.oid) like '%parole%'        as ha_parole,
+  pg_get_function_result(p.oid)    like '%descrizione%'   as ha_descrizione
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'capi_per_palette';
