@@ -530,6 +530,37 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
   }
 });
 
+test("un capo può nominarne un altro senza esserlo: la camicia con la cravatta", () => {
+  // Sei camicie da donna avevano la cravatta nel titolo, e la cravatta è
+  // nell'elenco dei capi da uomo. Le tre di Pinko uscivano unisex, mostrate
+  // anche a un uomo; le tre di Silvian Heach uscivano proprio da uomo, e
+  // quindi sparivano alle donne. Ma lì la cravatta non è il capo: è un
+  // dettaglio della camicia.
+  const pinko = {
+    titolo: "Camicia a righe con cravatta",
+    categoria: "Clothing/Shirts and Blouses/Shirts",
+    genere: "donna",
+  };
+  assert.equal(perChiE(pinko), "donna");
+
+  const heach = { titolo: "Camicia elegante con dettaglio cravatta", categoria: "CAMICIA", genere: "donna" };
+  assert.equal(perChiE(heach), "donna");
+  assert.equal(pertinenza(heach, "donna"), 0, "tolta a una donna");
+
+  // E una fantasia non è un capo: i boxer Julipet con la stampa a cravatte
+  // sono boxer. Senza un genere scritto restano senza, invece di prenderlo
+  // da un disegno sul tessuto.
+  const julipet = {
+    titolo: 'Boxer mare in leggera tela di microfibra in fantasia "cravatta verde"',
+    categoria: "Boxer Mare",
+    genere: null,
+  };
+  assert.equal(perChiE(julipet), null);
+
+  // Una cravatta vera invece resta una cravatta.
+  assert.equal(perChiE({ titolo: "Cravatta in seta fantasia floreale", categoria: "CRAVATTA", genere: null }), "uomo");
+});
+
 test("il campo del genere batte le parole pescate fra le etichette", () => {
   // Boody chiama la sua collezione da donna «womens-baby», e 359 capi su
   // 516 — reggiseni e slip da adulta — finivano schedati bambino per quella
