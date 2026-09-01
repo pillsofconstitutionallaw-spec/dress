@@ -529,6 +529,24 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
   }
 });
 
+test("«dress» non è sempre un vestito: ci sono i calzini da abito e un colore", () => {
+  // In inglese "dress socks" sono i calzini da abito e "dress belt" la
+  // cintura da abito: nove paia di calze e due cinture da uomo uscivano
+  // come roba da donna. La parola lì fa l'aggettivo, come in "dress shirt".
+  for (const titolo of ["Loafer Dress Socks | Cotton | Sage", "5-Pack 1/2 Non-Terry Cotton Crew Dress Sock"]) {
+    assert.equal(perChiE({ titolo, genere: "uomo" }), "uomo", titolo);
+  }
+
+  // "Dress Blues" e "Dress Bles" sono nomi di colore di Anerkjendt e Les
+  // Deux: un vestito blu si chiama "Dress Blue", mai al plurale.
+  for (const titolo of ["Worldwide Weekend Bag - Dress Bles Blue", "AKRICO STRIPE KNIT - Dress Blues"]) {
+    assert.equal(perChiE({ titolo, genere: "uomo" }), "uomo", titolo);
+  }
+
+  // Ma un vestito blu resta un vestito, e resta da donna.
+  assert.equal(perChiE({ titolo: "Textured One Shoulder Mini Dress Blue", genere: null }), "donna");
+});
+
 test("«Le Mans» è un posto, non un uomo", () => {
   // Otto cappellini New Era della 24 Ore di Le Mans uscivano solo a chi
   // cerca da uomo. «mans» stava nell'elenco per il possessivo scritto senza
