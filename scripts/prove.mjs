@@ -529,6 +529,26 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
   }
 });
 
+test("il nome del capo dice che capo è, non quanti anni ha chi lo mette", () => {
+  // 173 capi segnati «bambino» dal negozio uscivano come da donna, perché si
+  // chiamano SKIRT o DRESS: ottanta gonne e vestiti da bambina di Sofie
+  // Schnoor, quindici gonne di Kocca. Il nome del capo non parla di età —
+  // le gonne le portano anche le bambine — e non può smentire un negozio
+  // che dice per quale età è.
+  for (const titolo of ["CALLYKB SKIRT", "BERRASK DRESS", "Gonna a pieghe con 3 bottoni"]) {
+    const capo = { titolo, genere: "bambino" };
+    assert.equal(perChiE(capo), "bambino", titolo);
+    for (const genere of ["uomo", "donna", null]) {
+      assert.equal(pertinenza(capo, genere), null, `${titolo} proposto a ${genere}`);
+    }
+  }
+
+  // Una parola che dice davvero per chi è, invece, lo smentisce: Boody
+  // scrive "Women's" nel titolo e «bambino» nel dato, e a vincere è il capo.
+  assert.equal(perChiE({ titolo: "Women's Crew Neck Sweater - Oyster", genere: "bambino" }), "donna");
+});
+
+
 test("senza un genere scelto si toglie solo la roba da bambino", () => {
   const catalogo = [REGGISENO, SNEAKER_BIMBO, CAMICIA_UOMO];
   const visti = perChiCerca(catalogo, null).map((c) => c.titolo);
