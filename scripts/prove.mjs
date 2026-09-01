@@ -501,7 +501,11 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
   // Fra i 22.400 capi senza genere in catalogo, circa millecento sono
   // gonne, vestiti, reggiseni e bluse: a un uomo non vanno proposti nemmeno
   // in fondo all'elenco.
-  for (const titolo of ["Gonna a costine con drappeggio", "Ribbed Midi Dress", "Reggiseno a triangolo", "Camicetta in raso"]) {
+  // "Decolleté" e "Guêpière" stanno qui apposta: il confine di parola di
+  // JavaScript conosce solo l'alfabeto inglese, e dopo la é pensava che la
+  // parola fosse già finita — le due voci non agganciavano affatto.
+  for (const titolo of ["Gonna a costine con drappeggio", "Ribbed Midi Dress", "Reggiseno a triangolo",
+                        "Camicetta in raso", "Decolleté in vernice nera", "Guêpière in pizzo"]) {
     assert.equal(perChiE({ titolo, genere: null }), "donna", titolo);
     assert.equal(pertinenza({ titolo, genere: null }, "uomo"), null, `proposto a un uomo: ${titolo}`);
   }
@@ -509,7 +513,11 @@ test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => 
 
   // Ma dove il nome è ambiguo si lascia perdere: escludere per sbaglio è
   // peggio che non escludere.
-  for (const titolo of ["Cotton Dress Shirt", "Tie-Dye T-Shirt", "Blazer effetto glossy"]) {
+  // "Sergio Tacchini" è una marca di scarpe da ginnastica, non un paio di
+  // tacchi, e "Dressing Gown" non è un vestito: il confine serve da tutte
+  // e due le parti.
+  for (const titolo of ["Cotton Dress Shirt", "Tie-Dye T-Shirt", "Blazer effetto glossy",
+                        "Sneakers Sergio Tacchini Court", "Dressing Gown"]) {
     assert.equal(perChiE({ titolo, genere: null }), null, `scambiato per capo di un genere: ${titolo}`);
   }
 
