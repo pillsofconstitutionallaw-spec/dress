@@ -131,8 +131,27 @@ as $$
       case when jsonb_array_length(a.colori) > 0 then a.colori else '[null]'::jsonb end
     ) c on true
   ),
+  -- La distanza fra ogni tinta del capo e ogni colore della palette. È il
+  -- pezzo caro di tutta la ricerca: un capo ha in media 1,31 tinte e la
+  -- palette dodici colori, quindi su settantamila capi sono più di un
+  -- milione di conti, e si fanno tutti prima di poter scartare qualcosa.
+  --
+  -- Due sprechi, tolti:
+  --
+  -- power(x, 2) è una chiamata di funzione che passa per il tipo numerico;
+  -- (x)*(x) su due real è una moltiplicazione e basta.
+  --
+  -- E la radice quadrata non serviva: fra due distanze, quella più piccola
+  -- ha anche il quadrato più piccolo. Ordinare e confrontare sul quadrato dà
+  -- esattamente lo stesso risultato, e la radice si fa una volta sola alla
+  -- fine, sulle poche righe che escono, invece di un milione di volte su
+  -- quelle che verranno buttate.
   migliori as (
-    select t.id, min(sqrt(power(t.l - v.l, 2) + power(t.a - v.a, 2) + power(t.b - v.b, 2)))::real as distanza
+    select t.id, min(
+             (t.l - v.l) * (t.l - v.l) +
+             (t.a - v.a) * (t.a - v.a) +
+             (t.b - v.b) * (t.b - v.b)
+           ) as quadrato
     from tinte t cross join voluti v
     where t.l is not null
     group by t.id
@@ -141,10 +160,13 @@ as $$
          p.prezzo, p.prezzo_pieno, p.categoria, p.genere,
          p.taglie, p.colore_nome, p.colore_hex,
          p.colore_l, p.colore_a, p.colore_b,
-         p.tessuto, p.qualita, p.fast_fashion, p.descrizione, m.distanza
+         p.tessuto, p.qualita, p.fast_fashion, p.descrizione,
+         sqrt(m.quadrato)::real as distanza
   from migliori m
   join public.prodotti p on p.id = m.id
-  where m.distanza <= 34
+  -- 34 di distanza, cioè 1156 di quadrato: la stessa soglia, sull'altra
+  -- faccia dello stesso numero.
+  where m.quadrato <= 34 * 34
   -- Prima per chi è il capo, poi per quanto il colore corrisponde.
   -- L'ordine dei due conta: col colore per primo, i capi senza genere si
   -- infilavano fra quelli giusti ogni volta che erano di una tinta più
@@ -155,7 +177,7 @@ as $$
               when p.genere = 'unisex' then 1
               else 2
             end) asc,
-           m.distanza asc,
+           m.quadrato asc,
            p.qualita desc nulls last
   limit quanti;
 $$;
