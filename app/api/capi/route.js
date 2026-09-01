@@ -62,21 +62,44 @@ export async function POST(req) {
       parole: paroleDaCercare,
     });
 
-  let { data, error } = await cerca(voluti);
+  /**
+   * La palette a metà, e le due metà chieste insieme.
+   *
+   * Il costo della ricerca è lineare nei colori — misurato sul catalogo
+   * vero, guardaroba da donna: un colore 0,4 s, cinque 1,5 s, dodici 3,0 s —
+   * e il database concede tre secondi a una domanda. Dodici colori contro il
+   * guardaroba femminile, che in catalogo è quasi il doppio di quello
+   * maschile, ci sbattevano contro: l'utente vedeva un errore.
+   *
+   * Spezzarla non cambia il risultato, e non è un compromesso. La distanza
+   * di un capo dalla palette è la più piccola fra le sue distanze dai
+   * singoli colori, e il più piccolo di dodici numeri è il più piccolo fra
+   * il minimo dei primi sei e il minimo degli altri sei. Due domande da sei
+   * danno le stesse righe di una da dodici — e chi decide davvero l'ordine è
+   * arricchisci() qui sotto, che il colore più vicino se lo ricalcola da sé
+   * su tutta la palette.
+   *
+   * Due domande in parallelo costano quanto la più lenta delle due, non la
+   * somma: la metà del lavoro, nella metà del tempo.
+   */
+  const META = 6;
+  const gruppi = [];
+  for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 
-  // Il tempo che il database concede a una domanda non è infinito, e il costo
-  // della ricerca cresce con quanti colori si confrontano: dodici colori
-  // contro un guardaroba da donna — che in catalogo è quasi il doppio di
-  // quello da uomo — a volte non ci sta dentro, e l'utente vedeva un errore.
-  //
-  // Meglio rispondere con i colori che contano: la palette ne segna cinque
-  // come principali, e sono quelli su cui l'analisi si è sbilanciata davvero.
-  // È una risposta più stretta, non una risposta sbagliata — e comunque
-  // meglio di una pagina che dice "non ha funzionato".
+  const risposte = await Promise.all(gruppi.map(cerca));
+  const fallito = risposte.find((r) => r.error);
+  let data = risposte.flatMap((r) => r.data || []);
+  let error = fallito?.error || null;
+
+  // Se anche così non ci sta, si ripiega sui colori che contano: la palette
+  // ne segna cinque come principali, ed è su quelli che l'analisi si è
+  // sbilanciata. Una risposta più stretta, non una sbagliata.
   if (error && /timeout|57014|canceling statement/i.test(error.message || "")) {
     const principali = voluti.filter((c) => c.principale);
     const ridotti = principali.length >= 3 ? principali : voluti.slice(0, 5);
-    ({ data, error } = await cerca(ridotti));
+    const ripiego = await cerca(ridotti);
+    data = ripiego.data || [];
+    error = ripiego.error;
   }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
