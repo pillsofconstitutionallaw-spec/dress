@@ -492,11 +492,33 @@ test("chi cerca da uomo non vede roba da donna, e i dubbi li vede in fondo", () 
   assert.ok(!visti.includes(SNEAKER_BIMBO.titolo), "la scarpa da neonato è ancora lì");
   assert.ok(!visti.includes(SANDALO_BIMBA.titolo), "il sandalo da bambina è ancora lì");
 
-  // E chi non dice per chi è, fuori. Per un po' era rimasto in fondo, ma
-  // "in fondo" vuol dire comunque dentro: chi ha detto di essere un uomo
-  // continuava a vedersi proporre pigiami, solo più in basso.
-  assert.ok(!visti.includes(PANTALONE.titolo), "un capo senza genere è ancora in elenco");
-  assert.deepEqual(visti, [TSHIRT_UOMO.titolo, CAMICIA_UOMO.titolo]);
+  // Quelli senza genere restano, ma in fondo: sono per lo più sneaker e
+  // zaini, che da donna non sono.
+  assert.deepEqual(visti, [TSHIRT_UOMO.titolo, CAMICIA_UOMO.titolo, PANTALONE.titolo]);
+});
+
+test("certi capi dicono per chi sono col nome, anche se il negozio tace", () => {
+  // Fra i 22.400 capi senza genere in catalogo, circa millecento sono
+  // gonne, vestiti, reggiseni e bluse: a un uomo non vanno proposti nemmeno
+  // in fondo all'elenco.
+  for (const titolo of ["Gonna a costine con drappeggio", "Ribbed Midi Dress", "Reggiseno a triangolo", "Camicetta in raso"]) {
+    assert.equal(perChiE({ titolo, genere: null }), "donna", titolo);
+    assert.equal(pertinenza({ titolo, genere: null }, "uomo"), null, `proposto a un uomo: ${titolo}`);
+  }
+  assert.equal(perChiE({ titolo: "Cravatta in seta stampata", genere: null }), "uomo");
+
+  // Ma dove il nome è ambiguo si lascia perdere: escludere per sbaglio è
+  // peggio che non escludere.
+  for (const titolo of ["Cotton Dress Shirt", "Tie-Dye T-Shirt", "Blazer effetto glossy"]) {
+    assert.equal(perChiE({ titolo, genere: null }), null, `scambiato per capo di un genere: ${titolo}`);
+  }
+
+  // E quello che davvero non ha genere resta per tutti: sneaker, zaini,
+  // berretti sono metà di quei 22.400.
+  for (const titolo of ["Total 90 Shox Magia Sneakers", "Elmer Graphic Beanie"]) {
+    assert.equal(pertinenza({ titolo, genere: null }, "uomo"), 2, titolo);
+    assert.equal(pertinenza({ titolo, genere: null }, "donna"), 2, titolo);
+  }
 });
 
 test("senza un genere scelto si toglie solo la roba da bambino", () => {

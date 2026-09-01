@@ -98,17 +98,18 @@ as $$
       -- scritto — 22.966 su 68.897 — perché molti negozi non lo pubblicano,
       -- e passavano tutti senza pagare pegno, ordinati solo per colore. Chi
       -- impostava "uomo" si ritrovava reggiseni e pigiami da donna.
-      -- Per un po' sono restati, in fondo all'elenco: buttarli sembrava caro,
-      -- perché sono un capo su tre. Ma "in fondo" vuol dire comunque dentro,
-      -- e chi ha detto di essere un uomo continuava a vedersi proporre
-      -- pigiami e reggiseni, solo più in basso. Adesso escono, e i conti
-      -- dicono che si può: a un uomo restano 20.946 capi, a una donna
-      -- 33.395, e nessun negozio del catalogo sparisce.
+      -- Restano, e per un buon motivo. Buttarli tutti sarebbe stato comodo —
+      -- righe in meno nel calcolo delle distanze, ricerca più svelta — ma
+      -- guardando cosa sono si scopre che in gran parte sono sneaker, zaini
+      -- e berretti: roba che da donna non è, è di nessuno. Toglierli non
+      -- vuol dire "non mostrarmi roba da donna", vuol dire mostrarmi metà
+      -- catalogo.
       --
-      -- Toglierli qui, e non solo nel browser, è anche il modo per far
-      -- correre la ricerca: sono righe che non entrano più nel calcolo
-      -- delle distanze, che è il pezzo che costa.
-      and (genere_voluto is null or p.genere = genere_voluto or p.genere = 'unisex')
+      -- Quelli che invece da donna lo sono davvero — gonne, vestiti,
+      -- reggiseni, bluse: circa millecento — li riconosce perChiE() dal nome
+      -- del capo, che è una cosa che una regex qui dentro pagherebbe cara e
+      -- che nel browser costa niente.
+      and (genere_voluto is null or p.genere = genere_voluto or p.genere = 'unisex' or p.genere is null)
       -- I capi da bambino non sono di un altro genere: sono di un'altra
       -- persona, e non c'è nessun adulto a cui vada bene vederseli proporre.
       --
