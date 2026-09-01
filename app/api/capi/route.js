@@ -43,21 +43,41 @@ export async function POST(req) {
   // comeLoHaiChiamato, che sa distinguere una camicia da una t-shirt.
   const paroleCapo = String(capo || "").trim() ? paroleEspanse(capo) : null;
 
-  const { data, error } = await supabase.rpc("capi_per_palette", {
-    palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
-    prezzo_min: min ? Number(min) : null,
-    prezzo_max: max ? Number(max) : null,
-    genere_voluto: genere || null,
-    escludi_fast: Boolean(escludiFast),
-    // Ne chiediamo molti di più di quanti ne mostreremo: il database ordina
-    // per distanza, e senza margine tornerebbero solo capi di un colore solo.
-    // Ma il margine si commisura alla richiesta: la pagina degli stili ne
-    // mostra quattro per stile e ne chiede cinque volte di fila, e pescarne
-    // quattrocento ogni volta la renderebbe lentissima per niente.
-    quanti: Math.min(400, Math.max(80, (Number(body?.quanti) || 48) * 8)),
-    // Le parole dello stile scelto: senza, si cerca in tutto il catalogo.
-    parole: paroleCapo?.length ? paroleCapo : stile ? paroleDelloStile(stile) : null,
-  });
+  // Quanti capi chiedere al database. Ne servono molti più di quanti se ne
+  // mostrano: il database ordina per distanza, e senza margine tornerebbero
+  // tutti dello stesso colore. Ma il margine si commisura alla richiesta —
+  // la pagina degli stili ne mostra quattro per stile e ne chiede cinque
+  // volte di fila, e pescarne quattrocento ogni volta sarebbe lentissimo.
+  const quantiChiedere = Math.min(400, Math.max(80, (Number(body?.quanti) || 48) * 8));
+  const paroleDaCercare = paroleCapo?.length ? paroleCapo : stile ? paroleDelloStile(stile) : null;
+
+  const cerca = (colori) =>
+    supabase.rpc("capi_per_palette", {
+      palette: colori.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
+      prezzo_min: min ? Number(min) : null,
+      prezzo_max: max ? Number(max) : null,
+      genere_voluto: genere || null,
+      escludi_fast: Boolean(escludiFast),
+      quanti: quantiChiedere,
+      parole: paroleDaCercare,
+    });
+
+  let { data, error } = await cerca(voluti);
+
+  // Il tempo che il database concede a una domanda non è infinito, e il costo
+  // della ricerca cresce con quanti colori si confrontano: dodici colori
+  // contro un guardaroba da donna — che in catalogo è quasi il doppio di
+  // quello da uomo — a volte non ci sta dentro, e l'utente vedeva un errore.
+  //
+  // Meglio rispondere con i colori che contano: la palette ne segna cinque
+  // come principali, e sono quelli su cui l'analisi si è sbilanciata davvero.
+  // È una risposta più stretta, non una risposta sbagliata — e comunque
+  // meglio di una pagina che dice "non ha funzionato".
+  if (error && /timeout|57014|canceling statement/i.test(error.message || "")) {
+    const principali = voluti.filter((c) => c.principale);
+    const ridotti = principali.length >= 3 ? principali : voluti.slice(0, 5);
+    ({ data, error } = await cerca(ridotti));
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
