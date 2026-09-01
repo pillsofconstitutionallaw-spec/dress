@@ -656,6 +656,24 @@ test("«baggy» trova anche chi si chiama loose, wide o relaxed", () => {
   assert.equal(ordinati.length, 2);
 });
 
+test("al database non si mandano più parole di quante ne regga", () => {
+  // Ogni parola viene confrontata con cinque campi di ogni riga, e uno è la
+  // descrizione, lunga seicento caratteri. Misurato sul catalogo vero:
+  // due parole 1763 ms, sei 2875, otto TIMEOUT. "cardigan oversize" ne
+  // generava undici e la ricerca moriva.
+  for (const q of ["cardigan oversize", "jeans baggy larghi", "stivali scarpe borsa cintura"]) {
+    assert.ok(paroleEspanse(q).length <= 5, `${q} → ${paroleEspanse(q).length} parole`);
+  }
+
+  // Ma quelle scritte da chi cerca non si tagliano mai: sono la richiesta.
+  const scritte = paroleEspanse("cardigan oversize");
+  assert.ok(scritte.includes("cardigan") && scritte.includes("oversize"), scritte.join(","));
+
+  // E il taglio vale solo per il database: il punteggio vede tutta la
+  // famiglia, perché girando qui non costa niente.
+  assert.ok(regoleDa("cardigan oversize").flat().length > 5);
+});
+
 test("le parole passate al database esistono davvero", () => {
   // Le famiglie sono scritte come regole, e il database non le capisce: gli
   // vanno passate parole. Togliendo le parentesi alla cieca da "stival[ei]"
