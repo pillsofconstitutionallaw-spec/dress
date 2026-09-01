@@ -93,10 +93,18 @@ as $$
       and (genere_voluto is null or p.genere = genere_voluto or p.genere = 'unisex' or p.genere is null)
       -- I capi da bambino non sono di un altro genere: sono di un'altra
       -- persona, e non c'è nessun adulto a cui vada bene vederseli proporre.
-      and not (
-        coalesce(p.genere,'') = 'bambino'
-        or p.titolo ~* '\m(bambin[oaie]|bimb[oaie]|kids?|infant|toddler|junior|girls?|boys?|neonat[oi]|newborn)\M|\mbab(y|ies)\M(?!\s*(blue|blu|pink|rosa|tee|doll|girl))'
-      )
+      --
+      -- Qui c'era anche una regex sul titolo, e ha mandato la ricerca in
+      -- timeout: gira su ogni riga del catalogo, senza indice — la funzione
+      -- li spegne apposta, vedi sopra — e costa sei volte un confronto
+      -- secco. Il conto non si vede provandola da sola su una riga; si vede
+      -- quando la si fa girare su tutte.
+      --
+      -- E non serviva: il titolo lo legge già perChiE() in lib/capiPalette.js,
+      -- su ogni ricerca, e lo legge meglio, perché sa che "Baby Blue" è un
+      -- colore. Qui basta il genere scritto in colonna, che per 1.342 capi
+      -- l'abbiamo messo giusto.
+      and coalesce(p.genere,'') <> 'bambino' 
       and (not escludi_fast or not p.fast_fashion)
       and (
         parole is null
