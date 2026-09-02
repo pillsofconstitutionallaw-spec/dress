@@ -3,7 +3,7 @@ import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { arricchisci, coloriVoluti, comeLoHaiChiamato, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
 import { paroleDelloStile } from "@/lib/stiliCapi";
-import { paroleEspanse } from "@/lib/sinonimi";
+import { paroleEspanse, perIlDatabase } from "@/lib/sinonimi";
 
 export const runtime = "nodejs";
 
@@ -49,7 +49,10 @@ export async function POST(req) {
   // la pagina degli stili ne mostra quattro per stile e ne chiede cinque
   // volte di fila, e pescarne quattrocento ogni volta sarebbe lentissimo.
   const quantiChiedere = Math.min(400, Math.max(80, (Number(body?.quanti) || 48) * 8));
-  const paroleDaCercare = paroleCapo?.length ? paroleCapo : stile ? paroleDelloStile(stile) : null;
+  // Le parole dello stile passano dallo stesso taglio di quelle scritte da
+  // chi cerca: erano l'unica strada che al database ci arrivava intera, e
+  // «Romantico» ne ha otto — una in più di quante ne bastino per sforare.
+  const paroleDaCercare = paroleCapo?.length ? paroleCapo : stile ? perIlDatabase(paroleDelloStile(stile)) : null;
 
   const cerca = (colori) =>
     supabase.rpc("capi_per_palette", {
@@ -63,30 +66,48 @@ export async function POST(req) {
     });
 
   /**
-   * La palette a metà, e le due metà chieste insieme.
+   * La palette a pezzi da tre, chiesti tutti insieme.
    *
-   * Il costo della ricerca è lineare nei colori — misurato sul catalogo
-   * vero, guardaroba da donna: un colore 0,4 s, cinque 1,5 s, dodici 3,0 s —
-   * e il database concede tre secondi a una domanda. Dodici colori contro il
-   * guardaroba femminile, che in catalogo è quasi il doppio di quello
-   * maschile, ci sbattevano contro: l'utente vedeva un errore.
+   * Il costo della ricerca è lineare nei colori e il database concede tre
+   * secondi a una domanda. Misurato oggi sul catalogo vero — 101.080 capi,
+   * chiedendone 400 — senza un genere scelto, che è il caso più pesante
+   * perché non si scarta metà catalogo:
    *
-   * Spezzarla non cambia il risultato, e non è un compromesso. La distanza
-   * di un capo dalla palette è la più piccola fra le sue distanze dai
-   * singoli colori, e il più piccolo di dodici numeri è il più piccolo fra
-   * il minimo dei primi sei e il minimo degli altri sei. Due domande da sei
-   * danno le stesse righe di una da dodici — e chi decide davvero l'ordine è
-   * arricchisci() qui sotto, che il colore più vicino se lo ricalcola da sé
-   * su tutta la palette.
+   *   un colore 0,6 s · due 1,1 · tre 1,8 · quattro 2,2 · cinque 2,7 · sei 3,1
    *
-   * Due domande in parallelo costano quanto la più lenta delle due, non la
-   * somma: la metà del lavoro, nella metà del tempo.
+   * A sei ci si sbatte contro. Chi non aveva scelto il genere e apriva una
+   * palette da dodici colori vedeva un errore, sempre: due domande da sei,
+   * tutte e due oltre il limite, e falliva pure il ripiego. A tre siamo a
+   * 1,8 s, con un terzo di margine per quando il catalogo crescerà.
+   *
+   * Spezzare non cambia il risultato, e non è un compromesso. La distanza di
+   * un capo dalla palette è la più piccola fra le sue distanze dai singoli
+   * colori, e il più piccolo di dodici numeri è il più piccolo fra i minimi
+   * dei quattro gruppi da tre. E chi decide davvero l'ordine è arricchisci()
+   * qui sotto, che il colore più vicino se lo ricalcola da sé su tutta la
+   * palette.
+   *
+   * E vanno chieste IN FILA, non insieme. Qui c'era Promise.all, sull'idea
+   * che due domande in parallelo costino quanto la più lenta: non è vero su
+   * questo database, che di CPU per una domanda alla volta ne ha. Misurato
+   * oggi, dodici colori senza genere:
+   *
+   *   in parallelo, gruppi da 6 → tutte e due fuori tempo massimo
+   *   in parallelo, gruppi da 4 → tutte e tre fuori tempo massimo
+   *   in parallelo, gruppi da 2 → tutte e sei fuori tempo massimo
+   *   in fila,      gruppi da 4 → 6,6 s, nessun errore
+   *
+   * In parallelo le domande si ostacolano a vicenda e sforano il limite
+   * TUTTE, anche quando ognuna da sola ci starebbe larga. In fila ognuna ha
+   * la macchina per sé e finisce in due secondi. Si aspetta di più — sei
+   * secondi contro un errore — e sei secondi almeno mostrano dei capi.
    */
-  const META = 6;
+  const META = 4;
   const gruppi = [];
   for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 
-  const risposte = await Promise.all(gruppi.map(cerca));
+  const risposte = [];
+  for (const gruppo of gruppi) risposte.push(await cerca(gruppo));
   const fallito = risposte.find((r) => r.error);
   let data = risposte.flatMap((r) => r.data || []);
   let error = fallito?.error || null;

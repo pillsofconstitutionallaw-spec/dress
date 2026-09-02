@@ -14,7 +14,8 @@ import { sembraEmail } from "@/lib/identificativo";
 import { NOMI_COLORE, coloreDaNome, coloreNelTitolo } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
-import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
+import { paroleEspanse, perIlDatabase, regoleDa } from "@/lib/sinonimi";
+import { paroleDelloStile } from "@/lib/stiliCapi";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -989,6 +990,23 @@ test("«baggy» trova anche chi si chiama loose, wide o relaxed", () => {
   const ordinati = comeLoHaiChiamato([stretti, larghi], "jeans baggy");
   assert.equal(ordinati[0].titolo, larghi.titolo);
   assert.equal(ordinati.length, 2);
+});
+
+test("anche le parole di uno stile si tagliano prima di andare al database", () => {
+  // Il taglio c'era solo per le parole scritte da chi cerca. Gli stili non
+  // ci sono mai passati: «Romantico» ne genera otto, «Business / Formale»
+  // undici, e su 128 stili quasi nessuno sta sotto i cinque. Misurato oggi
+  // sul catalogo vero: con le parole di uno stile la ricerca sfora i tre
+  // secondi anche con UN colore solo. I completi non uscivano mai.
+  for (const stile of ["Romantico", "Business / Formale", "Streetwear"]) {
+    assert.ok(paroleDelloStile(stile).length > 5, `${stile} non serve più come esempio`);
+    assert.ok(perIlDatabase(paroleDelloStile(stile)).length <= 5, stile);
+  }
+
+  // E resta un taglio solo per il database: chi filtra le righe già
+  // scaricate continua a vedere tutte le parole, perché in memoria non
+  // costano niente.
+  assert.ok(paroleDelloStile("Streetwear").length > 5);
 });
 
 test("al database non si mandano più parole di quante ne regga", () => {

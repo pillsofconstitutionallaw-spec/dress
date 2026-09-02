@@ -3,6 +3,7 @@ import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
 import { paroleDaIndossare, paroleDelloStile } from "@/lib/stiliCapi";
+import { perIlDatabase } from "@/lib/sinonimi";
 import { PERIODI, RUOLI, adattoAlPeriodo, ruoloDelCapo } from "@/lib/periodiAnno";
 import { tagliConsigliati } from "@/lib/proporzioni";
 import { TUTTE_LE_VESTIBILITA } from "@/lib/data";
@@ -32,7 +33,6 @@ export async function POST(req) {
   if (!voluti.length) return NextResponse.json({ error: "PALETTE_SENZA_COLORI" }, { status: 400 });
 
   const comuni = {
-    palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
     prezzo_min: null,
     prezzo_max: max ? Number(max) : null,
     genere_voluto: genere || null,
@@ -46,12 +46,36 @@ export async function POST(req) {
   // con quelle, un completo Romantico restava senza scarpe. Quindi lo stile
   // vincola i capi d'abbigliamento, mentre scarpe e accessori si scelgono per
   // colore su tutto il catalogo.
-  const [conStile, tutto] = await Promise.all([
-    stile
-      ? supabase.rpc("capi_per_palette", { ...comuni, quanti: 420, parole: paroleDelloStile(stile) })
-      : Promise.resolve({ data: null }),
-    supabase.rpc("capi_per_palette", { ...comuni, quanti: 420, parole: null }),
-  ]);
+  //
+  // La palette si spezza in gruppi da quattro e si chiede UN PEZZO ALLA
+  // VOLTA. Il costo della ricerca è lineare nei colori e il database concede
+  // tre secondi a una domanda: con dodici colori una domanda sola non ci sta,
+  // e due domande insieme si ostacolano e sforano tutte e due. Qui c'era
+  // Promise.all con la palette intera, e i completi non uscivano MAI a chi
+  // aveva una palette piena — con o senza genere, provato oggi: 500 in tre
+  // secondi. La distanza dalla palette è il minimo fra le distanze dai
+  // singoli colori, quindi spezzare non cambia una riga di quello che esce.
+  const META = 4;
+  const gruppi = [];
+  for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
+
+  const pesca = async (parole) => {
+    const righe = [];
+    for (const gruppo of gruppi) {
+      const risposta = await supabase.rpc("capi_per_palette", {
+        ...comuni,
+        palette: gruppo.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
+        quanti: 420,
+        parole,
+      });
+      if (risposta.error) return { data: null, error: risposta.error };
+      righe.push(...(risposta.data || []));
+    }
+    return { data: righe, error: null };
+  };
+
+  const conStile = stile ? await pesca(perIlDatabase(paroleDelloStile(stile))) : { data: null };
+  const tutto = await pesca(null);
 
   if (tutto.error) return NextResponse.json({ error: tutto.error.message }, { status: 500 });
 
