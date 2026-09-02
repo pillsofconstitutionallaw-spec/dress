@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { arricchisci, coloriVoluti, comeLoHaiChiamato, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
-import { paroleDelloStile } from "@/lib/stiliCapi";
-import { paroleEspanse, perIlDatabase } from "@/lib/sinonimi";
+import { capiDelloStile } from "@/lib/stiliCapi";
+import { paroleEspanse } from "@/lib/sinonimi";
 
 export const runtime = "nodejs";
 
@@ -49,10 +49,11 @@ export async function POST(req) {
   // la pagina degli stili ne mostra quattro per stile e ne chiede cinque
   // volte di fila, e pescarne quattrocento ogni volta sarebbe lentissimo.
   const quantiChiedere = Math.min(400, Math.max(80, (Number(body?.quanti) || 48) * 8));
-  // Le parole dello stile passano dallo stesso taglio di quelle scritte da
-  // chi cerca: erano l'unica strada che al database ci arrivava intera, e
-  // «Romantico» ne ha otto — una in più di quante ne bastino per sforare.
-  const paroleDaCercare = paroleCapo?.length ? paroleCapo : stile ? perIlDatabase(paroleDelloStile(stile)) : null;
+  // Al database vanno solo le parole scritte da chi cerca. Quelle dello stile
+  // no: sono tante — otto per «Romantico», undici per «Business / Formale» —
+  // e quel filtro sfora i tre secondi anche con un colore solo. Lo stile si
+  // riconosce dopo, sulle righe già scaricate, dove le parole non costano.
+  const paroleDaCercare = paroleCapo?.length ? paroleCapo : null;
 
   const cerca = (colori) =>
     supabase.rpc("capi_per_palette", {
@@ -127,9 +128,13 @@ export async function POST(req) {
 
   const capi = arricchisci(data, voluti).sort((a, b) => a.scarto - b.scarto);
 
+  // Lo stile, se è stato chiesto. Se non ne resta niente si tiene tutto: una
+  // risposta larga è più utile di una pagina vuota.
+  const delloStile = stile && !paroleCapo?.length ? capiDelloStile(capi, stile) : capi;
+
   // Chi ha scritto che capo cerca lo ha scritto per essere ascoltato: il
   // database screma all'ingrosso, qui si tiene solo quello che c'entra.
-  const richiesti = comeLoHaiChiamato(capi, capo);
+  const richiesti = comeLoHaiChiamato(delloStile.length ? delloStile : capi, capo);
 
   const quantiNeVoglio = Math.min(120, Math.max(12, Number(quanti) || 48));
   // La distribuzione serve a non dare dodici capi tutti dello stesso colore

@@ -14,8 +14,8 @@ import { sembraEmail } from "@/lib/identificativo";
 import { NOMI_COLORE, coloreDaNome, coloreNelTitolo } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
-import { paroleEspanse, perIlDatabase, regoleDa } from "@/lib/sinonimi";
-import { paroleDelloStile } from "@/lib/stiliCapi";
+import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
+import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -992,21 +992,30 @@ test("«baggy» trova anche chi si chiama loose, wide o relaxed", () => {
   assert.equal(ordinati.length, 2);
 });
 
-test("anche le parole di uno stile si tagliano prima di andare al database", () => {
-  // Il taglio c'era solo per le parole scritte da chi cerca. Gli stili non
-  // ci sono mai passati: «Romantico» ne genera otto, «Business / Formale»
-  // undici, e su 128 stili quasi nessuno sta sotto i cinque. Misurato oggi
-  // sul catalogo vero: con le parole di uno stile la ricerca sfora i tre
-  // secondi anche con UN colore solo. I completi non uscivano mai.
-  for (const stile of ["Romantico", "Business / Formale", "Streetwear"]) {
-    assert.ok(paroleDelloStile(stile).length > 5, `${stile} non serve più come esempio`);
-    assert.ok(perIlDatabase(paroleDelloStile(stile)).length <= 5, stile);
-  }
+test("uno stile si riconosce sulle righe già scaricate, dove le parole non costano", () => {
+  // Nel database quel filtro sfora i tre secondi: ogni parola confrontata
+  // con cinque campi di ogni riga, uno è la descrizione da seicento
+  // caratteri, su settantottomila righe. Sulle righe già in mano costa un
+  // millisecondo — e le parole si usano TUTTE, non le prime cinque.
+  const catalogo = [
+    { titolo: "Blusa in pizzo con volant", categoria: "Bluse" },
+    { titolo: "Gonna a fiori in georgette", categoria: "Gonne" },
+    { titolo: "Felpa oversize con cappuccio", categoria: "Felpe" },
+    { titolo: "Sneaker chunky in mesh", categoria: "Sneakers", descrizione: "tessuti tecnici" },
+  ];
+  const suoi = capiDelloStile(catalogo, "Romantico");
+  assert.deepEqual(suoi.map((c) => c.titolo), [
+    "Blusa in pizzo con volant",
+    "Gonna a fiori in georgette",
+    "Sneaker chunky in mesh",
+  ]);
 
-  // E resta un taglio solo per il database: chi filtra le righe già
-  // scaricate continua a vedere tutte le parole, perché in memoria non
-  // costano niente.
-  assert.ok(paroleDelloStile("Streetwear").length > 5);
+  // Guarda tutti i campi, non solo il titolo: la sneaker entra per la
+  // descrizione, ed è giusto — è lì che i negozi scrivono i tessuti.
+  assert.equal(capiDelloStile([{ titolo: "Sneaker", descrizione: "tessuti che si muovono" }], "Romantico").length, 1);
+
+  // Senza stile non si filtra niente: si restituisce quello che c'era.
+  assert.equal(capiDelloStile(catalogo, null).length, catalogo.length);
 });
 
 test("al database non si mandano più parole di quante ne regga", () => {

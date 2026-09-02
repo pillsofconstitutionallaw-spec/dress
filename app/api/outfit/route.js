@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
-import { paroleDaIndossare, paroleDelloStile } from "@/lib/stiliCapi";
-import { perIlDatabase } from "@/lib/sinonimi";
+import { capiDelloStile, paroleDaIndossare } from "@/lib/stiliCapi";
 import { PERIODI, RUOLI, adattoAlPeriodo, ruoloDelCapo } from "@/lib/periodiAnno";
 import { tagliConsigliati } from "@/lib/proporzioni";
 import { TUTTE_LE_VESTIBILITA } from "@/lib/data";
@@ -74,10 +73,22 @@ export async function POST(req) {
     return { data: righe, error: null };
   };
 
-  const conStile = stile ? await pesca(perIlDatabase(paroleDelloStile(stile))) : { data: null };
+  // Una domanda sola, e lo stile si filtra dopo, sulle righe già in mano.
+  //
+  // Qui c'erano due domande, e la seconda mandava al database le parole dello
+  // stile. Quel filtro è la cosa più cara che esista in questa ricerca — ogni
+  // parola contro cinque campi di ogni riga, uno è la descrizione da
+  // seicento caratteri, su settantottomila righe — e sforava i tre secondi
+  // anche con UN colore solo: i completi non uscivano mai, per nessuno stile.
+  // Le stesse parole, sulle righe già scaricate, costano un millisecondo, e
+  // si usano tutte invece delle prime cinque.
   const tutto = await pesca(null);
-
   if (tutto.error) return NextResponse.json({ error: tutto.error.message }, { status: 500 });
+
+  // Se dello stile non è rimasto niente si tiene tutto: un completo
+  // approssimativo è più utile di nessun completo.
+  const suoi = stile ? capiDelloStile(tutto.data, stile) : null;
+  const conStile = { data: suoi?.length ? suoi : null };
 
   const arricchisci = (righe) => (righe || []).map((capo) => {
     const suo = { L: capo.colore_l, a: capo.colore_a, b: capo.colore_b };
