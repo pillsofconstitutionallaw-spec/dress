@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { arricchisci, coloriVoluti, comeLoHaiChiamato, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
-import { capiDelloStile } from "@/lib/stiliCapi";
+import { paroleDelloStile } from "@/lib/stiliCapi";
 import { paroleEspanse } from "@/lib/sinonimi";
 
 export const runtime = "nodejs";
@@ -49,11 +49,13 @@ export async function POST(req) {
   // la pagina degli stili ne mostra quattro per stile e ne chiede cinque
   // volte di fila, e pescarne quattrocento ogni volta sarebbe lentissimo.
   const quantiChiedere = Math.min(400, Math.max(80, (Number(body?.quanti) || 48) * 8));
-  // Al database vanno solo le parole scritte da chi cerca. Quelle dello stile
-  // no: sono tante — otto per «Romantico», undici per «Business / Formale» —
-  // e quel filtro sfora i tre secondi anche con un colore solo. Lo stile si
-  // riconosce dopo, sulle righe già scaricate, dove le parole non costano.
-  const paroleDaCercare = paroleCapo?.length ? paroleCapo : null;
+  // Le parole dello stile tornano al database, tutte, senza tagli. Ci erano
+  // state tolte perché il filtro costava tre secondi: guardava cinque campi
+  // per parola su ogni riga. Adesso guarda una colonna sola e indicizzata, e
+  // otto parole di «Romantico» su quattro colori costano 0,9 s invece di un
+  // errore — meno di quanto costi la stessa ricerca SENZA parole, perché il
+  // filtro scarta le righe prima che se ne calcolino le distanze.
+  const paroleDaCercare = paroleCapo?.length ? paroleCapo : stile ? paroleDelloStile(stile) : null;
 
   const cerca = (colori) =>
     supabase.rpc("capi_per_palette", {
@@ -74,12 +76,14 @@ export async function POST(req) {
    * chiedendone 400 — senza un genere scelto, che è il caso più pesante
    * perché non si scarta metà catalogo:
    *
-   *   un colore 0,6 s · due 1,1 · tre 1,8 · quattro 2,2 · cinque 2,7 · sei 3,1
+   *   un colore 0,6 s · due 0,9 · tre 2,0 · quattro 2,2 · sei 3,1
    *
    * A sei ci si sbatte contro. Chi non aveva scelto il genere e apriva una
-   * palette da dodici colori vedeva un errore, sempre: due domande da sei,
-   * tutte e due oltre il limite, e falliva pure il ripiego. A tre siamo a
-   * 1,8 s, con un terzo di margine per quando il catalogo crescerà.
+   * palette da dodici colori vedeva un errore, sempre. A quattro si sta a
+   * 2,2 s, che sembra dentro ma non lo è: misurato quattro volte di fila dà
+   * 2808, 1584, 1877 e un errore. A DUE si sta a 0,9 s, con tre volte il
+   * margine — e il totale non peggiora, perché sei domande piccole costano
+   * meno di tre grandi: 5,3 secondi contro 6,6.
    *
    * Spezzare non cambia il risultato, e non è un compromesso. La distanza di
    * un capo dalla palette è la più piccola fra le sue distanze dai singoli
@@ -103,7 +107,7 @@ export async function POST(req) {
    * la macchina per sé e finisce in due secondi. Si aspetta di più — sei
    * secondi contro un errore — e sei secondi almeno mostrano dei capi.
    */
-  const META = 4;
+  const META = 2;
   const gruppi = [];
   for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 
@@ -128,13 +132,9 @@ export async function POST(req) {
 
   const capi = arricchisci(data, voluti).sort((a, b) => a.scarto - b.scarto);
 
-  // Lo stile, se è stato chiesto. Se non ne resta niente si tiene tutto: una
-  // risposta larga è più utile di una pagina vuota.
-  const delloStile = stile && !paroleCapo?.length ? capiDelloStile(capi, stile) : capi;
-
   // Chi ha scritto che capo cerca lo ha scritto per essere ascoltato: il
   // database screma all'ingrosso, qui si tiene solo quello che c'entra.
-  const richiesti = comeLoHaiChiamato(delloStile.length ? delloStile : capi, capo);
+  const richiesti = comeLoHaiChiamato(capi, capo);
 
   const quantiNeVoglio = Math.min(120, Math.max(12, Number(quanti) || 48));
   // La distribuzione serve a non dare dodici capi tutti dello stesso colore

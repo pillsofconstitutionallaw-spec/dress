@@ -54,7 +54,7 @@ export async function POST(req) {
   // aveva una palette piena — con o senza genere, provato oggi: 500 in tre
   // secondi. La distanza dalla palette è il minimo fra le distanze dai
   // singoli colori, quindi spezzare non cambia una riga di quello che esce.
-  const META = 4;
+  const META = 2;
   const gruppi = [];
   for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 
@@ -73,20 +73,19 @@ export async function POST(req) {
     return { data: righe, error: null };
   };
 
-  // Una domanda sola, e lo stile si filtra dopo, sulle righe già in mano.
+  // Una domanda sola, e i vestiti dello stile si scelgono dopo, fra le righe
+  // già in mano.
   //
-  // Qui c'erano due domande, e la seconda mandava al database le parole dello
-  // stile. Quel filtro è la cosa più cara che esista in questa ricerca — ogni
-  // parola contro cinque campi di ogni riga, uno è la descrizione da
-  // seicento caratteri, su settantottomila righe — e sforava i tre secondi
-  // anche con UN colore solo: i completi non uscivano mai, per nessuno stile.
-  // Le stesse parole, sulle righe già scaricate, costano un millisecondo, e
-  // si usano tutte invece delle prime cinque.
+  // Qui ce n'erano due, e in /api/capi adesso è giusto che siano al
+  // database: il filtro delle parole passa da una colonna indicizzata e
+  // costa meno della domanda senza parole. Ma qui le domande RADDOPPIANO,
+  // perché le scarpe si scelgono per colore su tutto il catalogo mentre i
+  // vestiti no, e il conto è misurato: con due passaggi un completo
+  // Streetwear senza genere prende 11,5 secondi contro 6,3, e i capi che
+  // escono sono gli stessi quattro. Il doppio del tempo per niente.
   const tutto = await pesca(null);
   if (tutto.error) return NextResponse.json({ error: tutto.error.message }, { status: 500 });
 
-  // Se dello stile non è rimasto niente si tiene tutto: un completo
-  // approssimativo è più utile di nessun completo.
   const suoi = stile ? capiDelloStile(tutto.data, stile) : null;
   const conStile = { data: suoi?.length ? suoi : null };
 
@@ -104,7 +103,9 @@ export async function POST(req) {
     return { ...capo, colore_palette: vicino, scarto: Number(scarto.toFixed(1)), ruolo: ruoloDelCapo(capo.titolo, capo.categoria) };
   });
 
-  const vestiti = arricchisci(conStile.data || tutto.data);
+  // Se dello stile non è uscito niente si tiene tutto: un completo
+  // approssimativo è più utile di nessun completo.
+  const vestiti = arricchisci(conStile.data?.length ? conStile.data : tutto.data);
   const qualsiasi = arricchisci(tutto.data);
 
   // Lo stile comanda su quello che si indossa. Scarpe e accessori seguivano
