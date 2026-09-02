@@ -207,10 +207,14 @@ async function scarica(host, pagina) {
 // ce l'ha. Il punteggio si vede sotto il capo e ordina la ricerca, quindi
 // erano tre quarti del catalogo etichettato in fondo a ogni parità.
 //
-// Qui dentro ci sono solo traduzioni di voci che c'erano già. La pelle, il
-// camoscio e la gomma sono materiali che questa tabella non ha mai avuto:
-// dargli un numero è una decisione su cosa vale, non una traduzione, e non la
-// prendo di nascosto dentro una correzione. Restano senza punteggio.
+// La pelle, il camoscio e l'angora questa tabella non li aveva mai avuti, e
+// cinquecentocinquanta capi in pelle restavano senza voto. Sono materiali
+// naturali e durevoli, e stanno nella fascia della canapa e del mohair.
+//
+// La gomma resta fuori, ed è una scelta e non una dimenticanza: quando un
+// capo dichiara "100% rubber" quella è la suola di una scarpa, e la suola non
+// dice niente su com'è fatta la scarpa. Darle un numero sarebbe inventare un
+// voto, non leggerne uno.
 const FIBRE = {
   cashmere: 100, cachemire: 100, kaschmir: 100, kashmir: 100, ws: 100,
   seta: 95, silk: 95, silke: 95, soie: 95, seda: 95, se: 95,
@@ -218,7 +222,9 @@ const FIBRE = {
   lino: 90, linen: 90, lin: 90, "hør": 90, leinen: 90, linnen: 90, li: 90,
   alpaca: 90, alpacauld: 90,
   lana: 88, wool: 88, uld: 88, wolle: 88, laine: 88, lambswool: 88, lammeuld: 88, wo: 88, wv: 88,
-  mohair: 85,
+  mohair: 85, angora: 88,
+  pelle: 85, leather: 85, cuero: 85, leder: 85, laeder: 85, "l\u00e6der": 85,
+  camoscio: 85, suede: 85, "daim": 85, "ante": 85,
   "cotone biologico": 85, "organic cotton": 85, "algodón orgánico": 85, "algodon organico": 85,
   "økologisk bomuld": 85, "biologisch katoen": 85, "coton biologique": 85,
   canapa: 85, hemp: 85,

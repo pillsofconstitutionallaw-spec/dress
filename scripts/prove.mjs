@@ -560,8 +560,8 @@ test("la fibra più precisa vince su quella generica", () => {
 test("una fibra è una parola intera, non una sillaba dentro un'altra", () => {
   // "leather" contiene "ea", che sull'etichetta è la sigla dell'elastan:
   // senza un confine, 584 capi in pelle verrebbero valutati come elastan.
-  // La pelle non è in tabella, e finché non c'è resta senza punteggio.
-  assert.equal(analizzaTessuto("100% leather").qualita, null);
+  assert.equal(analizzaTessuto("100% leather").qualita, 85);
+  assert.notEqual(analizzaTessuto("100% leather").qualita, 40);
   assert.equal(analizzaTessuto("100% leather").tessuto, "100% leather");
 
   // Il nome si porta dietro quello che il negozio ha scritto dopo, quindi
@@ -683,6 +683,22 @@ test("un titolo è una frase, non il nome di un colore", () => {
   assert.equal(coloreNelTitolo("MAGLIA GIROCOLLO BASIC VERDE BOSCO"), NOMI_COLORE.verde);
 });
 
+test("la pelle e il camoscio valgono, la gomma della suola no", () => {
+  // Cinquecentocinquanta capi in pelle e centoventi in camoscio restavano
+  // senza voto: sono materiali che questa tabella non aveva mai avuto.
+  // Naturali e durevoli, stanno nella fascia della canapa e del mohair.
+  assert.equal(analizzaTessuto("100% leather").qualita, 85);
+  assert.equal(analizzaTessuto("100% pelle bovina").qualita, 85);
+  assert.equal(analizzaTessuto("100% suede").qualita, 85);
+  // L'angora è un pelo fine come il mohair e la lana.
+  assert.equal(analizzaTessuto("100% angora").qualita, 88);
+
+  // La gomma no. Quando un capo dichiara "100% rubber" quella è la suola di
+  // una scarpa, e la suola non dice niente su com'è fatta la scarpa: darle
+  // un numero sarebbe inventare un voto, non leggerne uno.
+  assert.equal(analizzaTessuto("100% rubber dimensions").qualita, null);
+});
+
 test("una sigla vale solo dove sta la fibra: subito dopo la percentuale", () => {
   // "95% menos de agua que el a" è una frase di Thinking Mu — il 95% di
   // acqua risparmiata — e «el» lì è l'articolo spagnolo, non la sigla
@@ -695,11 +711,11 @@ test("una sigla vale solo dove sta la fibra: subito dopo la percentuale", () => 
 });
 
 test("il punteggio si dà solo se abbiamo capito almeno metà del capo", () => {
-  // La media è pesata sulle fibre che riconosciamo. "70% angora, 10% lana"
-  // prendeva 88 — il punteggio della lana pura — su un capo di cui
-  // riconoscevamo un decimo: 266 capi avevano un voto costruito così, e non
-  // era un voto sbagliato, era il voto di un altro capo.
-  assert.equal(analizzaTessuto("70% angora e, 10% lana regala una mano").qualita, null);
+  // La media è pesata sulle fibre che riconosciamo. "60% polipropilene, 30%
+  // rubber, 10% poliestere" prendeva 25 — il voto del poliestere — su un capo
+  // di cui riconoscevamo un decimo: 266 capi avevano un voto costruito così,
+  // e non era un voto sbagliato, era il voto di un altro capo.
+  assert.equal(analizzaTessuto("60% polipropilene, 30% rubber, 10% poliestere").qualita, null);
   assert.equal(analizzaTessuto("95% rws, 5% kashmir håndvask").qualita, null);
 
   // Metà basta: qui il resto è una fodera che non sappiamo valutare.
