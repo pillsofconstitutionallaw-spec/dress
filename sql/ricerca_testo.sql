@@ -60,10 +60,17 @@ alter table public.prodotti
     )
   ) stored;
 
--- CONCURRENTLY: costruire l'indice non blocca chi sta cercando. Per questo
--- il file non ha begin/commit — un indice concorrente non si può creare
--- dentro una transazione, e PostgreSQL rifiuterebbe.
-create index concurrently if not exists prodotti_cerca_trgm
+-- Senza CONCURRENTLY, e non per distrazione: l'editor SQL di Supabase avvolge
+-- quello che gli si incolla in una transazione, e un indice concorrente
+-- dentro una transazione PostgreSQL lo rifiuta — «CREATE INDEX CONCURRENTLY
+-- cannot run inside a transaction block». Provato.
+--
+-- Costruirlo normalmente prende un lucchetto che ferma le SCRITTURE sulla
+-- tabella finché non ha finito: su centomila righe e una colonna da cinque
+-- megabyte sono secondi. Le letture non le tocca, quindi chi sta cercando in
+-- quel momento non se ne accorge; a fermarsi e riprendere sarebbe
+-- l'importazione, se capitasse proprio in quel minuto.
+create index if not exists prodotti_cerca_trgm
   on public.prodotti using gin (cerca gin_trgm_ops);
 
 -- E gli conviene sapere com'è fatta la tabella adesso. Oggi ci sono passate
@@ -74,8 +81,7 @@ analyze public.prodotti;
 
 -- ── la verifica ──────────────────────────────────────────────────────
 -- Devono uscire: la colonna cerca con generated = ALWAYS, e l'indice
--- prodotti_cerca_trgm valido. Un indice invalid = true vuol dire che la
--- creazione concorrente è fallita a metà: si butta e si rifà.
+-- prodotti_cerca_trgm con valido = true.
 select column_name, is_generated
 from information_schema.columns
 where table_name = 'prodotti' and column_name = 'cerca';
