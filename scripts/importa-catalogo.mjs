@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { coloreDaNome, hexALab } from "../lib/colore.js";
+import { coloreDaNome, coloreNelTitolo, hexALab } from "../lib/colore.js";
 import { coloriDaFoto } from "./colore-immagine.mjs";
 
 const RADICE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -402,7 +402,7 @@ function normalizza(prodotto, negozio) {
   // Il colore lo dichiara il negozio in un'opzione; se non c'è, lo cerchiamo
   // nel titolo ("CAMICIA FLANELLA VERDONE").
   const coloreNome = valoreOpzione(prodotto, riferimento, /colou?r|colore/i);
-  const hex = coloreDaNome(coloreNome) || coloreDaNome(prodotto.title);
+  const hex = coloreDaNome(coloreNome) || coloreNelTitolo(prodotto.title);
   const lab = hex ? hexALab(hex) : null;
 
   const taglie = [

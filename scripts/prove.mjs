@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
+import { NOMI_COLORE, coloreDaNome, coloreNelTitolo } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
@@ -567,6 +568,51 @@ test("una fibra è una parola intera, non una sillaba dentro un'altra", () => {
   // la fibra si cerca dentro e non solo all'inizio.
   assert.equal(analizzaTessuto("100% cotton washing instructions").qualita, 75);
   assert.equal(analizzaTessuto("100% di cotone biologico certificato").qualita, 85);
+});
+
+test("nel campo del colore la sfumatura segue il generico: «verde bosco» è bosco", () => {
+  // Il negozio scrive "Verde bosco" e usciva il verde generico, perché la
+  // ricerca si fermava alla prima parola che conosceva. Sono tinte molto più
+  // chiare di quelle vere, mandate alla palette sbagliata.
+  assert.equal(coloreDaNome("Verde bosco"), NOMI_COLORE.bosco);
+  assert.equal(coloreDaNome("Grigio Antracite"), NOMI_COLORE.antracite);
+  assert.equal(coloreDaNome("Blu celeste"), NOMI_COLORE.celeste);
+  assert.equal(coloreDaNome("Marrone Caffè"), NOMI_COLORE.caffe);
+
+  // In inglese la sfumatura sta prima, non dopo: "Black Sand" non è un nero
+  // sabbioso, sono due colori, e il primo è quello che domina.
+  assert.equal(coloreDaNome("Black Sand"), NOMI_COLORE.black);
+  assert.equal(coloreDaNome("White Navy"), NOMI_COLORE.white);
+  assert.equal(coloreDaNome("OLIVE GREEN"), NOMI_COLORE.olive);
+});
+
+test("una barra, un trattino o una «e» fra due colori vogliono dire due colori", () => {
+  // "Black/Ivory" è una scarpa nera e avorio, non un avorio scuro. La
+  // normalizzazione cancellava i separatori, e "black ivory" diventava
+  // indistinguibile da "verde bosco".
+  assert.equal(coloreDaNome("Black/Ivory"), NOMI_COLORE.black);
+  assert.equal(coloreDaNome("Nero/Crema"), NOMI_COLORE.nero);
+  assert.equal(coloreDaNome("Black-F Avorio"), NOMI_COLORE.black);
+  assert.equal(coloreDaNome("White and Navy Plaid"), NOMI_COLORE.white);
+});
+
+test("il denim è un tessuto, non un colore", () => {
+  // "DENIM SLIM FIT NERO" è un jeans nero e usciva blu, perché «denim» viene
+  // prima. Il colore del tessuto vale solo dove il capo non ne dichiara
+  // nessun altro.
+  assert.equal(coloreNelTitolo("DENIM SLIM FIT NERO"), NOMI_COLORE.nero);
+  assert.equal(coloreDaNome("Dark Denim Blue"), NOMI_COLORE.blue);
+  assert.equal(coloreNelTitolo("Jeans in denim di cotone"), NOMI_COLORE.denim);
+});
+
+test("un titolo è una frase, non il nome di un colore", () => {
+  // Nel titolo i colori possono essere due, o far parte di una marca:
+  // "Blu Marina Militare" è la marca, non un verde militare. In una frase
+  // vale il primo colore e basta — le sfumature si leggono solo nel campo
+  // che il negozio riempie apposta.
+  assert.equal(coloreNelTitolo("Sneakers Blu Marina Militare 2258"), NOMI_COLORE.blu);
+  assert.equal(coloreNelTitolo("Abito lungo beige con stampa floreale blu"), NOMI_COLORE.beige);
+  assert.equal(coloreNelTitolo("MAGLIA GIROCOLLO BASIC VERDE BOSCO"), NOMI_COLORE.verde);
 });
 
 test("una sigla vale solo dove sta la fibra: subito dopo la percentuale", () => {
