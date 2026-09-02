@@ -20,7 +20,7 @@ import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPel
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
-import { analizzaTessuto, deduciGenere } from "@/scripts/importa-catalogo.mjs";
+import { analizzaTessuto, coloreDelCapo, deduciGenere } from "@/scripts/importa-catalogo.mjs";
 
 // --------------------------------------------------------------------------
 // Il bivio del login: è la riga da cui dipende tutto il resto dell'accesso.
@@ -603,6 +603,22 @@ test("il denim è un tessuto, non un colore", () => {
   assert.equal(coloreNelTitolo("DENIM SLIM FIT NERO"), NOMI_COLORE.nero);
   assert.equal(coloreDaNome("Dark Denim Blue"), NOMI_COLORE.blue);
   assert.equal(coloreNelTitolo("Jeans in denim di cotone"), NOMI_COLORE.denim);
+});
+
+test("se il negozio dichiara un colore che non capiamo, decide la foto e non il titolo", () => {
+  // Il negozio aveva scritto «GHIACCIO», che non è in vocabolario, e dal
+  // titolo usciva il marrone di "Dettagli Stile Cuoio": un bomber ghiaccio
+  // schedato marrone cuoio. Il negozio stava parlando del colore e noi non
+  // l'abbiamo capito — la parola che troviamo nel titolo è di un'altra cosa.
+  // Meglio non dire niente: così a misurarlo è la foto, che è il capo.
+  const bomber = "Bomber Uomo Collo Camicia in Nylon con Dettagli Stile Cuoio";
+  assert.equal(coloreDelCapo("GHIACCIO", bomber), null);
+
+  // Quando il negozio il campo non lo riempie, il titolo resta il ripiego.
+  assert.equal(coloreDelCapo(null, "Abito lungo beige con stampa floreale blu"), NOMI_COLORE.beige);
+
+  // E quando lo riempie e lo capiamo, vince lui.
+  assert.equal(coloreDelCapo("Verde bosco", "Maglia dolcevita in lambswool"), NOMI_COLORE.bosco);
 });
 
 test("un titolo è una frase, non il nome di un colore", () => {

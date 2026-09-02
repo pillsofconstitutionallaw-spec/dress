@@ -330,6 +330,24 @@ function prezzoValido(valore) {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * Il colore del capo, da quello che c'è scritto.
+ *
+ * Il negozio lo dichiara in un'opzione; se non c'è, lo cerchiamo nel titolo
+ * ("CAMICIA FLANELLA VERDONE"). Ma se c'è e non lo sappiamo leggere —
+ * «Ghiaccio», «Sky Captain», «Eggnog» sono undicimila capi — il titolo non è
+ * il ripiego giusto: il negozio stava parlando del colore, noi non l'abbiamo
+ * capito, e la parola che troviamo nel titolo di solito è di un'altra cosa.
+ * Un bomber dichiarato «GHIACCIO» finiva marrone cuoio, perché nel titolo
+ * c'era "Dettagli Stile Cuoio".
+ *
+ * Meglio non dire niente: chi resta senza colore lo fa misurare alla foto,
+ * che è il capo, e non a una parola che parla dei dettagli.
+ */
+export function coloreDelCapo(coloreNome, titolo) {
+  return coloreNome ? coloreDaNome(coloreNome) : coloreNelTitolo(titolo);
+}
+
 function valoreOpzione(prodotto, variante, regex) {
   const i = (prodotto.options || []).findIndex((o) => regex.test(String(o.name || "")));
   if (i < 0) return null;
@@ -399,10 +417,8 @@ function normalizza(prodotto, negozio) {
     .map((v) => prezzoValido(v.price))
     .filter((p) => p !== null);
 
-  // Il colore lo dichiara il negozio in un'opzione; se non c'è, lo cerchiamo
-  // nel titolo ("CAMICIA FLANELLA VERDONE").
   const coloreNome = valoreOpzione(prodotto, riferimento, /colou?r|colore/i);
-  const hex = coloreDaNome(coloreNome) || coloreNelTitolo(prodotto.title);
+  const hex = coloreDelCapo(coloreNome, prodotto.title);
   const lab = hex ? hexALab(hex) : null;
 
   const taglie = [
