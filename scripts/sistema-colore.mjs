@@ -6,10 +6,19 @@
 // Serve una volta sola, dopo aver aggiustato come si legge il nome di un
 // colore. Da qui in avanti ci pensa importa-catalogo.mjs a ogni importazione.
 //
-// Tocca SOLO i capi il cui colore è stato dedotto da un nome, e li riconosce
-// da questo: un colore preso dal vocabolario è uno degli hex che ci abbiamo
-// scritto dentro, mentre uno misurato sulla foto è un hex qualunque. I colori
-// letti dalle foto restano dove sono — la foto è il capo, il nome è una parola.
+// Ricalcola quello che il capo dichiara di sé, con la stessa regola
+// dell'importazione: se il negozio ha riempito il campo del colore e lo
+// sappiamo leggere, vince quello; se il campo è vuoto, vale il titolo.
+//
+// Dove il campo c'è ma non lo sappiamo leggere, qui non si può fare niente: a
+// decidere è la foto, e le foto le scarica l'importazione. Quei capi restano
+// come sono fino al prossimo giro.
+//
+// Un colore misurato sulla foto non viene toccato per un colore preso dal
+// titolo — la foto è il capo, il titolo è una frase. Ma viene toccato per un
+// nome dichiarato dal negozio, ed è giusto così: sulle scarpe nere dichiarate
+// «BLACKSMS» la foto misura lo sfondo bianco, e su un kimono avorio
+// dichiarato «Mandorla» misura il fondale nero.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -48,8 +57,10 @@ console.log();
 const DAL_VOCABOLARIO = new Set(Object.values(NOMI_COLORE));
 const daCambiare = [];
 for (const capo of capi) {
-  if (!DAL_VOCABOLARIO.has(capo.colore_hex)) continue; // questo viene dalla foto
-  const hex = coloreDaNome(capo.colore_nome) || coloreNelTitolo(capo.titolo);
+  const dalNome = coloreDaNome(capo.colore_nome);
+  // Il campo del negozio vince sempre. Il titolo solo se il colore di adesso
+  // veniva a sua volta da una parola, mai contro una foto.
+  const hex = dalNome || (capo.colore_nome || !DAL_VOCABOLARIO.has(capo.colore_hex) ? null : coloreNelTitolo(capo.titolo));
   if (!hex || hex === capo.colore_hex) continue;
   const lab = hexALab(hex);
   daCambiare.push({

@@ -586,6 +586,26 @@ test("nel campo del colore la sfumatura segue il generico: «verde bosco» è bo
   assert.equal(coloreDaNome("OLIVE GREEN"), NOMI_COLORE.olive);
 });
 
+test("i nomi che i negozi usano davvero stanno in vocabolario, e non si mangiano fra loro", () => {
+  // Trentottomila capi hanno il colore scritto in un campo apposta, e di
+  // undicimila non sapevamo leggere il nome. Questi li ho guardati in
+  // faccia, quattro foto per nome dove il nome era ambiguo: «mandorla» di
+  // Yamamay è avorio e non marrone, «hazelnut» è un nude chiaro, «asphalt»
+  // di Ecoalf è grigio scuro, «carta da zucchero» è azzurro polvere.
+  for (const nome of ["silver", "eggnog", "charcoal", "champagne", "taupe", "storm", "mandorla", "carta da zucchero"]) {
+    assert.ok(coloreDaNome(nome), `non riconosciuto: ${nome}`);
+  }
+
+  // "rose wood" è un rosa polveroso, non il rosa: i nomi lunghi si provano
+  // per primi, ed è questo a tenerli separati.
+  assert.equal(coloreDaNome("Rose Wood"), NOMI_COLORE["rose wood"]);
+  assert.notEqual(coloreDaNome("Rose Wood"), NOMI_COLORE.rose);
+
+  // Tre parole sono il massimo che la ricerca prova, e "carta da zucchero"
+  // ne occupa esattamente tre: dentro una frase più lunga deve reggere.
+  assert.equal(coloreDaNome("Abito lungo carta da zucchero"), NOMI_COLORE["carta da zucchero"]);
+});
+
 test("una barra, un trattino o una «e» fra due colori vogliono dire due colori", () => {
   // "Black/Ivory" è una scarpa nera e avorio, non un avorio scuro. La
   // normalizzazione cancellava i separatori, e "black ivory" diventava
@@ -619,6 +639,38 @@ test("se il negozio dichiara un colore che non capiamo, decide la foto e non il 
 
   // E quando lo riempie e lo capiamo, vince lui.
   assert.equal(coloreDelCapo("Verde bosco", "Maglia dolcevita in lambswool"), NOMI_COLORE.bosco);
+});
+
+test("in italiano il colore concorda, e il vocabolario sa solo il maschile", () => {
+  // "Blusa bianca", "Jeans azzurri", "Tuta nera": milleseicento capi non
+  // davano nessun colore perché in vocabolario c'è «bianco» e nel titolo
+  // c'è scritto «bianca». Le forme si riportano al maschile prima di
+  // cercare, e solo per gli otto colori che in italiano si accordano.
+  assert.equal(coloreNelTitolo("Blusa bianca in organza con maxi fiori"), NOMI_COLORE.bianco);
+  assert.equal(coloreNelTitolo("Jeans azzurri a vita alta"), NOMI_COLORE.azzurro);
+  assert.equal(coloreNelTitolo("Tuta nera con scollo asimmetrico"), NOMI_COLORE.nero);
+  assert.equal(coloreNelTitolo("Gemelli da camicia quadrati neri eleganti"), NOMI_COLORE.nero);
+
+  // Vale anche dentro i nomi composti, dove ad accordarsi è la seconda
+  // parola: "maglia verde scura" è verde scuro.
+  assert.equal(coloreDaNome("Verde scura"), NOMI_COLORE["verde scuro"]);
+  assert.equal(coloreDaNome("Grigia chiara"), NOMI_COLORE["grigio chiaro"]);
+});
+
+test("certi nomi sono un colore solo dove il negozio scrive i colori", () => {
+  // Nel campo del colore «Shell» è un nude, «Silver» un grigio chiaro,
+  // «Rose» un rosa. In un titolo sono un'altra cosa: la shell jacket è una
+  // giacca, i gemelli d'argento sono di metallo, e le rose sono un disegno
+  // sulla stoffa. Sono 1.245 titoli, e li facevano sbagliare tutti.
+  assert.equal(coloreDaNome("Shell"), NOMI_COLORE.shell);
+  assert.equal(coloreNelTitolo("Soft shell jacket - Black Jet"), NOMI_COLORE.black);
+  assert.equal(coloreNelTitolo("BURGUNDY SILVER CUFFLINKS"), NOMI_COLORE.burgundy);
+  assert.equal(coloreNelTitolo("Blusa bianca con stampa floreale a rose"), NOMI_COLORE.bianco);
+  assert.equal(coloreNelTitolo("Women Organic Sweatshorts - Stone Blue"), NOMI_COLORE.blue);
+
+  // E dove nel titolo non c'è nessun altro colore, non si inventa niente:
+  // meglio farlo misurare alla foto.
+  assert.equal(coloreNelTitolo("Dragon Knot LT Shell Jacket"), null);
 });
 
 test("un titolo è una frase, non il nome di un colore", () => {
