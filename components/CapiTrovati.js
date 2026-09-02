@@ -2,6 +2,7 @@
 
 import { AVVISO_NOME_MARCHIO, nomeDelMarchio } from "@/lib/testiProdotto";
 import { usaPreferiti } from "@/lib/preferiti";
+import Attesa from "@/components/Attesa";
 
 // I capi del catalogo, quelli veri, con prezzo e link al negozio.
 export default function CapiTrovati({ capi = [], caricamento = false }) {
@@ -9,10 +10,13 @@ export default function CapiTrovati({ capi = [], caricamento = false }) {
 
   if (caricamento) {
     return (
-      <div style={{ display: "grid", gap: 12 }}>
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} style={{ height: 96, background: "var(--stone)", opacity: 1 - i * 0.18 }} />
-        ))}
+      <div>
+        <Attesa />
+        <div style={{ display: "grid", gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="in-attesa" style={{ height: 96, opacity: 1 - i * 0.18 }} />
+          ))}
+        </div>
       </div>
     );
   }

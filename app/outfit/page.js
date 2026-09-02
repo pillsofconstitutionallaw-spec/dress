@@ -6,6 +6,7 @@ import OutfitPeriodo from "@/components/OutfitPeriodo";
 import { periodoCorrente } from "@/lib/periodiAnno";
 import { paletteAggiornata, paletteDelPeriodo } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
+import Attesa from "@/components/Attesa";
 
 // I quattro completi dell'anno, dello stile scelto, nei propri colori.
 export default function Outfit() {
@@ -174,10 +175,13 @@ export default function Outfit() {
 
           <div style={{ marginTop: 20 }}>
             {caricamento ? (
-              <div style={{ display: "grid", gap: 10 }}>
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} style={{ height: 110, background: "var(--stone)", opacity: 1 - i * 0.18 }} />
-                ))}
+              <div>
+                <Attesa testo="Compongo il completo…" />
+                <div style={{ display: "grid", gap: 10 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="in-attesa" style={{ height: 110, opacity: 1 - i * 0.18 }} />
+                  ))}
+                </div>
               </div>
             ) : (
               <OutfitPeriodo completo={attuale} />

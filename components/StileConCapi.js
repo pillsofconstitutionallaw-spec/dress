@@ -64,7 +64,7 @@ export default function StileConCapi({ stile, posizione, spiegazione, scelto, ca
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           {inArrivo
             ? [0, 1, 2].map((i) => (
-                <div key={i} style={{ aspectRatio: "3/4", background: "var(--stone)", opacity: 1 - i * 0.18 }} />
+                <div key={i} className="in-attesa" style={{ aspectRatio: "3/4", opacity: 1 - i * 0.18 }} />
               ))
             : capi.slice(0, 3).map((capo) => (
                 <a
