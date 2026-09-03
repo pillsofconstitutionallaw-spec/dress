@@ -157,8 +157,30 @@ if (vuole("colore")) {
 
   // Le foto che hanno misurato il fondale invece del capo: bianco spento o
   // nero pieno sono il muro dello studio, non un vestito.
+  //
+  // ── quello che è già stato provato, e non funziona ──
+  //
+  // Dove il titolo un colore lo dice, vince il titolo: è una regola che c'è
+  // già, e ha sistemato 316 capi. Per gli altri — quelli qui sotto — sono
+  // state provate tre strade e misurate tutte e tre, guardando ventiquattro
+  // foto per volta con i due colori affiancati:
+  //
+  //   togliere il fondo prima di raggruppare  → 5 meglio, 4 peggio
+  //   prendere il primo gruppo che non è muro → 6 meglio, 3 peggio
+  //   ritagliare più stretto il centro        → nessun effetto
+  //
+  // Il motivo per cui nessuna funziona si legge nei pesi: su questi capi il
+  // gruppo del muro pesa 0,72 · 0,89 · 0,95 · 0,99, e nessun gruppo ha una
+  // tinta sopra 8. Il capo non forma proprio un gruppo suo — è piccolo E
+  // spostato — quindi l'informazione è persa prima che si scelga. E le
+  // perdite hanno uno schema: sono capi bianchi su fondo bianco, dove il
+  // muro e il capo sono davvero lo stesso colore.
+  //
+  // Per recuperarli servirebbe trovare l'oggetto dentro l'inquadratura, che
+  // è un'altra tecnica. La strada percorribile, intanto, è l'elenco qui
+  // sotto: un nome di colore letto è un capo che la foto non deve indovinare.
   const sospette = daFoto.filter((c) => /^#(0[0-9A-F]|1[0-2])/i.test(c.colore_hex) || /^#(E[89A-F]|F)/i.test(c.colore_hex));
-  console.log(`      …di cui quasi bianche o nere: ${sospette.length}  (spesso è il fondale)`);
+  console.log(`      …di cui quasi bianche o nere: ${sospette.length}  (il muro dello studio — vedi il commento)`);
 
   const illeggibili = vivi.filter((c) => c.colore_nome && !coloreDaNome(c.colore_nome));
   console.log(`\n   i nomi di colore che il negozio scrive e noi non sappiamo leggere: ${illeggibili.length}`);
