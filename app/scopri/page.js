@@ -71,7 +71,7 @@ export default function Scopri() {
   return (
     <div>
       <section className="wrap" style={{ paddingTop: "clamp(28px, 6vw, 80px)", paddingBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <BrandMark />
             <div>
@@ -79,15 +79,15 @@ export default function Scopri() {
               <div style={{ fontSize: 20, fontWeight: 700 }}>{BRAND}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Link href="/dashboard" className="btn">Apri Dashboard</Link>
             <Link href="/start" className="btn ghost">Nuova analisi</Link>
             <button className="btn" onClick={saveToCloud}>Salva su cloud</button>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 18, marginTop: 28, alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
+        <div className="copertina" style={{ marginTop: 28 }}>
+          <div>
             <h1 className="h1">Vestirsi bene non è questione di gusto.<br />È questione di sapere quali sono i tuoi colori.</h1>
             <p className="muted" style={{ maxWidth: "46ch" }}>
               Dress guarda una tua foto e trova i colori che ti stanno meglio. Poi cerca fra
@@ -95,13 +95,13 @@ export default function Scopri() {
               e dentro il tuo budget. In pochi secondi, senza uscire dall’app.
             </p>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
+            <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
               <Link href="/start" className="btn">Scopri il tuo stile</Link>
               <Link href="/dashboard" className="btn ghost">I miei preferiti</Link>
             </div>
           </div>
 
-          <aside style={{ width: 320 }}>
+          <aside>
             <div className="card" style={{ padding: 16 }}>
               <div className="eyebrow">Palette corrente</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>

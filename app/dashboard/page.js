@@ -233,6 +233,7 @@ export default function Dashboard() {
           <p className="muted">Accedi per ritrovare palette, preferiti e outfit su qualsiasi dispositivo.</p>
           <form onSubmit={onSignIn} style={{ display: "grid", gap: 8, maxWidth: 360, marginTop: 12 }}>
             <input
+              className="control"
               type="email"
               placeholder="email"
               value={emailInput}
@@ -240,6 +241,7 @@ export default function Dashboard() {
               autoComplete="email"
             />
             <input
+              className="control"
               type="password"
               placeholder="password"
               value={passwordInput}
