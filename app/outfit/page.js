@@ -20,6 +20,10 @@ export default function Outfit() {
   const [completi, setCompleti] = useState([]);
   const [periodo, setPeriodo] = useState(periodoCorrente());
   const [caricamento, setCaricamento] = useState(true);
+  // «Non ci siamo riusciti» e «non ha risposto» sono due cose diverse, e
+  // vanno dette diverse: vedi il messaggio in fondo.
+  const [guasto, setGuasto] = useState(false);
+  const [tentativo, setTentativo] = useState(0);
 
   useEffect(() => {
     try {
@@ -75,9 +79,14 @@ export default function Outfit() {
         escludiFast: true,
       }),
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d) => {
-        if (!vivo || !d.completi?.length) return;
+        if (!vivo) return;
+        setGuasto(false);
+        if (!d.completi?.length) return;
         setCompleti(d.completi);
         try {
           sessionStorage.setItem(chiave, JSON.stringify(d.completi));
@@ -85,12 +94,12 @@ export default function Outfit() {
           /* memoria piena: pazienza, si ricalcola */
         }
       })
-      .catch(() => {})
+      .catch(() => vivo && setGuasto(true))
       .finally(() => vivo && setCaricamento(false));
     return () => {
       vivo = false;
     };
-  }, [palette, stile, genere, budget, forma, altezza]);
+  }, [palette, stile, genere, budget, forma, altezza, tentativo]);
 
   const attuale = useMemo(() => completi.find((c) => c.periodo === periodo), [completi, periodo]);
   const coloriPeriodo = useMemo(() => paletteDelPeriodo(palette, periodo), [palette, periodo]);
@@ -198,7 +207,22 @@ export default function Outfit() {
             <Link href="/cerca" className="btn-app chiaro">Cerca un capo</Link>
           </div>
         </>
-      ) : caricamento ? null : (
+      ) : caricamento ? null : guasto ? (
+        <>
+          {/* Qui prima c'era il messaggio sullo stile, che per questo caso è
+              un consiglio inutile: se il catalogo non ha risposto, togliere
+              un filtro non cambia niente. Chi legge fa la cosa sbagliata e
+              ci riprova convinto di aver capito. */}
+          <p className="muted" style={{ marginTop: 24 }}>
+            Il catalogo non ha risposto. Non è colpa di quello che hai scelto:
+            capita, e di solito basta riprovare.
+          </p>
+          <button type="button" className="btn-app" style={{ marginTop: 16 }}
+            onClick={() => { setGuasto(false); setCaricamento(true); setTentativo((n) => n + 1); }}>
+            Riprova
+          </button>
+        </>
+      ) : (
         <p className="muted" style={{ marginTop: 24 }}>
           Non siamo riusciti a comporre i completi. Prova a togliere il filtro sullo stile.
         </p>
