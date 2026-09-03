@@ -404,6 +404,35 @@ test("la correzione della luce salva il verdetto, non lo aggiusta soltanto", () 
   );
 });
 
+test("il bianco di riferimento non si prende dalla faccia", () => {
+  // È il difetto più insidioso trovato finora, ed è nel passaggio che questo
+  // file dichiara decidere tutto.
+  //
+  // La correzione della luce cerca i pixel che nella realtà DEVONO essere
+  // neutri: i più chiari e i meno colorati. Ma una pelle chiara rosata, sotto
+  // una luce azzurrina, perde abbastanza differenza fra i suoi tre canali da
+  // passare per neutra — ed è anche più chiara dello sfondo, quindi finisce
+  // in cima. Diventa lei il bianco di riferimento, e la correzione le toglie
+  // esattamente il colore che era lì per misurare: la guancia usciva a 4,9 di
+  // «a» e 3,4 di «b», cioè non veniva più riconosciuta nemmeno come pelle.
+  //
+  // L'app allora rifiutava la foto — e fin qui bene, meglio un rifiuto che
+  // una stagione sbagliata — ma dando la ragione sbagliata: «il viso occupa
+  // troppo poco spazio, avvicinati». Il viso era grande come prima, e chi
+  // rifaceva lo scatto più vicino sbagliava di nuovo.
+  //
+  // La regola è che il riferimento non può essere il soggetto.
+  const buona = misura({ pelle: PELLE_FREDDA });
+  for (const [nome, tinta] of [["un'ombra azzurrina", [0.94, 0.98, 1.08]], ["un neon freddino", [0.92, 1, 1.05]]]) {
+    const r = misura({ pelle: PELLE_FREDDA, tinta });
+    assert.ok(!r.fallita, `sotto ${nome} non trova più la pelle`);
+    assert.ok(
+      Math.abs(angolo(buona.pelle) - angolo(r.pelle)) <= 3,
+      `sotto ${nome} la misura si sposta di ${Math.abs(angolo(buona.pelle) - angolo(r.pelle))} gradi`,
+    );
+  }
+});
+
 test("quando la dominante è troppo forte lo dice, invece di tirare a indovinare", () => {
   const r = misura({ pelle: PELLE_FREDDA, tinta: [1.22, 1, 0.72] });
   assert.equal(r.luce.affidabile, false);
