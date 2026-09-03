@@ -177,8 +177,39 @@ if (vuole("colore")) {
   // muro e il capo sono davvero lo stesso colore.
   //
   // Per recuperarli servirebbe trovare l'oggetto dentro l'inquadratura, che
-  // è un'altra tecnica. La strada percorribile, intanto, è l'elenco qui
-  // sotto: un nome di colore letto è un capo che la foto non deve indovinare.
+  // è un'altra tecnica.
+  //
+  // ── e non vanno nemmeno cancellati ──
+  //
+  // La tentazione dopo tutto questo è toglierglielo, il colore: meglio
+  // niente che sbagliato, un capo invisibile alla ricerca invece che un capo
+  // che esce nella palette di un altro. Misurata anche questa, ed è la
+  // risposta contraria.
+  //
+  // Guardati ventiquattro di questi capi — uno per negozio, la foto accanto
+  // al colore che gli diamo — quattordici ce l'hanno GIUSTO. Non è un caso:
+  // sono capi davvero bianchi, neri o argento fotografati su fondo bianco, e
+  // lì il muro e il capo hanno lo stesso colore per davvero. Gli sbagliati
+  // sono sei — una felpa nera Benetton segnata quasi bianca, un sandalo nude
+  // segnato bianco, una camicia beige — e quattro stanno nel mezzo.
+  //
+  // Cancellarli tutti vorrebbe dire rendere invisibili quattordici capi
+  // giusti per toglierne sei sbagliati. Restano dove sono.
+  //
+  // Sui numeri: la riga qui sotto conta 5.379, cioè i colori MISURATI che
+  // sono quasi bianchi o quasi neri — i colori letti da un nome li ha già
+  // tolti «daFoto», ed è giusto così. Quelli guardati sono i 4.455 in cui
+  // nemmeno il negozio ha scritto un nome leggibile: gli altri un colore
+  // dichiarato ce l'hanno, e vince quello.
+  //
+  // La trappola, per chi rifà il conto da fuori: sembraIlFondale() risponde
+  // di sì anche al bianco del vocabolario (#F7F7F5), che non è stato
+  // misurato ma letto. Contando senza distinguere vengono fuori quasi
+  // novemila capi invece di quattromila e mezzo, e i quattromila di
+  // differenza sono magliette bianche marcate benissimo. È successo.
+  //
+  // La strada percorribile, intanto, è l'elenco qui sotto: un nome di colore
+  // letto è un capo che la foto non deve indovinare.
   const sospette = daFoto.filter((c) => /^#(0[0-9A-F]|1[0-2])/i.test(c.colore_hex) || /^#(E[89A-F]|F)/i.test(c.colore_hex));
   console.log(`      …di cui quasi bianche o nere: ${sospette.length}  (il muro dello studio — vedi il commento)`);
 
