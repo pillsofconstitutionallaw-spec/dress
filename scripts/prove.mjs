@@ -495,12 +495,99 @@ test("anche gli accessori i negozi li scrivono in inglese", () => {
   assert.equal(ruoloDelCapo("Dolly Noire Backpack"), "accessorio");
   assert.equal(ruoloDelCapo("DLYNR Tactical Touch Gloves"), "accessorio");
 
-  // «tie» invece resta fuori, ed è una scelta come quella di «knit»: in
-  // inglese sta anche in «tie-dye» e «tie front», che sono una fantasia e un
-  // dettaglio, non una cravatta — e qui vince la parola che viene prima.
-  // Le cravatte vere le prende già «cravatta», e i papillon «papillon».
+  // «tie» c'è, ma solo dove chiude il titolo. In inglese quella parola è
+  // quasi sempre un laccio — «tie-dye», «tie sweatpants», «rope tie up
+  // sandals», «Top With Ties» — e presa dovunque rubava il ruolo giusto a
+  // 133 capi. Presa solo in fondo ne prende 709 e ne sbaglia cinque, perché
+  // una cravatta il negozio la nomina per ultima: «DARK BLUE SARTORIAL
+  // PRINTED SILK TIE».
   assert.equal(ruoloDelCapo("Tie-Dye T-Shirt"), "top");
+  assert.equal(ruoloDelCapo("Anastasia Tie Sweatpants"), "bottom");
+  assert.equal(ruoloDelCapo("Billie Black Rope Tie Up Sandals"), "scarpe");
+  assert.equal(ruoloDelCapo("DARK BLUE SARTORIAL PRINTED SILK TIE"), "accessorio");
   assert.equal(ruoloDelCapo("Cravatta in seta stampata"), "accessorio");
+});
+
+test("i negozi che non scrivono in italiano né in inglese", () => {
+  // Ecoalf scrive in spagnolo — 905 capi su 1.071 senza nessun ruolo — e
+  // Thinking Mu pure: «camiseta» da sola sono 272 capi. Armedangels scrive in
+  // tedesco, e attacca le parole una all'altra.
+  assert.equal(ruoloDelCapo("Camiseta dog ball Lucia"), "top");
+  assert.equal(ruoloDelCapo("SUDADERA CAPUCHA MARINO"), "top");
+  assert.equal(ruoloDelCapo("CAMISA OXFORD BLANCA"), "top");
+  assert.equal(ruoloDelCapo("ZAPATILLA VENTURA VERDE OSCURO"), "scarpe");
+  assert.equal(ruoloDelCapo("CHAQUETA CORTAVIENTOS AZUL"), "capospalla");
+  assert.equal(ruoloDelCapo("VESTIDO LARGO NEGRO"), "intero");
+  assert.equal(ruoloDelCapo("STRICKPULLOVER | tinted navy"), "top");
+  assert.equal(ruoloDelCapo("STOFFHOSE | black"), "bottom");
+
+  // E l'italiano che mancava: le parole piccole. «Maglietta» non è
+  // «maglia» — la ricerca vuole la parola intera — e sono 132 capi.
+  assert.equal(ruoloDelCapo("Maglietta con stampa e patch"), "top");
+  assert.equal(ruoloDelCapo("Ciabatte in gomma"), "scarpe");
+  assert.equal(ruoloDelCapo("Portafogli in pelle donna piccolo"), "accessorio");
+  assert.equal(ruoloDelCapo("Tracolla in pelle uomo"), "accessorio");
+});
+
+test("un giubbino di jeans è un capospalla, non un paio di pantaloni", () => {
+  // Lo stesso difetto già visto con «Giacche di jeans»: la parola che
+  // decideva era «jeans», che viene dopo. «Giubbino» non era in elenco, e
+  // undici giubbini di denim erano classificati come pantaloni.
+  assert.equal(ruoloDelCapo("Giubbino in denim taglio cropped"), "capospalla");
+  assert.equal(ruoloDelCapo("Giubbino rider di jeans"), "capospalla");
+  assert.equal(ruoloDelCapo("Giubbino in felpa con cappuccio"), "capospalla");
+});
+
+test("i gioielli sono accessori, e sono un negozio intero", () => {
+  // PDPAOLA sono 1.115 capi su 1.116 senza nessun ruolo: collane, orecchini,
+  // pendenti, anelli, piercing. Nessuna di quelle parole era in elenco.
+  assert.equal(ruoloDelCapo("Tiger Eye Drop pendant"), "accessorio");
+  assert.equal(ruoloDelCapo("Amethyst Gravity ear piercing"), "accessorio");
+  assert.equal(ruoloDelCapo("Rope Necklace"), "accessorio");
+  assert.equal(ruoloDelCapo("Initial Charm Gold"), "accessorio");
+  assert.equal(ruoloDelCapo("Essential Hoops Silver"), "accessorio");
+  assert.equal(ruoloDelCapo("Orecchini a cerchio"), "accessorio");
+
+  // E i calzini, che sono 793 capi: stanno con gli accessori e non con le
+  // scarpe, perché in un completo le scarpe le scegli e i calzini li porti.
+  assert.equal(ruoloDelCapo("Organic Active Sock - Deep Black"), "accessorio");
+  assert.equal(ruoloDelCapo("Calze lunghe di cotone"), "accessorio");
+});
+
+test("le parole che sembrano un capo e non lo sono restano fuori", () => {
+  // Misurate e scartate, tutte e tre. «Rock» in tedesco è una gonna, ma nei
+  // titoli inglesi è un genere musicale: prendeva dieci capi giusti per
+  // darne quindici. «Mono» in spagnolo è una tuta, ma è anche
+  // «monogram» e «mono-colour»: trenta rubati contro ventidue presi.
+  // «Tasche» in tedesco è una borsa, e in italiano sono le tasche.
+  assert.equal(ruoloDelCapo("Rock Band Vintage T-Shirt"), "top");
+  assert.equal(ruoloDelCapo("Giubbino da donna in lyocell con tasche sul petto"), "capospalla");
+
+  // E «bottoms», che era la più grossa di tutte: 1.170 capi, e sembra la
+  // parola inglese per «sotto». Guardati, sono slip — «Core Thong 5-pack»,
+  // «Core Tanga» — che i negozi di intimo mettono nella categoria
+  // «bottoms». Presa per pantaloni avrebbe messo un perizoma sotto il
+  // cappotto di un completo. Stessa sorte per «set» (156 rubati a top:
+  // «Set Costume e Pareo»), «accessories» (profumi e custodie per
+  // telefono) e «knit», che è un filato: 203 rubati ai capospalla.
+  assert.equal(ruoloDelCapo("Core Thong 5-pack", "bottoms"), null);
+  assert.equal(ruoloDelCapo("Set Costume e Pareo"), null);
+  assert.equal(ruoloDelCapo("PROFUMO DESIRE RUGGINE", "accessories"), null);
+});
+
+test("le parole deboli danno un ruolo dove non c'è nient'altro, e lo cedono dove c'è", () => {
+  // Sono le stesse parole nei due casi: da sole nominano il capo, in mezzo a
+  // un titolo lo descrivono soltanto.
+  assert.equal(ruoloDelCapo("LOGO SOCK"), "accessorio");
+  assert.equal(ruoloDelCapo("Remus Black Knee High Sock Chunky Boots"), "scarpe");
+  assert.equal(ruoloDelCapo("Line Ring Brushed Graphite 4.5mm"), "accessorio");
+  assert.equal(ruoloDelCapo("Ring Zip Hoodie Teal"), "top");
+  assert.equal(ruoloDelCapo("Jelani - Turtleneck vest - Black"), "capospalla");
+  assert.equal(ruoloDelCapo("Turtleneck in lana merino"), "top");
+  assert.equal(ruoloDelCapo("Minigonna a portafoglio full strass", "Clothing/Skirts"), "bottom");
+  assert.equal(ruoloDelCapo("Portafogli in pelle donna piccolo"), "accessorio");
+  assert.equal(ruoloDelCapo("Tuta scollo a V"), "intero");
+  assert.equal(ruoloDelCapo("Pantaloni della tuta in felpa"), "bottom");
 });
 
 test("quello che dice il capo vale più di quello che dichiara il negozio", () => {
