@@ -20,6 +20,7 @@ import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
+import { ruoloDelCapo } from "@/lib/periodiAnno";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
 import { analizzaTessuto, coloreDelCapo, deduciGenere } from "@/scripts/importa-catalogo.mjs";
 
@@ -442,6 +443,45 @@ const SANDALO_BIMBA = { titolo: "1200-macramej - Sandals - Sandal - Girl - White
 const PANTALONE = { titolo: "PANTALONE DA ABITO OVER FIT CIPOLLA", genere: null, negozio: "Sonny Bono" };
 const TSHIRT_UOMO = { titolo: "Mens Midweight T-Shirt", genere: null, negozio: "Pangaia" };
 const CAMICIA_UOMO = { titolo: "Camicia in lino", genere: "uomo", negozio: "Fusaro" };
+
+test("in italiano il plurale cambia la vocale, non ne aggiunge una", () => {
+  // Il ruolo decide se un capo può stare in un completo, e in che posto.
+  // La regola dei plurali aggiungeva una lettera — «sneaker» più «s» — che
+  // in inglese funziona e in italiano no: «sandalo» fa «sandali», «giacca»
+  // fa «giacche». Su 79.169 capi disponibili, 33.602 non avevano nessun
+  // ruolo e non entravano in nessun completo.
+  assert.equal(ruoloDelCapo("Sandali in pelle"), "scarpe");
+  assert.equal(ruoloDelCapo("Stivali alti in camoscio"), "scarpe");
+  assert.equal(ruoloDelCapo("Camicie a righe in popeline"), "top");
+  assert.equal(ruoloDelCapo("Gonne midi plissettate"), "bottom");
+  assert.equal(ruoloDelCapo("Cappotti in lana vergine"), "capospalla");
+
+  // Il caso peggiore non era un capo senza ruolo: era un capo col ruolo
+  // sbagliato. «Giacche di jeans» non agganciava «giacca», agganciava
+  // «jeans», e una giacca finiva fra i pantaloni.
+  assert.equal(ruoloDelCapo("Giacche di jeans oversize"), "capospalla");
+
+  // E il singolare continua a valere, che è il caso di sempre.
+  assert.equal(ruoloDelCapo("Giacca di jeans"), "capospalla");
+  assert.equal(ruoloDelCapo("Sneakers basse"), "scarpe");
+});
+
+test("i negozi scrivono i capi anche in inglese", () => {
+  // «pants» compare in 2.488 capi senza ruolo, «sweatshirt» in 818,
+  // «blouse» in 733: l'elenco conosceva «trouser» ma non «pants», «blusa»
+  // ma non «blouse», «felpa» ma non «sweatshirt».
+  assert.equal(ruoloDelCapo("SCIROCCO RELAXED PANTS"), "bottom");
+  assert.equal(ruoloDelCapo("Organic Cotton Sweatshirt"), "top");
+  assert.equal(ruoloDelCapo("Silk Blouse with Ruffles"), "top");
+  assert.equal(ruoloDelCapo("Leather Loafers"), "scarpe");
+  assert.equal(ruoloDelCapo("Strappy Sandals"), "scarpe");
+
+  // Ma non tutte le parole inglesi si possono aggiungere. «Knit» descrive
+  // il tessuto e in inglese sta PRIMA del capo, e qui vince la parola che
+  // viene prima: «Knit Midi Dress» diventerebbe una maglia invece che un
+  // abito. Fuori dall'elenco, apposta.
+  assert.equal(ruoloDelCapo("Knit Midi Dress"), "intero");
+});
 
 test("quello che dice il capo vale più di quello che dichiara il negozio", () => {
   // Il negozio è segnato "uomo" perché vende soprattutto boxer da uomo. Ma
