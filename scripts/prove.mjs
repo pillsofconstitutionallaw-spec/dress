@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
-import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, sembraIlFondale } from "@/lib/colore";
+import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, hexALab, sembraIlFondale } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
@@ -716,6 +716,69 @@ test("«fuchsia» e «bluette»: 309 capi, due parole", () => {
   // acceso, non un navy.
   assert.equal(coloreNelTitolo("FUCHSIA SARTORIAL PRINTED SILK TIE"), NOMI_COLORE.fucsia);
   assert.equal(coloreDaNome("Bluette"), NOMI_COLORE.bluette);
+});
+
+test("i nomi che i negozi scrivono in inglese: 2.232 capi", () => {
+  // Il vocabolario parlava quasi solo italiano, e i negozi scrivono «teal»,
+  // «lilac», «chestnut», «sapphire». Restavano 6.550 capi con un nome di
+  // colore che non sapevamo leggere: questi nomi ne coprono 2.232.
+  //
+  // Non sono indovinati. Per ognuno ho messo la pezza di colore che propongo
+  // accanto a quattro foto vere del catalogo e ho guardato: sui 1.213 capi
+  // dove la foto è leggibile, la distanza mediana fra il nome e la foto è
+  // 12, cioè lo stesso colore.
+  for (const nome of ["teal", "lilac", "chestnut", "sapphire", "moss", "mauve", "cognac", "mocha", "raisin"]) {
+    assert.ok(coloreDaNome(nome), `non riconosciuto: ${nome}`);
+  }
+
+  // Dove le foto dicevano un'altra cosa, ho creduto alle foto e non alla
+  // parola: «tangerina» di Ecoalf è un ambra scuro e non un arancio (le sue
+  // foto misurano #A96B10, #C88D3B, #B9812A), «mirtillo» di Cosabella è un
+  // blu petrolio e non un viola (#094E71, #03486B), «fog» di Scotch & Soda è
+  // una sabbia calda e non un grigio (#C7B9A9, #D9CDBE).
+  assert.notEqual(NOMI_COLORE.tangerina, NOMI_COLORE.tangerine);
+  assert.ok(hexALab(NOMI_COLORE.mirtillo).b < 0, "mirtillo è un blu, non un viola");
+
+  // E dove le foto si contraddicevano il nome non l'ho messo: «aluminium»
+  // stava su quattro capi tutti neri e «canna di fucile» su tre valigie
+  // rosa. Un nome che non so leggere costa un capo; un nome letto male lo
+  // manda nella palette sbagliata, e quello lo vede l'utente.
+  assert.equal(coloreDaNome("aluminium"), null);
+  assert.equal(coloreDaNome("canna di fucile"), null);
+});
+
+test("le parole nuove sono un colore solo nel campo, mai dentro un titolo", () => {
+  // Aperte anche ai titoli renderebbero 386 capi, e ne sbaglierebbero una
+  // parte: in italiano «bordo» è l'orlo prima di essere il bordeaux, il
+  // corallo dei gemelli è la pietra, l'acciaio della borraccia è il metallo,
+  // e «Sky Hi» è il nome di una scarpa. Nel campo del colore quelle frasi
+  // non esistono: lì «Bordo» è un colore e basta.
+  assert.equal(coloreNelTitolo("Gonna longuette in satin con bordo in pizzo"), null);
+  assert.equal(coloreNelTitolo("ROUND CORAL CUFFLINKS"), null);
+  assert.equal(coloreNelTitolo("Stainless Steel 2-Pack Cups 500ml"), null);
+  assert.equal(coloreNelTitolo("Nike Dunk Sky Hi Essential Wedge Trainers"), null);
+  assert.equal(coloreNelTitolo("Maiko Moss Agate Single Earring"), null);
+
+  assert.equal(coloreDaNome("Bordo"), NOMI_COLORE.bordo);
+  assert.equal(coloreDaNome("Coral"), NOMI_COLORE.coral);
+  assert.equal(coloreDaNome("Steel"), NOMI_COLORE.steel);
+});
+
+test("un grado o una finitura incollati al colore: 316 capi", () => {
+  // «darknavy», «lightgrey», «greymelange», «stonewash»: il colore c'è, ma
+  // ha attaccata davanti la sua intensità o dietro il nome del filato. Né
+  // l'una né l'altro sono un colore, e quello che resta lo è.
+  assert.equal(coloreDaNome("darknavy"), NOMI_COLORE.navy);
+  assert.equal(coloreDaNome("lightgrey"), NOMI_COLORE.grey);
+  assert.equal(coloreDaNome("oldmustard"), NOMI_COLORE.mustard);
+  assert.equal(coloreDaNome("greymelange"), NOMI_COLORE.grey);
+  assert.equal(coloreDaNome("stonewash"), NOMI_COLORE.stone);
+  assert.equal(coloreDaNome("antiquewhitemelangesms"), NOMI_COLORE.antiquewhite);
+
+  // Solo se quello che resta è davvero un colore: «lightning» non è una luce
+  // e «darkness» non è un buio.
+  assert.equal(coloreDaNome("lightning"), null);
+  assert.equal(coloreDaNome("darkness"), null);
 });
 
 test("una barra, un trattino o una «e» fra due colori vogliono dire due colori", () => {
