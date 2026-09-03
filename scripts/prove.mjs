@@ -25,7 +25,7 @@ import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
-import { PERIODI, ruoliDaRiempire, ruoloDelCapo } from "@/lib/periodiAnno";
+import { PERIODI, adattoAlPeriodo, ruoliDaRiempire, ruoloDelCapo } from "@/lib/periodiAnno";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
 import { analizzaTessuto, coloreDelCapo, deduciGenere } from "@/scripts/importa-catalogo.mjs";
 
@@ -795,6 +795,33 @@ test("un pigiama non è il sopra di un completo", () => {
   assert.equal(ruoloDelCapo("Cappotto a vestaglia - Cappotto Diodino"), "capospalla");
   assert.equal(ruoloDelCapo("Pantaloni pigiama wide leg a tinta unita"), "bottom");
   assert.equal(ruoloDelCapo("T-shirt pigiama a tinta unita"), "top");
+});
+
+test("il costume da bagno non sono i pantaloni di un completo", () => {
+  // Uscito da un completo vero: «Estate · Pantaloni · BURGUNDY SWIM SHORTS».
+  // Uno solo su 636 capi scelti, ma non è un caso raro: è l'unico posto dove
+  // poteva succedere. Inverno, autunno e primavera la roba da mare la
+  // escludevano già; l'estate no — ed è l'unica stagione in cui un costume
+  // sta vicino alla palette e ha voglia di farsi scegliere.
+  //
+  // Un completo qui è quello che si mette per uscire, non per andare in
+  // spiaggia: con i pantaloncini da bagno a lunch non ci si va.
+  const estate = PERIODI.find((p) => p.id === "estate");
+  assert.equal(adattoAlPeriodo("BURGUNDY SWIM SHORTS", estate), false);
+  assert.equal(adattoAlPeriodo("Set Costume e Bermuda", estate), false);
+  assert.equal(adattoAlPeriodo("Swim Underwire Bikini Top", estate), false);
+  assert.equal(adattoAlPeriodo("T-shirt in lino bianca", estate), true);
+
+  // «Mare» invece resta fuori dall'elenco, e per una ragione misurata: qui
+  // le parole si cercano come pezzi di testo, non intere, e «mare» sta
+  // dentro Oltremare, Marechiaro e Maren. Toglieva 37 capi e 36 erano
+  // sbagliati.
+  assert.equal(adattoAlPeriodo("Pantaloni dritti in ecopelle - Pantaloni Maren", estate), true);
+  assert.equal(adattoAlPeriodo("Oltremare – Cintura Uomo in Camoscio", estate), true);
+
+  // (Un «Abito in Lana - Marechiaro» d'estate resta fuori lo stesso, ma per
+  // la lana, che c'era già. Sceglierlo come esempio della trappola di
+  // «mare» avrebbe provato la cosa sbagliata.)
 });
 
 test("con un abito il completo estivo resta un completo", () => {
