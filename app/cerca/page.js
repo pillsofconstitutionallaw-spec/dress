@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { NEGOZI, fasciaDaBudget, negoziPerGenere, urlNeiNegozi, urlShopping } from "@/lib/ricerca";
 import CapiTrovati from "@/components/CapiTrovati";
+import { soloCifre } from "@/lib/numeri";
 
 export default function Cerca() {
   const [capo, setCapo] = useState("");
@@ -196,11 +197,11 @@ export default function Cerca() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <label className="field">
             <span className="label">Prezzo minimo (€)</span>
-            <input className="control" inputMode="numeric" value={min} onChange={(e) => setMin(e.target.value)} placeholder="—" />
+            <input className="control" inputMode="numeric" value={min} onChange={(e) => setMin(soloCifre(e.target.value, 6))} placeholder="—" />
           </label>
           <label className="field">
             <span className="label">Prezzo massimo (€)</span>
-            <input className="control" inputMode="numeric" value={max} onChange={(e) => setMax(e.target.value)} placeholder="es. 80" />
+            <input className="control" inputMode="numeric" value={max} onChange={(e) => setMax(soloCifre(e.target.value, 6))} placeholder="es. 80" />
           </label>
         </div>
 

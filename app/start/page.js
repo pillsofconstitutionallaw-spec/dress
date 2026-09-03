@@ -14,6 +14,7 @@ import { tonoPelle } from "@/lib/pelle";
 import ColorePelle from "@/components/ColorePelle";
 import TestArmocromia from "@/components/TestArmocromia";
 import Drappeggio from "@/components/Drappeggio";
+import { soloCifre } from "@/lib/numeri";
 
 function Swatch({ c }) {
   return (
@@ -298,12 +299,12 @@ export default function Start() {
 
           <label className="field">
             <span className="label">Altezza (cm)</span>
-            <input className="control" inputMode="numeric" value={profile.height} onChange={set("height")} placeholder="es. 178" />
+            <input className="control" inputMode="numeric" value={profile.height} onChange={(e) => set("height")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 178" />
           </label>
 
           <label className="field">
             <span className="label">Peso (kg) — facoltativo</span>
-            <input className="control" inputMode="numeric" value={profile.weight} onChange={set("weight")} placeholder="es. 72" />
+            <input className="control" inputMode="numeric" value={profile.weight} onChange={(e) => set("weight")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 72" />
             <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
               Serve solo a proporti la taglia giusta. Non lo commentiamo, non lo mostriamo a nessuno,
               e puoi lasciarlo vuoto.
@@ -628,7 +629,7 @@ export default function Start() {
             </div>
             <label className="field" style={{ maxWidth: 260 }}>
               <span className="label">Budget per capo (€)</span>
-              <input className="control" inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="es. 60" />
+              <input className="control" inputMode="numeric" value={budget} onChange={(e) => setBudget(soloCifre(e.target.value, 6))} placeholder="es. 60" />
             </label>
 
             {outfits.map((o, i) => (

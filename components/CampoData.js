@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { soloCifre } from "@/lib/numeri";
 
 // Data di nascita in tre caselle: giorno, mese, anno.
 //
@@ -26,7 +27,6 @@ export default function CampoData({ valore, onChange }) {
     }
   }
 
-  const soloCifre = (t, max) => t.replace(/\D/g, "").slice(0, max);
 
   return (
     <div>

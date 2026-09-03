@@ -18,6 +18,7 @@ import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiP
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
+import { soloCifre } from "@/lib/numeri";
 import { identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { demo } from "@/lib/ai/demo";
@@ -168,6 +169,31 @@ test("la descrizione si taglia a frase intera, senza puntini", () => {
   assert.ok(r.vintedDescription.length <= 300);
   assert.ok(!r.vintedDescription.endsWith("…"), "un annuncio troncato sembra scritto da uno che non ci teneva");
   assert.ok(r.vintedDescription.endsWith("."));
+});
+
+test("i campi dei numeri prendono solo numeri", () => {
+  // Provato scrivendo davvero nei campi. Il prezzo massimo della ricerca non
+  // era protetto da niente — inputMode="numeric" cambia solo la tastiera del
+  // telefono, non impedisce niente — e finiva dentro Number() così com'era:
+  //
+  //   "80 €"  → NaN → il limite di prezzo SPARISCE, e a chi ha chiesto
+  //             ottanta euro escono capi da duecento
+  //   "1.000" → 1   → chi scrive mille all'italiana riceve la roba sotto
+  //             l'euro: sette capi, e nessuno gli dice perché
+  //
+  // Lo stesso campo, con lo stesso difetto, sta in otto punti: altezza, peso,
+  // budget in due pagine, e prezzo minimo e massimo.
+  assert.equal(soloCifre("178"), "178");
+  assert.equal(soloCifre("1,78"), "178");
+  assert.equal(soloCifre("1.000"), "1000");
+  assert.equal(soloCifre("80 €"), "80");
+  assert.equal(soloCifre("ottanta"), "");
+  assert.equal(soloCifre(""), "");
+  assert.equal(soloCifre(null), "");
+
+  // Un tetto alle cifre, dove ha senso: un'altezza sta in tre.
+  assert.equal(soloCifre("17812", 3), "178");
+  assert.equal(soloCifre("72", 3), "72");
 });
 
 test("chi entra può dire «email» o «identificativo», e sono la stessa cosa", () => {

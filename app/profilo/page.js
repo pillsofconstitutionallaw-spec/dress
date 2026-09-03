@@ -13,6 +13,7 @@ import { FORME } from "@/lib/proporzioni";
 import { tonoPelle } from "@/lib/pelle";
 import { aggiornaSessione, arricchisciConAI, eseguiAnalisi, leggiSessione, salvaAnalisi } from "@/lib/analisiCompleta";
 import { apiFetch, completaProfilo, getUser, hasAccounts } from "@/lib/session";
+import { soloCifre } from "@/lib/numeri";
 
 // Il profilo.
 //
@@ -576,10 +577,10 @@ export default function Profilo() {
               </div>
 
               <label className="field"><span className="label">Altezza (cm)</span>
-                <input className="control" inputMode="numeric" value={bozza.height} onChange={cambiaBozza("height")} placeholder="es. 178" /></label>
+                <input className="control" inputMode="numeric" value={bozza.height} onChange={(e) => cambiaBozza("height")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 178" /></label>
 
               <label className="field"><span className="label">Peso (kg) — facoltativo</span>
-                <input className="control" inputMode="numeric" value={bozza.weight} onChange={cambiaBozza("weight")} placeholder="es. 72" /></label>
+                <input className="control" inputMode="numeric" value={bozza.weight} onChange={(e) => cambiaBozza("weight")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 72" /></label>
 
               <label className="field"><span className="label">Proporzioni — facoltativo</span>
                 <select className="control" value={bozza.forma} onChange={cambiaBozza("forma")}>
@@ -666,7 +667,7 @@ export default function Profilo() {
                 </select></label>
 
               <label className="field" style={{ maxWidth: 260 }}><span className="label">Budget per capo (€)</span>
-                <input className="control" inputMode="numeric" value={bozzaBudget} onChange={(e) => setBozzaBudget(e.target.value)} placeholder="es. 60" /></label>
+                <input className="control" inputMode="numeric" value={bozzaBudget} onChange={(e) => setBozzaBudget(soloCifre(e.target.value, 6))} placeholder="es. 60" /></label>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button className="btn" onClick={salvaInformazioni} disabled={salvando === "info"}>
