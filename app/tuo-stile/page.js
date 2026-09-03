@@ -105,6 +105,8 @@ export default function TuoStile() {
       apiFetch("/api/profile/save", {
         method: "POST",
         body: { dati: { ...(analisi || {}), stileScelto: nome } },
+        // Senza account non c'è niente da salvare, e con l'account che non
+        // risponde la scelta resta comunque nel browser: è già scritta sopra.
       }).catch(() => {});
     },
     [analisi],

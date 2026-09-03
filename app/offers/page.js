@@ -9,6 +9,11 @@ import { FAST_FASHION_NOTE } from "@/lib/data";
 export default function Offerte() {
   const [capi, setCapi] = useState([]);
   const [caricamento, setCaricamento] = useState(true);
+  // «Non ci sono sconti» e «non ho potuto chiedere» sono due cose diverse, e
+  // la prima è un'affermazione sul mondo: se la diciamo quando non abbiamo
+  // chiesto, è falsa. Vedi il messaggio in fondo.
+  const [guasto, setGuasto] = useState(false);
+  const [tentativo, setTentativo] = useState(0);
   // Lo stile scelto nell'analisi, e la possibilità di metterlo da parte: un
   // feed di sconti troppo stretto è un feed vuoto, e chi cerca un affare a
   // volte lo vuole anche fuori dal suo stile.
@@ -42,19 +47,23 @@ export default function Offerte() {
     if (genere) q.set("genere", genere);
     if (stile && filtra) q.set("stile", stile);
     fetch(`/api/offerte${q.toString() ? `?${q}` : ""}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d) => {
         if (!vivo) return;
+        setGuasto(false);
         setCapi(d.capi || []);
         setStileApplicato(d.stile || null);
         setQuantiDelloStile(d.quantiDelloStile ?? null);
       })
-      .catch(() => {})
+      .catch(() => vivo && setGuasto(true))
       .finally(() => vivo && setCaricamento(false));
     return () => {
       vivo = false;
     };
-  }, [stile, filtra]);
+  }, [stile, filtra, tentativo]);
 
   return (
     <div className="wrap" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 720 }}>
@@ -83,7 +92,24 @@ export default function Offerte() {
         <CapiTrovati capi={capi} caricamento={caricamento} />
       </div>
 
-      {!caricamento && capi.length === 0 && (
+      {/* Qui c'era un messaggio solo, e diceva che nessun negozio ha
+          ribassi. Quando la richiesta falliva usciva quello — cioè un fatto
+          sul mondo, dichiarato senza averlo guardato, e falso: in catalogo i
+          capi ribassati sono quasi trentamila. Un consiglio sbagliato lo si
+          scopre provando; una notizia sbagliata no, la si crede. */}
+      {!caricamento && guasto ? (
+        <p className="muted" style={{ marginTop: 20 }}>
+          Non siamo riusciti a chiedere al catalogo quali sono gli sconti di adesso.
+          Non vuol dire che non ce ne siano: vuol dire che non lo sappiamo.
+          {" "}
+          <button type="button" className="btn-app chiaro" style={{ marginTop: 14, display: "flex" }}
+            onClick={() => { setGuasto(false); setCaricamento(true); setTentativo((n) => n + 1); }}>
+            Riprova
+          </button>
+        </p>
+      ) : null}
+
+      {!caricamento && !guasto && capi.length === 0 && (
         <p className="muted" style={{ marginTop: 20 }}>
           In questo momento nessuno dei negozi in catalogo ha ribassi. Ricontrolla fra qualche
           giorno: il catalogo si aggiorna ogni notte.

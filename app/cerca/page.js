@@ -35,6 +35,8 @@ export default function Cerca() {
     fetch("/api/tendenze")
       .then((r) => r.json())
       .then((d) => setTagli(d.tagli || []))
+      // I tagli sono un di più: senza, la ricerca funziona uguale e i tasti
+      // semplicemente non compaiono. Qui ingoiare è la scelta giusta.
       .catch(() => {});
   }, []);
 
