@@ -19,7 +19,7 @@ import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricer
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
-import { identificativoDa } from "@/lib/session";
+import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -169,6 +169,39 @@ test("la descrizione si taglia a frase intera, senza puntini", () => {
   assert.ok(r.vintedDescription.length <= 300);
   assert.ok(!r.vintedDescription.endsWith("…"), "un annuncio troncato sembra scritto da uno che non ci teneva");
   assert.ok(r.vintedDescription.endsWith("."));
+});
+
+test("chi torna da una mail viene portato dove serve", () => {
+  // Il link «ho dimenticato la password» non atterra su /auth/reimposta.
+  // Supabase rimanda all'indirizzo del sito e basta — provato chiedendogli
+  // tre indirizzi diversi, compreso quello esatto della pagina giusta, e
+  // tutte e tre le volte il link rimandava alla home.
+  //
+  // Quella è configurazione, e si aggiusta nel pannello di Supabase. Ma il
+  // pezzo che tocca a noi è peggio: la home non guardava il frammento
+  // dell'indirizzo. Il client Supabase apre la sessione di recupero da solo,
+  // quindi la persona entrava — senza che nessuno le chiedesse la password
+  // nuova. Quella che aveva dimenticato restava la sua password, e la volta
+  // dopo era di nuovo fuori.
+  //
+  // Un'app non deve dipendere da un elenco di indirizzi che non controlla:
+  // se il frammento dice da dove si viene, si legge e si va dove serve.
+  assert.equal(doveMandare("#access_token=abc&type=recovery"), "/auth/reimposta");
+  assert.equal(doveMandare("#access_token=abc&type=signup"), "/auth/confirmed");
+  assert.equal(doveMandare("#type=email_change&access_token=abc"), "/auth/confirmed");
+
+  // Anche quando il link è scaduto: la pagina giusta è quella che sa
+  // spiegarlo, non la home che non sa niente.
+  assert.equal(doveMandare("#error_description=Link+scaduto&type=recovery"), "/auth/reimposta");
+
+  // Supabase lo scrive nel frammento, ma non sempre: vale anche in coda.
+  assert.equal(doveMandare("?type=recovery&token=abc"), "/auth/reimposta");
+
+  // E chi arriva normalmente resta dov'è.
+  assert.equal(doveMandare(""), null);
+  assert.equal(doveMandare("#access_token=abc"), null, "senza «type» non si indovina");
+  assert.equal(doveMandare("#type=magiclink"), null);
+  assert.equal(doveMandare(undefined), null);
 });
 
 test("chi chiama register manda i campi che register pretende", () => {
