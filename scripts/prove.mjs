@@ -483,6 +483,26 @@ test("i negozi scrivono i capi anche in inglese", () => {
   assert.equal(ruoloDelCapo("Knit Midi Dress"), "intero");
 });
 
+test("anche gli accessori i negozi li scrivono in inglese", () => {
+  // Trovati dal controllo: «cap» e «caps» erano 1.759 capi senza ruolo,
+  // «sunglasses» 753, «wallet» 372, «watch» 356. Nell'elenco c'erano
+  // «cappello» e «berretto», «occhiali» e «guanti» — e nessuna delle parole
+  // che usano i negozi che scrivono in inglese.
+  assert.equal(ruoloDelCapo("Organic Corduroy Cap - Deep Black"), "accessorio");
+  assert.equal(ruoloDelCapo("BLACK EBONY - SUNGLASSES"), "accessorio");
+  assert.equal(ruoloDelCapo("Gracieuse Watch Leather"), "accessorio");
+  assert.equal(ruoloDelCapo("BLUETTE SMALL WALLET"), "accessorio");
+  assert.equal(ruoloDelCapo("Dolly Noire Backpack"), "accessorio");
+  assert.equal(ruoloDelCapo("DLYNR Tactical Touch Gloves"), "accessorio");
+
+  // «tie» invece resta fuori, ed è una scelta come quella di «knit»: in
+  // inglese sta anche in «tie-dye» e «tie front», che sono una fantasia e un
+  // dettaglio, non una cravatta — e qui vince la parola che viene prima.
+  // Le cravatte vere le prende già «cravatta», e i papillon «papillon».
+  assert.equal(ruoloDelCapo("Tie-Dye T-Shirt"), "top");
+  assert.equal(ruoloDelCapo("Cravatta in seta stampata"), "accessorio");
+});
+
 test("quello che dice il capo vale più di quello che dichiara il negozio", () => {
   // Il negozio è segnato "uomo" perché vende soprattutto boxer da uomo. Ma
   // "dames", in olandese, vuol dire donna, e questo capo lo dice di sé.
