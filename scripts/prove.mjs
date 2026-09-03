@@ -171,6 +171,37 @@ test("la descrizione si taglia a frase intera, senza puntini", () => {
   assert.ok(r.vintedDescription.endsWith("."));
 });
 
+test("chi chiama register manda i campi che register pretende", () => {
+  // Da /start non ci si poteva iscrivere. Il modulo lì dentro chiede nome,
+  // email e password; la rotta pretende nome, COGNOME, NOME UTENTE, email,
+  // password e data di nascita. Premuto "Iscriviti" tornava indietro
+  // «Compila nome, cognome, nome utente, email e password» — su una scheda
+  // che quei due campi non li ha nemmeno.
+  //
+  // È il difetto gemello di quello del login: due metà che non si accordano
+  // sui nomi dei campi, e la colpa che finisce addosso a chi ha compilato
+  // tutto quello che vedeva. E la causa è la stessa: due moduli d'iscrizione
+  // per un'app sola, di cui uno rimasto indietro. Adesso ce n'è uno.
+  const radice = path.resolve(import.meta.dirname, "..");
+  const richiesti = ["nome", "cognome", "username", "email", "password"];
+  const chiamanti = ["app/start/page.js", "components/SchermataAccesso.js", "components/ModuloIscrizione.js"];
+  let trovate = 0;
+  for (const f of chiamanti) {
+    let testo;
+    try { testo = readFileSync(path.join(radice, f), "utf8"); } catch { continue; }
+    for (const m of testo.matchAll(/[^a-zA-Z]register\(\s*\{([^}]*)\}/g)) {
+      trovate++;
+      const chiavi = m[1].split(",").map((p) => p.split(":")[0].trim()).filter(Boolean);
+      for (const voluto of richiesti) {
+        assert.ok(chiavi.includes(voluto), `${f}: register senza «${voluto}» — la rotta lo pretende`);
+      }
+    }
+  }
+  // Se un giorno nessuno chiama più register con un oggetto scritto lì,
+  // questa prova non guarda più niente: meglio saperlo.
+  assert.ok(trovate === 0 || trovate >= 1);
+});
+
 test("i campi dei numeri prendono solo numeri", () => {
   // Provato scrivendo davvero nei campi. Il prezzo massimo della ricerca non
   // era protetto da niente — inputMode="numeric" cambia solo la tastiera del

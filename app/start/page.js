@@ -7,7 +7,7 @@ import { fallbackOutfits } from "@/lib/fallback";
 import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
 import { FORME } from "@/lib/proporzioni";
 import BrandMark from "@/components/BrandMark";
-import { getUser, hasAccounts, register, resendConfirmation, signIn } from "@/lib/session";
+import { getUser, hasAccounts, resendConfirmation, signIn } from "@/lib/session";
 import { principali } from "@/lib/stagioni";
 import { arricchisciConAI, eseguiAnalisi, salvaAnalisi } from "@/lib/analisiCompleta";
 import { tonoPelle } from "@/lib/pelle";
@@ -59,7 +59,7 @@ export default function Start() {
   const [budget, setBudget] = useState("");
   const [err, setErr] = useState("");
   const [signedUp, setSignedUp] = useState(false);
-  const [signup, setSignup] = useState({ name: "", email: "", password: "", consent: true });
+  const [signup, setSignup] = useState({ email: "", password: "" });
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pending, setPending] = useState(null); // messaggio "controlla la mail"
@@ -123,40 +123,6 @@ export default function Start() {
   }
 
   // L'iscrizione non apre subito l'app: prima va confermata l'email.
-  async function completeSignup() {
-    if (!signup.name || !signup.email || !signup.password) {
-      return setErr("Inserisci nome, email e password per proseguire.");
-    }
-    if (!signup.consent) {
-      return setErr("Serve il consenso al trattamento delle immagini per iscriverti.");
-    }
-    setErr("");
-    setBusy(true);
-    try {
-      const data = await register({
-        name: signup.name,
-        email: signup.email,
-        password: signup.password,
-        profile,
-      });
-      setPending({ email: signup.email, message: data.message });
-      setSignup((s) => ({ ...s, password: "" }));
-    } catch (e) {
-      setErr(String(e.message || e));
-    }
-    setBusy(false);
-  }
-
-  async function resendMail() {
-    setErr("");
-    try {
-      const data = await resendConfirmation(pending?.email || signup.email);
-      setPending((p) => ({ ...(p || { email: signup.email }), message: data.message }));
-    } catch (e) {
-      setErr(String(e.message || e));
-    }
-  }
-
   async function completeLogin() {
     if (!signup.email || !signup.password) return setErr("Inserisci email e password.");
     setErr("");
@@ -229,34 +195,23 @@ export default function Start() {
           <div className="card" style={{ padding: 28, width: 420 }}>
             <h2 className="h2" style={{ marginBottom: 8 }}>Iscriviti a {"dress"}</h2>
 
-            {pending ? (
-              <>
-                <p className="muted" style={{ marginBottom: 12 }}>
-                  {pending.message || `Ti abbiamo scritto a ${pending.email}: apri il link per confermare l'iscrizione.`}
-                </p>
-                {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button className="btn ghost" onClick={resendMail}>Rimanda la mail</button>
-                  <button className="btn" onClick={() => { setPending(null); setShowSignupModal(false); }}>Ho capito</button>
-                </div>
-              </>
-            ) : (
-            <>
-            <p className="muted" style={{ marginBottom: 12 }}>Ti mandiamo una mail di conferma: l'account si attiva quando apri il link. Potrai cancellarlo quando vuoi dal tuo spazio personale.</p>
-            <label className="field"><span className="label">Nome</span><input className="control" value={signup.name} onChange={(e) => setSignup((s) => ({ ...s, name: e.target.value }))} /></label>
-            <label className="field"><span className="label">Email</span><input className="control" inputMode="email" value={signup.email} onChange={(e) => setSignup((s) => ({ ...s, email: e.target.value }))} /></label>
-            <label className="field"><span className="label">Password</span><input className="control" type="password" value={signup.password} onChange={(e) => setSignup((s) => ({ ...s, password: e.target.value }))} /></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <input type="checkbox" checked={signup.consent} onChange={(e) => setSignup((s) => ({ ...s, consent: e.target.checked }))} />
-              <span className="muted">Accetto che le immagini siano usate solo per analisi e non condivise.</span>
-            </label>
-            {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
+            {/* Qui c'era un secondo modulo d'iscrizione, e non poteva
+                funzionare: chiedeva nome, email e password, mentre la rotta
+                pretende anche cognome, nome utente e data di nascita — che
+                servono a sapere come chiamarti e se hai l'età per
+                iscriverti. Premendo "Iscriviti" tornava indietro «Compila
+                nome, cognome, nome utente, email e password», su una scheda
+                che quei due campi non li aveva. Un modulo d'iscrizione basta
+                e avanza, ed è quello della pagina d'ingresso. */}
+            <p className="muted" style={{ marginBottom: 12 }}>
+              L'iscrizione chiede qualche dato in più — nome e cognome, un nome utente e
+              la data di nascita — e sta tutta in una scheda sola. Poi torni qui e l'analisi
+              riprende da dove l'hai lasciata.
+            </p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn ghost" onClick={() => { setSignup({ name: "", email: "", password: "", consent: true }); setErr(""); setShowSignupModal(false); }}>Annulla</button>
-              <button className="btn" onClick={completeSignup} disabled={busy}>{busy ? "Invio…" : "Iscriviti"}</button>
+              <button className="btn ghost" onClick={() => { setErr(""); setShowSignupModal(false); }}>Annulla</button>
+              <Link className="btn" href="/">Vai all'iscrizione</Link>
             </div>
-            </>
-            )}
           </div>
         </div>
       )}
