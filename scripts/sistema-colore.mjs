@@ -22,7 +22,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, hexALab, differenza } from "../lib/colore.js";
+import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, hexALab, differenza, sembraIlFondale } from "../lib/colore.js";
 
 const RADICE = path.resolve(import.meta.dirname, "..");
 const env = Object.fromEntries(
@@ -58,9 +58,14 @@ const DAL_VOCABOLARIO = new Set(Object.values(NOMI_COLORE));
 const daCambiare = [];
 for (const capo of capi) {
   const dalNome = coloreDaNome(capo.colore_nome);
-  // Il campo del negozio vince sempre. Il titolo solo se il colore di adesso
-  // veniva a sua volta da una parola, mai contro una foto.
-  const hex = dalNome || (capo.colore_nome || !DAL_VOCABOLARIO.has(capo.colore_hex) ? null : coloreNelTitolo(capo.titolo));
+  const misurato = !DAL_VOCABOLARIO.has(capo.colore_hex);
+  // Il campo del negozio vince sempre. Il titolo vince in due casi soli: se
+  // il colore di adesso veniva a sua volta da una parola, e se veniva da una
+  // foto che ha misurato il muro — bianco spento o nero pieno. Contro una
+  // foto che ha misurato il capo, mai.
+  const controIlFondale = misurato && sembraIlFondale(capo.colore_hex);
+  const hex = dalNome
+    || ((!capo.colore_nome && !misurato) || controIlFondale ? coloreNelTitolo(capo.titolo) : null);
   if (!hex || hex === capo.colore_hex) continue;
   const lab = hexALab(hex);
   daCambiare.push({

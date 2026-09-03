@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { coloreDaNome, coloreNelTitolo, hexALab } from "../lib/colore.js";
+import { coloreDaNome, coloreNelTitolo, hexALab, sembraIlFondale } from "../lib/colore.js";
 import { coloriDaFoto } from "./colore-immagine.mjs";
 
 const RADICE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -506,9 +506,20 @@ async function aggiungiColoriDaFoto(righe) {
         riga.colori = elenco;
         riga.colore_da = daNome ? "nome" : daFoto.length ? "foto" : null;
 
-        // Se il nome non diceva niente, il colore principale è il dominante della foto.
+        // Se il nome non diceva niente, il colore principale è il dominante
+        // della foto — a meno che quel dominante non sia il muro.
+        //
+        // Su un paio di gemelli, una cravatta o degli occhiali la foto è
+        // quasi tutta fondale, e quello che ne esce è il bianco della carta:
+        // 8.394 capi su 33.533 misurati. Dove il titolo un colore lo dice,
+        // conviene lui — guardate ventiquattro di quelle foto una per una,
+        // il titolo vince venti volte e non perde mai.
         if (!daNome && daFoto.length) {
-          const primo = daFoto[0];
+          const dalTitolo = sembraIlFondale(daFoto[0].hex) ? coloreNelTitolo(riga.titolo) : null;
+          const lab = dalTitolo ? hexALab(dalTitolo) : null;
+          const primo = lab
+            ? { hex: dalTitolo, l: +lab.L.toFixed(2), a: +lab.a.toFixed(2), b: +lab.b.toFixed(2) }
+            : daFoto[0];
           riga.colore_hex = primo.hex;
           riga.colore_l = primo.l;
           riga.colore_a = primo.a;

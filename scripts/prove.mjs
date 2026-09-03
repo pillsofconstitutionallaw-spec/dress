@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
-import { NOMI_COLORE, coloreDaNome, coloreNelTitolo } from "@/lib/colore";
+import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, sembraIlFondale } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
@@ -629,6 +629,26 @@ test("una fibra è una parola intera, non una sillaba dentro un'altra", () => {
   // la fibra si cerca dentro e non solo all'inizio.
   assert.equal(analizzaTessuto("100% cotton washing instructions").qualita, 75);
   assert.equal(analizzaTessuto("100% di cotone biologico certificato").qualita, 85);
+});
+
+test("un bianco spento o un nero pieno, misurati su una foto, sono il muro", () => {
+  // Quando il negozio non dice il colore lo misuriamo sulla foto, e su un
+  // paio di gemelli o una cravatta la foto è quasi tutta fondale: 8.394 capi
+  // hanno un colore misurato che è bianco spento o nero pieno.
+  //
+  // Guardate ventiquattro di quelle foto una per una, il titolo vince venti
+  // volte e non perde mai: gemelli neri, décolleté neri, chino neri,
+  // t-shirt verde — tutti bianchi secondo la foto.
+  assert.ok(sembraIlFondale("#EFEBEA"), "il bianco della carta da studio");
+  assert.ok(sembraIlFondale("#F5F5F5"));
+  assert.ok(sembraIlFondale("#050505"), "il nero di un'estrazione fallita");
+
+  // Un capo bianco panna o nero vero invece non è il muro: hanno una tinta,
+  // o non sono così estremi. Se li scartassimo, un abito panna resterebbe
+  // senza colore.
+  assert.ok(!sembraIlFondale("#EFE4D2"), "eggnog, che è un capo color panna");
+  assert.ok(!sembraIlFondale("#111213"), "il nero dell'interfaccia, che è un nero vero");
+  assert.ok(!sembraIlFondale("#B98F5E"), "il cammello");
 });
 
 test("nel campo del colore la sfumatura segue il generico: «verde bosco» è bosco", () => {
