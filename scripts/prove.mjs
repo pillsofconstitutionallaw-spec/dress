@@ -17,6 +17,7 @@ import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricer
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
+import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
@@ -164,6 +165,50 @@ test("la descrizione si taglia a frase intera, senza puntini", () => {
   assert.ok(r.vintedDescription.length <= 300);
   assert.ok(!r.vintedDescription.endsWith("…"), "un annuncio troncato sembra scritto da uno che non ci teneva");
   assert.ok(r.vintedDescription.endsWith("."));
+});
+
+test("la taglia non entra nell'annuncio, perché in una foto non si legge", () => {
+  // Il prompt lo dice già, e per esteso: «la taglia solo se si legge
+  // davvero», «di quello che nella foto non si vede non inventare niente».
+  // Il modello lo fa lo stesso: provate dieci foto vere del catalogo, un
+  // annuncio su sei si è portato dietro una taglia — «Maglione lana blu
+  // taglia M», «Scarpe in pelle marrone con fibbia metallica, taglia 38».
+  //
+  // È l'errore che costa di più fra tutti quelli che può fare quest'app:
+  // gli altri li vede chi guarda e li scarta, questo finisce dentro un
+  // annuncio pubblicato, e a scoprirlo è chi ha comprato. Su Vinted la
+  // taglia ha un campo suo, che il venditore compila comunque: toglierla dal
+  // titolo non gli fa perdere niente.
+  const conTaglia = normalizzaVendita({ vintedTitle: "Maglione lana blu taglia M", vintedDescription: "Maglione in lana, taglia M, ottime condizioni." });
+  assert.ok(!/taglia/i.test(conTaglia.vintedTitle), `rimasta nel titolo: ${conTaglia.vintedTitle}`);
+  assert.ok(!/taglia/i.test(conTaglia.vintedDescription), `rimasta nella descrizione: ${conTaglia.vintedDescription}`);
+  assert.equal(conTaglia.vintedTitle, "Maglione lana blu");
+
+  const inCoda = normalizzaVendita({ vintedTitle: "Scarpe in pelle marrone con fibbia metallica, taglia 38" });
+  assert.equal(inCoda.vintedTitle, "Scarpe in pelle marrone con fibbia metallica");
+
+  // E la taglia scritta senza dirlo, appesa in fondo con una barra: uscita
+  // così da una foto vera, «Maglione blu lana colletto camicia/L».
+  assert.equal(normalizzaVendita({ vintedTitle: "Maglione blu lana colletto camicia/L" }).vintedTitle,
+    "Maglione blu lana colletto camicia");
+  // Ma solo in fondo: in mezzo a una frase una barra separa due parole.
+  assert.equal(normalizzaVendita({ vintedTitle: "Giacca blu/grigia in lana" }).vintedTitle,
+    "Giacca blu/grigia in lana");
+
+  // E le parole che contengono «taglia» per caso restano dove sono.
+  const taglio = normalizzaVendita({ vintedTitle: "Cappotto dal taglio dritto", vintedDescription: "Taglio a uovo, lana cotta." });
+  assert.equal(taglio.vintedTitle, "Cappotto dal taglio dritto");
+  assert.equal(taglio.vintedDescription, "Taglio a uovo, lana cotta.");
+});
+
+test("senza AI l'annuncio non si inventa un prezzo", async () => {
+  // Quando i fornitori gratuiti dicono «troppe richieste» — quattro volte su
+  // dieci, provato — si cade sui risultati d'esempio. La descrizione dice di
+  // sé che è dimostrativa, ma il prezzo no: usciva «12–20 €» su una foto che
+  // nessuno aveva guardato, e chi legge un prezzo lo usa.
+  assert.equal(demo.name, "demo");
+  const r = normalizzaVendita(await demo.vendi());
+  assert.equal(r.priceRange, "—", `ha stimato ${r.priceRange} senza guardare niente`);
 });
 
 test("se manca l'annuncio si ripiega sulla scheda invece di lasciare il vuoto", () => {
