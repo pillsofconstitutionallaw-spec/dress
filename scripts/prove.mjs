@@ -8,6 +8,8 @@
 // sbagliano, sbagliano in silenzio.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
 import { sembraEmail } from "@/lib/identificativo";
@@ -16,6 +18,7 @@ import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiP
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
+import { identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -165,6 +168,41 @@ test("la descrizione si taglia a frase intera, senza puntini", () => {
   assert.ok(r.vintedDescription.length <= 300);
   assert.ok(!r.vintedDescription.endsWith("…"), "un annuncio troncato sembra scritto da uno che non ci teneva");
   assert.ok(r.vintedDescription.endsWith("."));
+});
+
+test("chi entra può dire «email» o «identificativo», e sono la stessa cosa", () => {
+  // Trovato premendo il bottone, non leggendo il codice: dal modulo del
+  // dashboard non si entrava MAI. La funzione del browser prendeva solo
+  // «identificativo» e ne girava al server uno solo; il dashboard e la
+  // pagina d'iscrizione la chiamavano con «email», che veniva buttata via.
+  // Al server arrivava la password senza chi sei, e tornava indietro
+  // «Scrivi email (o nome utente) e password» — un errore che dà la colpa a
+  // chi ha appena scritto la sua email nel campo giusto.
+  //
+  // La rotta le accettava già tutte e due (identificativo ?? email): era il
+  // pezzo nel browser a non farlo.
+  assert.equal(identificativoDa({ identificativo: "mario" }), "mario");
+  assert.equal(identificativoDa({ email: "mario@esempio.it" }), "mario@esempio.it");
+  assert.equal(identificativoDa({ identificativo: " mario ", email: "altro@esempio.it" }), "mario");
+  assert.equal(identificativoDa({}), "");
+  assert.equal(identificativoDa({ email: "  " }), "");
+});
+
+test("nessuno chiama signIn con una chiave che signIn non legge", () => {
+  // È la prova che avrebbe preso il difetto sopra il giorno in cui è nato.
+  // Un parametro sbagliato qui non fa rumore: la chiamata parte, il server
+  // risponde con garbo, e l'accesso semplicemente non avviene mai.
+  const radice = path.resolve(import.meta.dirname, "..");
+  const ammesse = new Set(["identificativo", "email", "password"]);
+  const file = ["app/dashboard/page.js", "app/start/page.js", "components/SchermataAccesso.js"];
+  for (const f of file) {
+    const testo = readFileSync(path.join(radice, f), "utf8");
+    for (const m of testo.matchAll(/signIn\(\s*\{([^}]*)\}/g)) {
+      for (const chiave of m[1].split(",").map((p) => p.split(":")[0].trim()).filter(Boolean)) {
+        assert.ok(ammesse.has(chiave), `${f}: signIn non sa cosa farsene di «${chiave}»`);
+      }
+    }
+  }
 });
 
 test("la taglia non entra nell'annuncio, perché in una foto non si legge", () => {
