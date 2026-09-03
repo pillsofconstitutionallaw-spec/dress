@@ -3,7 +3,7 @@ import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
 import { capiDelloStile, paroleDaIndossare } from "@/lib/stiliCapi";
-import { PERIODI, RUOLI, adattoAlPeriodo, ruoloDelCapo } from "@/lib/periodiAnno";
+import { PERIODI, RUOLI, adattoAlPeriodo, ruoliDaRiempire, ruoloDelCapo } from "@/lib/periodiAnno";
 import { tagliConsigliati } from "@/lib/proporzioni";
 import { TUTTE_LE_VESTIBILITA } from "@/lib/data";
 
@@ -137,6 +137,20 @@ export async function POST(req) {
   // lo stesso cappello sono un completo solo mostrato quattro volte.
   const giaUsati = new Set();
 
+  // E un abito lo prende UN completo solo, non tutti e quattro.
+  //
+  // Con 2.949 abiti in catalogo e una palette di dodici colori ce n'è sempre
+  // uno perfetto — chiesti tutti e quarantotto i completi, dodici stagioni
+  // per quattro periodi, l'abito c'era in quarantotto su quarantotto, e lo
+  // scarto mediano era 0,8 su una soglia di 12. Siccome l'abito fa da solo
+  // sopra e sotto, quei due ruoli saltavano sempre: maglia e pantaloni non
+  // venivano proposti MAI, e i quattro completi erano lo stesso completo con
+  // un cappotto diverso.
+  //
+  // Vale la stessa regola dei capi già usati, un passo più su: non è il capo
+  // che si ripete, è la forma del completo.
+  let abitoGiaUsato = false;
+
   const completi = PERIODI.map((periodo) => {
     const adatti = (righe) => righe.filter((c) => c.ruolo && adattoAlPeriodo(c.titolo, periodo));
     const daStile = adatti(vestiti);
@@ -146,13 +160,15 @@ export async function POST(req) {
     const negoziUsati = new Set();
     const coloriUsati = new Set();
 
-    // Un abito fa da solo sopra e sotto: se c'è, gli altri due ruoli saltano.
-    const conAbito = daStile.find((c) => c.ruolo === "intero" && !giaUsati.has(c.id) && c.scarto < 12);
-    const ruoliDaRiempire = conAbito
-      ? periodo.ruoli.filter((r) => r !== "top" && r !== "bottom").flatMap((r) => (r === "capospalla" ? [r, "intero"] : [r]))
-      : periodo.ruoli;
+    // Un abito fa da solo sopra e sotto: se c'è, gli altri due ruoli saltano
+    // e al loro posto si riempie lui — vedi ruoliDaRiempire, che è dove la
+    // sostituzione stava a metà.
+    const conAbito = abitoGiaUsato
+      ? null
+      : daStile.find((c) => c.ruolo === "intero" && !giaUsati.has(c.id) && c.scarto < 12);
+    if (conAbito) abitoGiaUsato = true;
 
-    for (const ruolo of ruoliDaRiempire) {
+    for (const ruolo of ruoliDaRiempire(periodo, Boolean(conAbito))) {
       let bacino = RUOLI_DELLO_STILE.has(ruolo) ? daStile : daTutto;
 
       // Scarpe e accessori: si tiene solo quello che lo stile porterebbe

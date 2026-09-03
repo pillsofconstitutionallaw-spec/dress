@@ -20,7 +20,7 @@ import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
 import { stagioneDa } from "@/lib/stagioni";
-import { ruoloDelCapo } from "@/lib/periodiAnno";
+import { PERIODI, ruoliDaRiempire, ruoloDelCapo } from "@/lib/periodiAnno";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
 import { analizzaTessuto, coloreDelCapo, deduciGenere } from "@/scripts/importa-catalogo.mjs";
 
@@ -573,6 +573,53 @@ test("le parole che sembrano un capo e non lo sono restano fuori", () => {
   assert.equal(ruoloDelCapo("Core Thong 5-pack", "bottoms"), null);
   assert.equal(ruoloDelCapo("Set Costume e Pareo"), null);
   assert.equal(ruoloDelCapo("PROFUMO DESIRE RUGGINE", "accessories"), null);
+});
+
+test("un pigiama non è il sopra di un completo", () => {
+  // Visto uscire da un completo vero: «Scarpe: Pigiama fantasia sneakers».
+  // La parola che decideva era «sneakers», che lì è la fantasia stampata
+  // sopra. Sono 262 capi da notte che entravano nei completi, e 55 come
+  // capospalla — «Pigiama cardigan» proposto come il soprabito d'autunno.
+  //
+  // Non basta però buttare via ogni titolo che dice «pigiama»: un «Cappotto
+  // a vestaglia» è un cappotto e i «Pantaloni pigiama wide leg» sono
+  // pantaloni. Vale la regola di posizione che vale per tutto il resto — chi
+  // viene prima nel titolo è il capo.
+  assert.equal(ruoloDelCapo("Pigiama cardigan in confortevole jacquard di cotone"), null);
+  assert.equal(ruoloDelCapo('Pigiama lungo uomo in leggerissimo jersey, fantasia "sneakers"'), null);
+  assert.equal(ruoloDelCapo("Set pigiama con camicia e pantaloni lunghi"), null);
+  assert.equal(ruoloDelCapo("Pigiama Fantasia Bandana"), null);
+
+  assert.equal(ruoloDelCapo("Cappotto a vestaglia - Cappotto Diodino"), "capospalla");
+  assert.equal(ruoloDelCapo("Pantaloni pigiama wide leg a tinta unita"), "bottom");
+  assert.equal(ruoloDelCapo("T-shirt pigiama a tinta unita"), "top");
+});
+
+test("con un abito il completo estivo resta un completo", () => {
+  // Il difetto si vedeva solo chiedendo davvero i completi: quarantotto
+  // completi (dodici stagioni per quattro periodi), e i dodici estivi
+  // uscivano TUTTI incompleti, «manca Maglia, manca Pantaloni».
+  //
+  // Quando c'è un abito, maglia e pantaloni non servono: li copre l'abito. La
+  // regola però agganciava l'abito al capospalla — «dove tocca il capospalla,
+  // tocca anche l'abito» — e d'estate il capospalla non esiste. Così d'estate
+  // l'abito non entrava mai: maglia e pantaloni saltavano lo stesso, e poi
+  // risultavano mancanti.
+  const estate = PERIODI.find((p) => p.id === "estate");
+  const inverno = PERIODI.find((p) => p.id === "inverno");
+
+  assert.ok(ruoliDaRiempire(estate, true).includes("intero"), "d'estate l'abito non entra");
+  assert.ok(!ruoliDaRiempire(estate, true).includes("top"));
+  assert.ok(!ruoliDaRiempire(estate, true).includes("bottom"));
+
+  // D'inverno l'abito entra dopo il capospalla, perché il cappotto si vede di
+  // più e va scelto per primo.
+  const conCappotto = ruoliDaRiempire(inverno, true);
+  assert.equal(conCappotto.indexOf("intero"), conCappotto.indexOf("capospalla") + 1);
+
+  // E senza abito non cambia niente: i ruoli sono quelli del periodo.
+  assert.deepEqual(ruoliDaRiempire(estate, false), estate.ruoli);
+  assert.deepEqual(ruoliDaRiempire(inverno, false), inverno.ruoli);
 });
 
 test("le parole deboli danno un ruolo dove non c'è nient'altro, e lo cedono dove c'è", () => {
