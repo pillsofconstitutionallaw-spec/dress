@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "prove": "node --import ./scripts/alias.mjs --test scripts/prove.mjs",
-    "controlla": "node --import ./scripts/alias.mjs scripts/controlla-genere.mjs"
+    "controlla": "node --import ./scripts/alias.mjs scripts/controlla.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
