@@ -687,6 +687,37 @@ test("i nomi che i negozi usano davvero stanno in vocabolario, e non si mangiano
   assert.equal(coloreDaNome("Abito lungo carta da zucchero"), NOMI_COLORE["carta da zucchero"]);
 });
 
+test("i codici che i negozi incollano al nome del colore", () => {
+  // «blacksms» sono 45 capi, «darkbluesms» 26, «whitesms» 22: un suffisso
+  // attaccato in fondo al nome, che da solo lascia 155 capi senza colore.
+  assert.equal(coloreDaNome("BLACKSMS"), NOMI_COLORE.black);
+  assert.equal(coloreDaNome("darkbluesms"), NOMI_COLORE.darkblue);
+
+  // E i nomi incollati senza spazio, altri 171 capi. Vale il primo, come per
+  // due colori separati da una barra: «blackwhite» è nera e bianca.
+  assert.equal(coloreDaNome("blackwhite"), NOMI_COLORE.black);
+  assert.equal(coloreDaNome("sagegreen"), NOMI_COLORE.sage);
+  assert.equal(coloreDaNome("blueindigo"), NOMI_COLORE.blue);
+
+  // Ma spezzare le parole vale SOLO nel campo del colore. In un titolo
+  // sarebbe un invito a sbagliare, e infatti non si tocca: «blackout» non è
+  // nero, e non lo era nemmeno prima.
+  assert.equal(coloreNelTitolo("Tenda Blackout per la camera"), null);
+
+  // E un nome che si legge per intero non si spezza: «verde bosco» resta
+  // bosco, non diventa verde.
+  assert.equal(coloreDaNome("Verde bosco"), NOMI_COLORE.bosco);
+});
+
+test("«fuchsia» e «bluette»: 309 capi, due parole", () => {
+  // 151 capi scrivono «fuchsia» all'inglese, e in vocabolario c'era solo
+  // «fucsia». Altri 158 dicono «bluette», che non c'era affatto: guardate
+  // sei foto — una giacca, un cardigan, tre cravatte — è un blu medio
+  // acceso, non un navy.
+  assert.equal(coloreNelTitolo("FUCHSIA SARTORIAL PRINTED SILK TIE"), NOMI_COLORE.fucsia);
+  assert.equal(coloreDaNome("Bluette"), NOMI_COLORE.bluette);
+});
+
 test("una barra, un trattino o una «e» fra due colori vogliono dire due colori", () => {
   // "Black/Ivory" è una scarpa nera e avorio, non un avorio scuro. La
   // normalizzazione cancellava i separatori, e "black ivory" diventava

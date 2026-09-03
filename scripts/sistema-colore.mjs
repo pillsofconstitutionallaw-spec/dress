@@ -46,10 +46,10 @@ async function chiedi(percorso, opzioni = {}) {
 
 const capi = [];
 for (let da = 0; ; da += 1000) {
-  const res = await chiedi(`prodotti?select=id,titolo,colore_nome,colore_hex&colore_hex=not.is.null&order=id&offset=${da}&limit=1000`);
+  const res = await chiedi(`prodotti?select=id,titolo,colore_nome,colore_hex&order=id&offset=${da}&limit=1000`);
   const blocco = await res.json();
   capi.push(...blocco);
-  process.stdout.write(`\rletti ${capi.length} capi con un colore   `);
+  process.stdout.write(`\rletti ${capi.length} capi   `);
   if (blocco.length < 1000) break;
 }
 console.log();
@@ -58,20 +58,26 @@ const DAL_VOCABOLARIO = new Set(Object.values(NOMI_COLORE));
 const daCambiare = [];
 for (const capo of capi) {
   const dalNome = coloreDaNome(capo.colore_nome);
-  const misurato = !DAL_VOCABOLARIO.has(capo.colore_hex);
-  // Il campo del negozio vince sempre. Il titolo vince in due casi soli: se
-  // il colore di adesso veniva a sua volta da una parola, e se veniva da una
-  // foto che ha misurato il muro — bianco spento o nero pieno. Contro una
-  // foto che ha misurato il capo, mai.
+  const misurato = Boolean(capo.colore_hex) && !DAL_VOCABOLARIO.has(capo.colore_hex);
+  // Il campo del negozio vince sempre — e adesso ne leggiamo di più: i nomi
+  // col codice attaccato («blacksms») e quelli incollati («blackwhite»).
+  // Sono capi che prima restavano senza NIENTE, cioè invisibili alla
+  // ricerca per palette.
+  //
+  // Il titolo vince in due casi soli: se il colore di adesso veniva a sua
+  // volta da una parola, e se veniva da una foto che ha misurato il muro.
+  // Contro una foto che ha misurato il capo, mai — e nemmeno quando il
+  // negozio un nome l'ha scritto e siamo noi a non capirlo: lì a decidere
+  // dev'essere la foto, non una parola che parla di un dettaglio.
   const controIlFondale = misurato && sembraIlFondale(capo.colore_hex);
   const hex = dalNome
-    || ((!capo.colore_nome && !misurato) || controIlFondale ? coloreNelTitolo(capo.titolo) : null);
+    || (!capo.colore_nome && (!misurato || controIlFondale) ? coloreNelTitolo(capo.titolo) : null);
   if (!hex || hex === capo.colore_hex) continue;
   const lab = hexALab(hex);
   daCambiare.push({
     id: capo.id, prima: capo.colore_hex, hex,
     l: +lab.L.toFixed(2), a: +lab.a.toFixed(2), b: +lab.b.toFixed(2),
-    salto: differenza(hexALab(capo.colore_hex), lab),
+    salto: capo.colore_hex ? differenza(hexALab(capo.colore_hex), lab) : 99,
     nome: capo.colore_nome, titolo: capo.titolo,
   });
 }
@@ -82,7 +88,7 @@ console.log(`   ${diversi.length} cambiano davvero colore (oltre 25 di distanza 
 console.log(`   ${daCambiare.length - diversi.length} restano nella stessa famiglia`);
 console.log("\nun assaggio, dal salto più grosso:");
 for (const c of [...daCambiare].sort((a, b) => b.salto - a.salto).slice(0, 8)) {
-  console.log(`   ${c.prima} → ${c.hex}  Δ${String(Math.round(c.salto)).padStart(3)}  «${String(c.nome).slice(0, 22).padEnd(22)}» ${String(c.titolo).slice(0, 40)}`);
+  console.log(`   ${c.prima || "(niente)"} → ${c.hex}  Δ${String(Math.round(c.salto)).padStart(3)}  «${String(c.nome).slice(0, 22).padEnd(22)}» ${String(c.titolo).slice(0, 40)}`);
 }
 
 if (!SCRIVI) {
