@@ -106,8 +106,12 @@ export async function POST(req) {
    * TUTTE, anche quando ognuna da sola ci starebbe larga. In fila ognuna ha
    * la macchina per sé e finisce in due secondi. Si aspetta di più — sei
    * secondi contro un errore — e sei secondi almeno mostrano dei capi.
+   *
+   * Quanti colori per volta è misurato in app/api/outfit/route.js, sulle
+   * dodici palette vere: quattro è il punto dove il totale è più basso e il
+   * margine sotto i tre secondi è più largo, non più stretto.
    */
-  const META = 2;
+  const META = 4;
   const gruppi = [];
   for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 

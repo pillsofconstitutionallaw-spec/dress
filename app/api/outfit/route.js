@@ -46,15 +46,50 @@ export async function POST(req) {
   // vincola i capi d'abbigliamento, mentre scarpe e accessori si scelgono per
   // colore su tutto il catalogo.
   //
-  // La palette si spezza in gruppi da quattro e si chiede UN PEZZO ALLA
-  // VOLTA. Il costo della ricerca è lineare nei colori e il database concede
-  // tre secondi a una domanda: con dodici colori una domanda sola non ci sta,
-  // e due domande insieme si ostacolano e sforano tutte e due. Qui c'era
-  // Promise.all con la palette intera, e i completi non uscivano MAI a chi
-  // aveva una palette piena — con o senza genere, provato oggi: 500 in tre
-  // secondi. La distanza dalla palette è il minimo fra le distanze dai
-  // singoli colori, quindi spezzare non cambia una riga di quello che esce.
-  const META = 2;
+  // La palette si spezza in gruppi e si chiede UN PEZZO ALLA VOLTA. Il costo
+  // della ricerca è lineare nei colori e il database concede tre secondi a
+  // una domanda: con dodici colori una domanda sola non ci sta, e due domande
+  // insieme si ostacolano e sforano tutte e due. Qui c'era Promise.all con la
+  // palette intera, e i completi non uscivano MAI a chi aveva una palette
+  // piena. La distanza dalla palette è il minimo fra le distanze dai singoli
+  // colori, quindi spezzare non cambia una riga di quello che esce.
+  //
+  // Quanti colori per volta, misurato su tutte e dodici le palette vere:
+  //
+  //   2 → mediana 1535 ms, peggiore 2269 ms → 6 domande,  9,2 s
+  //   3 → mediana 1846 ms, peggiore 2470 ms → 4 domande,  7,4 s
+  //   4 → mediana 1830 ms, peggiore 2112 ms → 3 domande,  5,5 s
+  //   5 → mediana 2449 ms, peggiore 2871 ms → 3 domande,  7,3 s
+  //
+  // Quattro è il punto: il totale più basso, e con un margine sotto il limite
+  // PIÙ LARGO e non più stretto — il peggiore dei dodici sta a 2112 ms contro
+  // i 2269 che toccava già a due. A cinque il margine si chiude (2871 su
+  // 3000), e una ricerca che sfora non rallenta: muore.
+  //
+  // Misurato poi dall'app, che è l'unico numero che conta davvero — dodici
+  // completi con due e con quattro, di fila nella stessa sessione:
+  //
+  //   2 → mediana 6609 ms, peggiore 7118 ms
+  //   4 → mediana 5972 ms, peggiore 6857 ms
+  //
+  // Un decimo, non la metà: fuori dall'app ogni domanda pagava un saluto al
+  // server che qui dentro si paga una volta sola, e le misure isolate quindi
+  // gonfiavano il guadagno. Vale comunque, perché migliora anche il peggiore
+  // dei casi, ma il grosso del tempo NON sta qui — vedi sotto.
+  //
+  // Il tempo sta nel database, ed è righe per colori: la ricerca calcola la
+  // distanza fra ogni tinta di ogni capo e ogni colore della palette, e sono
+  // 79.169 capi per dodici colori. Misurato: con una parola che riduce le
+  // righe a centocinquanta, dodici colori costano 307 ms invece di 3.176.
+  // Nessun indice può togliere quelle righe — il 93% del catalogo sta entro
+  // 34 da un colore della palette, cioè non c'è niente da scartare — e
+  // togliere colori cambierebbe i completi, perché i sette meno importanti
+  // valgono comunque il 37% dei capi scelti. Sotto i sei secondi non si va
+  // senza cambiare come il database calcola quel minimo.
+  //
+  // Il numero qui era 2 mentre questo commento diceva già quattro: la
+  // costante era scesa e il commento non l'aveva seguita.
+  const META = 4;
   const gruppi = [];
   for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 
