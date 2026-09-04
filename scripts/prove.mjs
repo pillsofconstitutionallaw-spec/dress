@@ -16,6 +16,7 @@ import { sembraEmail } from "@/lib/identificativo";
 import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, hexALab, sembraIlFondale } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
+import { consigliaStili } from "@/lib/consigliaStili";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
@@ -1538,6 +1539,32 @@ test("le famiglie che mancavano: sei parole che vedevano quasi niente", () => {
   // «Minigonna» non la prendeva «gonna»: il confine di parola vuole uno
   // spazio prima, e lì c'è una "i".
   assert.ok(trova("gonna", "Minigonna a portafoglio full strass"));
+});
+
+test("a chi ha un contrasto medio non si dice che ce l'ha marcato", () => {
+  // La riga era: contrasto >= 40 ? alto : contrasto <= 22 ? basso : ALTO.
+  // Il primo ramo e l'ultimo davano la stessa cosa, quindi chiunque non
+  // avesse un contrasto basso finiva in «alto» — lista degli stili e
+  // spiegazione compresa: «Hai un contrasto marcato fra capelli e
+  // incarnato».
+  //
+  // Contate le combinazioni che l'app offre — dodici toni di pelle per sette
+  // colori di capelli — nella fascia di mezzo ci finisce il 26%: pelle oliva
+  // chiara e capelli castano chiari fanno 25 di contrasto, e marcato non è.
+  // Una persona su quattro si sentiva dire una cosa sul proprio viso che non
+  // avevamo verificato.
+  //
+  // La lista degli stili resta quella: fra 23 e 39 quegli stili funzionano
+  // davvero, e cambiarla sarebbe un'altra decisione. Cambia la frase, che è
+  // la parte che affermava.
+  const perContrasto = (contrasto) => {
+    const analisi = { season: "Inverno freddo", misura: { contrasto, sottotono: "freddo", luminosita: 62 } };
+    return (consigliaStili(analisi, {}) || []).map((s) => s.perche || "").join(" ");
+  };
+  assert.match(perContrasto(65), /contrasto marcato/i);
+  assert.match(perContrasto(10), /contrasto è morbido/i);
+  assert.doesNotMatch(perContrasto(30), /contrasto marcato/i, "a chi sta nel mezzo dice che ce l'ha marcato");
+  assert.doesNotMatch(perContrasto(30), /contrasto è morbido/i, "e nemmeno che ce l'ha morbido");
 });
 
 test("al database non si mandano parole che un'altra già contiene", () => {
