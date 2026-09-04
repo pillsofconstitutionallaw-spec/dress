@@ -18,6 +18,10 @@ export default function Cerca() {
   const [palette, setPalette] = useState([]);
   const [capi, setCapi] = useState([]);
   const [cercando, setCercando] = useState(false);
+  // «Non c'è niente così» e «non ho potuto chiedere» sono due cose diverse.
+  // Vedi il messaggio in fondo, e il commento che gli sta accanto.
+  const [guasto, setGuasto] = useState(false);
+  const [tentativo, setTentativo] = useState(0);
   const [genere, setGenere] = useState("");
   const [stile, setStile] = useState("");
   const [stiliDisponibili, setStiliDisponibili] = useState([]);
@@ -85,10 +89,19 @@ export default function Cerca() {
             escludiFast, quanti: 48,
           }),
         });
-        const dati = await res.json();
-        if (vivo && dati?.ok) setCapi(dati.capi || []);
+        const dati = await res.json().catch(() => null);
+        if (!vivo) return;
+        if (!res.ok || !dati?.ok) throw new Error(String(res.status));
+        setGuasto(false);
+        setCapi(dati.capi || []);
       } catch {
-        /* resta la ricerca su Google */
+        // I capi di prima si buttano, e non per pulizia: erano la risposta a
+        // un'altra domanda. Lasciandoli, la riga qui sotto — «Filtrati:
+        // «cappotto»» — li presenterebbe come i capi di questa.
+        if (vivo) {
+          setCapi([]);
+          setGuasto(true);
+        }
       }
       if (vivo) setCercando(false);
     }, capo ? 400 : 0);
@@ -96,7 +109,7 @@ export default function Cerca() {
       vivo = false;
       clearTimeout(quando);
     };
-  }, [palette, min, max, genere, stile, capo, colore, escludiFast]);
+  }, [palette, min, max, genere, stile, capo, colore, escludiFast, tentativo]);
 
   // Anche la ricerca fuori tiene conto di chi sei: prima il tasto diceva
   // "cerca nei 48 negozi scelti" e ce li infilava tutti, Kocca e Pinko
@@ -288,7 +301,25 @@ export default function Cerca() {
         </section>
       )}
 
-      {palette.length > 0 && !cercando && capi.length === 0 && (
+      {/* Il catalogo non ha risposto. Prima si finiva sul messaggio qui
+          sotto — «in catalogo non c'è niente che somigli a...» — che è una
+          notizia sul catalogo data senza averlo guardato. Chi la legge
+          cambia parola, riprova, e sbaglia di nuovo credendo di aver capito
+          come funziona. */}
+      {palette.length > 0 && !cercando && guasto && (
+        <div style={{ marginTop: 30 }}>
+          <p className="muted" style={{ margin: 0 }}>
+            Il catalogo non ha risposto, quindi di questa ricerca non sappiamo niente —
+            né che c'è, né che non c'è. Di solito basta riprovare.
+          </p>
+          <button type="button" className="btn-app" style={{ marginTop: 16 }}
+            onClick={() => { setGuasto(false); setCercando(true); setTentativo((n) => n + 1); }}>
+            Riprova
+          </button>
+        </div>
+      )}
+
+      {palette.length > 0 && !cercando && !guasto && capi.length === 0 && (
         <p className="muted" style={{ marginTop: 30 }}>
           {capo.trim()
             ? `In catalogo non c’è niente che somigli a «${capo.trim()}» dentro questi filtri. Prova con una parola più generica — “giubbino” invece di “giubbino North Face” — oppure cercalo fuori con i tasti qui sotto.`
