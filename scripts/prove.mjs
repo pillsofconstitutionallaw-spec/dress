@@ -1540,6 +1540,34 @@ test("le famiglie che mancavano: sei parole che vedevano quasi niente", () => {
   assert.ok(trova("gonna", "Minigonna a portafoglio full strass"));
 });
 
+test("al database non si mandano parole che un'altra già contiene", () => {
+  // Le parole che vanno al database servono solo a non leggere tutto il
+  // catalogo, e il confronto là è per pezzo di parola: chi cerca «%giubbott%»
+  // trova anche «giubbotto». Mandarle tutte e due è un posto sprecato, e i
+  // posti sono contati.
+  //
+  // Si vedeva bene su «canottiera», che ne occupava tre da sola —
+  // canottiera, canottier, canott — e lasciava fuori «singlet», cioè 59 capi
+  // che nessun'altra parola andava a prendere.
+  const cravatta = paroleEspanse("cravatta");
+  assert.equal(cravatta.filter((p) => p.startsWith("cravatt")).length, 1, cravatta.join(" "));
+  const canottiera = paroleEspanse("canottiera");
+  assert.equal(canottiera.filter((p) => p.startsWith("canott")).length, 1, canottiera.join(" "));
+
+  // E con i posti liberati la famiglia ci sta tutta: prima «bomber» e
+  // «giubbino» restavano fuori, e con loro 169 capi.
+  const giubbotto = paroleEspanse("giubbotto");
+  for (const voce of ["bomber", "giubbin", "jacket", "blazer"]) {
+    assert.ok(giubbotto.some((p) => p.startsWith(voce)), `manca «${voce}»: ${giubbotto.join(" ")}`);
+  }
+  assert.ok(paroleEspanse("scarpe").some((p) => p.startsWith("loafer")));
+  assert.ok(paroleEspanse("canottiera").some((p) => p.startsWith("singlet")));
+
+  // Il tetto resta, perché ogni parola costa: misurate sul database vero,
+  // cinque parole 908 ms e otto 1.180, contro i tre secondi che concede.
+  assert.ok(paroleEspanse("giubbotto").length <= 8);
+});
+
 test("«cravatta» trova le cravatte, e non i lacci", () => {
   // «Tie» in inglese è la cravatta e anche il laccio, ed è il secondo nove
   // volte su dieci quando ha un capo subito dopo: «tie sweatpants», «rope
@@ -1609,15 +1637,22 @@ test("uno stile si riconosce sulle righe già scaricate, dove le parole non cost
 });
 
 test("al database non si mandano più parole di quante ne regga", () => {
-  // Ogni parola viene confrontata con cinque campi di ogni riga, e uno è la
-  // descrizione, lunga seicento caratteri. Misurato sul catalogo vero:
-  // due parole 1763 ms, sei 2875, otto TIMEOUT. "cardigan oversize" ne
-  // generava undici e la ricerca moriva.
+  // Il tetto era 5, e veniva da quando ogni parola girava su cinque campi di
+  // ogni riga, descrizione compresa: due parole 1763 ms, sei 2875, otto
+  // TIMEOUT — "cardigan oversize" ne generava undici e la ricerca moriva.
+  //
+  // Adesso le parole guardano una colonna sola e indicizzata, e quella misura
+  // non vale più. Rifatta sullo stesso database, quattro colori in palette:
+  // una parola 423 ms, tre 710, cinque 908, otto 1180, dodici 1607. Otto sta
+  // largo sotto i tre secondi, e cinque lasciava fuori pezzi di famiglia che
+  // servono davvero.
   for (const q of ["cardigan oversize", "jeans baggy larghi", "stivali scarpe borsa cintura"]) {
-    assert.ok(paroleEspanse(q).length <= 5, `${q} → ${paroleEspanse(q).length} parole`);
+    assert.ok(paroleEspanse(q).length <= 8, `${q} → ${paroleEspanse(q).length} parole`);
   }
 
   // Ma quelle scritte da chi cerca non si tagliano mai: sono la richiesta.
+  // (Possono essere sostituite da una più corta che le contiene — «giubbott»
+  // al posto di «giubbotto» — e non è una perdita: quella prende di più.)
   const scritte = paroleEspanse("cardigan oversize");
   assert.ok(scritte.includes("cardigan") && scritte.includes("oversize"), scritte.join(","));
 
