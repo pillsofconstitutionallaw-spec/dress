@@ -1504,6 +1504,59 @@ test("una parola porta con sé la sua famiglia, in tutte e due le lingue", () =>
   assert.ok(trova("boots", "Stivaletti in pelle"));
 });
 
+test("le famiglie che mancavano: sei parole che vedevano quasi niente", () => {
+  // Contato quanto vede chi cerca, parola per parola, sul catalogo vero. Il
+  // conto è: quanti capi trova adesso, e quanti gliene sarebbero andati bene.
+  //
+  //   giubbotto     177 su 3.669    5%
+  //   cravatta       70 su 1.818    4%
+  //   canottiera     17 su   481    4%
+  //   occhiali       75 su   832    9%
+  //   tuta          234 su   873   27%
+  //   scarpe      4.572 su 5.017   91%   (mancavano mocassini e loafer)
+  //
+  // Chi scriveva «cravatta» vedeva un capo su venticinque, e non poteva
+  // accorgersene: la pagina non dice mai quello che non sta mostrando.
+  assert.ok(trova("giubbotto", "Nylon Bomber Jacket"));
+  assert.ok(trova("giubbotto", "Giubbino in denim taglio cropped"));
+  assert.ok(trova("occhiali", "BLACK EBONY - SUNGLASSES"));
+  assert.ok(trova("canottiera", "Ribbed Tank Top White"));
+  assert.ok(trova("canottiera", "Canotta in cotone"));
+  assert.ok(trova("scarpe", "Plakka Leather Loafer"));
+  assert.ok(trova("scarpe", "Mocassini in pelle"));
+  assert.ok(trova("zaino", "Dolly Noire Backpack"));
+  assert.ok(trova("tuta", "Anastasia Tie Sweatpants"));
+  assert.ok(trova("tuta", "Organic Jogger Grey"));
+
+  // E cinque buchi più piccoli, misurati allo stesso modo e tutti senza
+  // rumore: blusa 1.013 capi, chino 549, trench 156, tracolla 424.
+  assert.ok(trova("camicia", "Silk Blouse with Ruffles"));
+  assert.ok(trova("camicia", "Blusa Tinta Unita Popeline"));
+  assert.ok(trova("pantaloni", "Nador – Bermuda Chino in Cotone"));
+  assert.ok(trova("cappotto", "Trench beige in cotone"));
+  assert.ok(trova("borsa", "Tracolla in pelle uomo"));
+  // «Minigonna» non la prendeva «gonna»: il confine di parola vuole uno
+  // spazio prima, e lì c'è una "i".
+  assert.ok(trova("gonna", "Minigonna a portafoglio full strass"));
+});
+
+test("«cravatta» trova le cravatte, e non i lacci", () => {
+  // «Tie» in inglese è la cravatta e anche il laccio, ed è il secondo nove
+  // volte su dieci quando ha un capo subito dopo: «tie sweatpants», «rope
+  // tie up sandals», «tie back top». Presa dovunque porta 1.755 capi con il
+  // 14% di roba che cravatta non è; escludendo la parola che segue quando è
+  // un capo, ne porta 1.643 con l'8%.
+  //
+  // Qui la soglia è diversa da quella dei ruoli, dove «tie» vale solo in
+  // fondo al titolo: là un errore mette un sandalo fra gli accessori di un
+  // completo, qui mostra una maglia in mezzo alle cravatte. Non vedere il
+  // 96% delle cravatte costa molto di più.
+  assert.ok(trova("cravatta", "DARK BLUE SARTORIAL PRINTED SILK TIE"));
+  assert.ok(trova("cravatta", "Cravatta in seta stampata"));
+  assert.ok(!trova("cravatta", "Anastasia Tie Sweatpants"));
+  assert.ok(!trova("cravatta", "Billie Black Rope Tie Up Sandals"));
+});
+
 test("chi cerca una camicia non vuole una t-shirt né una felpa", () => {
   // "shirt" sta dentro "t-shirt", "sweatshirt" e "overshirt": col confronto
   // per pezzi di parola una ricerca di camicie restituiva magliette.
