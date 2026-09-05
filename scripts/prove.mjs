@@ -157,6 +157,50 @@ test("l'abbinamento tiene al massimo quattro consigli e regge i campi mancanti",
 // Vendita: i limiti di Vinted. Se li sbagliamo, l'annuncio si scopre monco
 // dopo averlo pubblicato.
 // --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// La marca nell'annuncio di vendita.
+//
+// Non gliela chiedevamo affatto: non era nel formato della risposta e non era
+// nelle istruzioni, che per il titolo elencavano "tipo di capo, colore,
+// materiale, taglia". Quindi il modello non la scriveva mai, e uscivano
+// annunci anonimi — "giacca da lavoro marrone" invece di "Carhartt giacca
+// Detroit marrone". Su Vinted la marca è la prima parola che scrive chi
+// compra: senza, l'annuncio non lo trova nessuno.
+// --------------------------------------------------------------------------
+test("la marca finisce in testa al titolo, anche se il modello se l'è scordata", () => {
+  const r = normalizzaVendita({
+    isGarment: true,
+    brand: "Carhartt WIP",
+    vintedTitle: "giacca da lavoro in velluto marrone",
+    description: "Giacca in velluto a coste.",
+    priceRange: "40–60 €",
+    vintedDescription: "Giacca in velluto a coste, taglio dritto.",
+  });
+  assert.equal(r.marca, "Carhartt WIP");
+  assert.ok(r.vintedTitle.startsWith("Carhartt WIP"), r.vintedTitle);
+});
+
+test("la marca non si scrive due volte, nemmeno scritta in un altro modo", () => {
+  const gia = normalizzaVendita({ isGarment: true, brand: "Levi's", vintedTitle: "Levi's 501 jeans dritti blu" });
+  assert.equal(gia.vintedTitle, "Levi's 501 jeans dritti blu");
+
+  // "LEVIS" e "Levi's" sono la stessa marca: il confronto guarda le lettere
+  // e basta, altrimenti uscirebbe "Levi's LEVIS 501".
+  const diversa = normalizzaVendita({ isGarment: true, brand: "Levi's", vintedTitle: "LEVIS 501 jeans blu" });
+  assert.equal(diversa.vintedTitle, "LEVIS 501 jeans blu");
+});
+
+test("senza marca leggibile non se ne inventa una", () => {
+  const r = normalizzaVendita({ isGarment: true, brand: "", vintedTitle: "maglione in lana grigio" });
+  assert.equal(r.marca, null);
+  assert.equal(r.vintedTitle, "maglione in lana grigio");
+
+  // E se non è un capo, niente marca insieme a niente altro.
+  const nonCapo = normalizzaVendita({ isGarment: false, brand: "Nike", objectSeen: "un telefono" });
+  assert.equal(nonCapo.marca, null);
+  assert.equal(nonCapo.vintedTitle, "");
+});
+
 test("il titolo non supera mai i 100 caratteri di Vinted", () => {
   const lunghissimo = "Blazer destrutturato in lino beige con revers a lancia e fodera interna leggera perfetto per la mezza stagione e le sere d'estate";
   const r = normalizzaVendita({ vintedTitle: lunghissimo });

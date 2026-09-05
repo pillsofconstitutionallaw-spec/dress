@@ -78,6 +78,7 @@ export default function AnnuncioVinted({ annuncio, compatto = false }) {
   const descrizione = annuncio?.vintedDescription;
   if (!titolo && !descrizione) return null;
 
+
   return (
     <div
       className="card"
@@ -95,6 +96,25 @@ export default function AnnuncioVinted({ annuncio, compatto = false }) {
           tutto, e la taglia la sai solo tu.
         </p>
       </div>
+
+      {/* La marca ha un riquadro suo perché su Vinted è un campo suo — si
+          sceglie da un elenco, non si scrive nella descrizione — ed è quello
+          che decide se l'annuncio viene trovato. Quando non si legge lo
+          diciamo, invece di lasciare un buco: chi vende la marca la sa, e
+          basta che sappia di doverla mettere. */}
+      {annuncio?.marca ? (
+        <Riga etichetta="Marca" testo={annuncio.marca} cosa="la marca">
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 500 }}>{annuncio.marca}</p>
+        </Riga>
+      ) : (
+        <div>
+          <p className="eyebrow" style={{ margin: 0 }}>Marca</p>
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
+            Dalla foto non si legge. Mettila tu nell&apos;inserzione se la sai: su Vinted è il campo da
+            cui parte chi cerca, e senza, l&apos;annuncio lo trova molta meno gente.
+          </p>
+        </div>
+      )}
 
       {titolo ? (
         <Riga etichetta="Titolo" testo={titolo} cosa="il titolo">
