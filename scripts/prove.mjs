@@ -203,6 +203,32 @@ test("senza marca leggibile non se ne inventa una", () => {
   assert.equal(nonCapo.vintedTitle, "");
 });
 
+test("nell'annuncio non finiscono emoji, grassetti né elenchi puntati", () => {
+  // Il prompt lo vieta, ma un divieto non è una garanzia: i modelli che
+  // sanno cercare in rete rispondono volentieri con grassetti e trattini a
+  // inizio riga — visto fare — e chi incolla quel testo su Vinted si
+  // ritrova i simboli in mezzo alle frasi.
+  const a = normalizzaVendita({
+    isGarment: true,
+    brand: "Nike",
+    vintedTitle: "\u2728 **Nike** felpa \u{1F525}",
+    vintedDescription: "**Felpa Nike in pile blu.**\n- Zip frontale\n\u2013 Tasca sul petto\n\u2022 Ottime condizioni \u{1F60A}\n\u00b7 Poco usata\n\nDa abbinare a jeans.",
+  });
+
+  for (const testo of [a.vintedTitle, a.vintedDescription]) {
+    assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(testo), `emoji rimaste: ${testo}`);
+    assert.ok(!/[*#`]/.test(testo), `markdown rimasto: ${testo}`);
+    assert.ok(!/\n/.test(testo), `righe a capo rimaste: ${testo}`);
+    assert.ok(!/^\s*[-\u2013\u2014\u2022\u00b7]/m.test(testo), `elenco rimasto: ${testo}`);
+  }
+
+  // Le voci dell'elenco diventano frasi, col punto: senza, si incollano una
+  // all'altra — «Zip frontale Tasca sul petto» — e si legge peggio
+  // dell'elenco da cui venivano.
+  assert.ok(a.vintedDescription.includes("Zip frontale. Tasca sul petto."), a.vintedDescription);
+  assert.ok(a.vintedDescription.length <= 300);
+});
+
 test("il titolo non supera mai i 100 caratteri di Vinted", () => {
   const lunghissimo = "Blazer destrutturato in lino beige con revers a lancia e fodera interna leggera perfetto per la mezza stagione e le sere d'estate";
   const r = normalizzaVendita({ vintedTitle: lunghissimo });
