@@ -46,13 +46,18 @@ export async function POST(req) {
   // vincola i capi d'abbigliamento, mentre scarpe e accessori si scelgono per
   // colore su tutto il catalogo.
   //
-  // La palette si spezza in gruppi e si chiede UN PEZZO ALLA VOLTA. Il costo
-  // della ricerca è lineare nei colori e il database concede tre secondi a
-  // una domanda: con dodici colori una domanda sola non ci sta, e due domande
-  // insieme si ostacolano e sforano tutte e due. Qui c'era Promise.all con la
-  // palette intera, e i completi non uscivano MAI a chi aveva una palette
-  // piena. La distanza dalla palette è il minimo fra le distanze dai singoli
-  // colori, quindi spezzare non cambia una riga di quello che esce.
+  // La palette si chiede intera, in una domanda sola.
+  //
+  // Prima si spezzava in gruppi chiesti in fila, e per un mese è stato
+  // giusto: il costo cresceva con i colori, con dodici una domanda sola non
+  // ci stava nei tre secondi, e due insieme si ostacolavano e sforavano
+  // tutte e due — i completi non uscivano MAI a chi aveva la palette piena.
+  //
+  // I due indici hanno cambiato il conto. Misurato oggi sul catalogo vero,
+  // una domanda con tutti e dodici i colori: 378-434 ms senza parole, e
+  // 1,4 secondi nel caso peggiore con le parole — nessun genere, fast
+  // fashion incluso, quattrocento righe. Metà del limite. E dodici colori
+  // costano quanto tre, quindi spezzare pagava quattro volte per niente.
   //
   // Quanti colori per volta, misurato su tutte e dodici le palette vere:
   //
@@ -87,28 +92,18 @@ export async function POST(req) {
   // valgono comunque il 37% dei capi scelti. Sotto i sei secondi non si va
   // senza cambiare come il database calcola quel minimo.
   //
-  // Il numero qui era 2 mentre questo commento diceva già quattro: la
-  // costante era scesa e il commento non l'aveva seguita.
-  const META = 4;
-  const gruppi = [];
-  for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
-
   const pesca = async (parole) => {
-    const righe = [];
-    for (const gruppo of gruppi) {
-      // Con le parole vince la ricerca che parte dalle parole; senza, quella
-      // che parte dall'indice dei colori. Sono due domande diverse e
-      // vogliono due strategie opposte — la misura sta in app/api/capi.
-      const risposta = await supabase.rpc(parole?.length ? "capi_per_palette" : "capi_per_palette_v2", {
-        ...comuni,
-        palette: gruppo.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
-        quanti: 420,
-        parole,
-      });
-      if (risposta.error) return { data: null, error: risposta.error };
-      righe.push(...(risposta.data || []));
-    }
-    return { data: righe, error: null };
+    // Con le parole vince la ricerca che parte dalle parole; senza, quella
+    // che parte dall'indice dei colori. Sono due domande diverse e vogliono
+    // due strategie opposte — la misura sta in app/api/capi.
+    const risposta = await supabase.rpc(parole?.length ? "capi_per_palette" : "capi_per_palette_v2", {
+      ...comuni,
+      palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
+      quanti: 420,
+      parole,
+    });
+    if (risposta.error) return { data: null, error: risposta.error };
+    return { data: risposta.data || [], error: null };
   };
 
   // Una domanda sola, e i vestiti dello stile si scelgono dopo, fra le righe

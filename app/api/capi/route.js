@@ -92,62 +92,33 @@ export async function POST(req) {
     });
 
   /**
-   * La palette a pezzi da tre, chiesti tutti insieme.
+   * La palette intera, in una domanda sola.
    *
-   * Il costo della ricerca è lineare nei colori e il database concede tre
-   * secondi a una domanda. Misurato oggi sul catalogo vero — 101.080 capi,
-   * chiedendone 400 — senza un genere scelto, che è il caso più pesante
-   * perché non si scarta metà catalogo:
+   * Spezzarla è stato giusto per un mese e adesso non lo è più, e la
+   * differenza l'hanno fatta i due indici. Serviva perché il costo cresceva
+   * con i colori fino a sfondare i tre secondi che il database concede — a
+   * sei colori ci si sbatteva contro — quindi si chiedevano gruppetti in
+   * fila, pagando la somma: quattro-sei secondi per una schermata.
    *
-   *   un colore 0,6 s · due 0,9 · tre 2,0 · quattro 2,2 · sei 3,1
+   * Con l'indice spaziale sui colori e quello a trigrammi sulle parole il
+   * costo non cresce più così. Misurato oggi sul catalogo vero, una domanda
+   * sola con tutti e dodici i colori:
    *
-   * A sei ci si sbatte contro. Chi non aveva scelto il genere e apriva una
-   * palette da dodici colori vedeva un errore, sempre. A quattro si sta a
-   * 2,2 s, che sembra dentro ma non lo è: misurato quattro volte di fila dà
-   * 2808, 1584, 1877 e un errore. A DUE si sta a 0,9 s, con tre volte il
-   * margine — e il totale non peggiora, perché sei domande piccole costano
-   * meno di tre grandi: 5,3 secondi contro 6,6.
+   *   senza parole ............................  378-434 ms
+   *   «stivali» ...............................  340-357 ms
+   *   «camicia», nessun genere ................ 1268-1461 ms
+   *   «cardigan oversize», nessun genere ...... 1368-1400 ms
    *
-   * Spezzare non cambia il risultato, e non è un compromesso. La distanza di
-   * un capo dalla palette è la più piccola fra le sue distanze dai singoli
-   * colori, e il più piccolo di dodici numeri è il più piccolo fra i minimi
-   * dei quattro gruppi da tre. E chi decide davvero l'ordine è arricchisci()
-   * qui sotto, che il colore più vicino se lo ricalcola da sé su tutta la
-   * palette.
+   * E dodici colori costano quanto tre: «camicia» con tre colori sta a 576
+   * ms, con dodici a 972. Spezzare in quattro e chiedere in fila costava
+   * quattro volte tanto per non guadagnare niente.
    *
-   * E vanno chieste IN FILA, non insieme. Qui c'era Promise.all, sull'idea
-   * che due domande in parallelo costino quanto la più lenta: non è vero su
-   * questo database, che di CPU per una domanda alla volta ne ha. Misurato
-   * oggi, dodici colori senza genere:
-   *
-   *   in parallelo, gruppi da 6 → tutte e due fuori tempo massimo
-   *   in parallelo, gruppi da 4 → tutte e tre fuori tempo massimo
-   *   in parallelo, gruppi da 2 → tutte e sei fuori tempo massimo
-   *   in fila,      gruppi da 4 → 6,6 s, nessun errore
-   *
-   * In parallelo le domande si ostacolano a vicenda e sforano il limite
-   * TUTTE, anche quando ognuna da sola ci starebbe larga. In fila ognuna ha
-   * la macchina per sé e finisce in due secondi. Si aspetta di più — sei
-   * secondi contro un errore — e sei secondi almeno mostrano dei capi.
-   *
-   * Quanti colori per volta è misurato in app/api/outfit/route.js, sulle
-   * dodici palette vere: quattro è il punto dove il totale è più basso e il
-   * margine sotto i tre secondi è più largo, non più stretto.
+   * Il caso peggiore misurato — nessun genere, fast fashion incluso,
+   * quattrocento righe, parola comune — sta a 1,4 secondi: metà del limite.
    */
-  // Quanti colori per volta. Spezzare serviva perché il costo cresceva con i
-  // colori fino a sfondare il limite; con l'indice spaziale non cresce più
-  // così, e dodici colori in una domanda sola costano meno di quattro
-  // domande da tre — che erano cinque secondi di attesa. Quando invece si
-  // cerca per parole vale ancora il conto di prima, misurato qui sotto.
-  const META = soloColori ? voluti.length : 4;
-  const gruppi = [];
-  for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
-
-  const risposte = [];
-  for (const gruppo of gruppi) risposte.push(await cerca(gruppo));
-  const fallito = risposte.find((r) => r.error);
-  let data = risposte.flatMap((r) => r.data || []);
-  let error = fallito?.error || null;
+  const risposta = await cerca(voluti);
+  let data = risposta.data || [];
+  let error = risposta.error || null;
 
   // Se anche così non ci sta, si ripiega sui colori che contano: la palette
   // ne segna cinque come principali, ed è su quelli che l'analisi si è
