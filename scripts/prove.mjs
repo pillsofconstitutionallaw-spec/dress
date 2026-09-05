@@ -22,6 +22,7 @@ import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
 import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
+import { scegliModello } from "@/lib/gemini";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -1745,4 +1746,47 @@ test("le parole passate al database esistono davvero", () => {
   }
   assert.ok(paroleEspanse("camicia").includes("shirt"));
   assert.deepEqual(paroleEspanse(""), []);
+});
+
+// --------------------------------------------------------------------------
+// Il nome del modello, quando invecchia.
+//
+// In produzione l'AI non girava affatto: Gemini rispondeva 404 perché
+// "gemini-2.5-flash" era un nome cablato nel codice e i nomi dei modelli
+// invecchiano. Mistral era a corto di richieste e Groq non guarda le
+// immagini, quindi l'app ripiegava sui risultati d'esempio — e gli annunci
+// di vendita uscivano tutti "Capo in buone condizioni". Sembrava che a
+// scriverli male fosse il modello: non c'era nessun modello.
+// --------------------------------------------------------------------------
+const MODELLI = [
+  { name: "models/gemini-1.5-flash", supportedGenerationMethods: ["generateContent"] },
+  { name: "models/gemini-2.0-flash", supportedGenerationMethods: ["generateContent"] },
+  { name: "models/gemini-2.0-flash-exp", supportedGenerationMethods: ["generateContent"] },
+  { name: "models/gemini-2.0-flash-lite", supportedGenerationMethods: ["generateContent"] },
+  { name: "models/gemini-2.0-pro", supportedGenerationMethods: ["generateContent"] },
+  { name: "models/embedding-001", supportedGenerationMethods: ["embedContent"] },
+];
+
+test("se il modello configurato esiste, si usa quello e basta", () => {
+  assert.equal(scegliModello(MODELLI, "gemini-2.0-flash"), "gemini-2.0-flash");
+  assert.equal(scegliModello(MODELLI, "gemini-1.5-flash"), "gemini-1.5-flash");
+});
+
+test("se non esiste più, se ne sceglie uno che esiste davvero", () => {
+  const scelto = scegliModello(MODELLI, "gemini-2.5-flash");
+  assert.ok(MODELLI.some((m) => m.name === `models/${scelto}`), `inventato: ${scelto}`);
+
+  // Un "flash", perché sono i veloci e i gratuiti, e il più recente fra
+  // quelli. Ma niente anteprime né sperimentali: su quelli l'accesso può
+  // sparire da un giorno all'altro, ed è così che si torna al 404.
+  assert.equal(scelto, "gemini-2.0-flash");
+});
+
+test("non si sceglie mai un modello che non sa rispondere", () => {
+  // "embedding-001" sa fare altro: se finisse scelto, ogni foto tornerebbe
+  // con un errore diverso e più difficile da capire di un 404.
+  const soloEmbedding = [{ name: "models/embedding-001", supportedGenerationMethods: ["embedContent"] }];
+  assert.equal(scegliModello(soloEmbedding, "boh"), null);
+  assert.equal(scegliModello([], "boh"), null);
+  assert.equal(scegliModello(null, "boh"), null);
 });
