@@ -96,7 +96,10 @@ export async function POST(req) {
   const pesca = async (parole) => {
     const righe = [];
     for (const gruppo of gruppi) {
-      const risposta = await supabase.rpc("capi_per_palette", {
+      // Con le parole vince la ricerca che parte dalle parole; senza, quella
+      // che parte dall'indice dei colori. Sono due domande diverse e
+      // vogliono due strategie opposte — la misura sta in app/api/capi.
+      const risposta = await supabase.rpc(parole?.length ? "capi_per_palette" : "capi_per_palette_v2", {
         ...comuni,
         palette: gruppo.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
         quanti: 420,

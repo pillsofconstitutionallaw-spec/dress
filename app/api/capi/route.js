@@ -57,8 +57,31 @@ export async function POST(req) {
   // filtro scarta le righe prima che se ne calcolino le distanze.
   const paroleDaCercare = paroleCapo?.length ? paroleCapo : stile ? paroleDelloStile(stile) : null;
 
+  /**
+   * Due ricerche, e si sceglie in base a cosa è stato chiesto.
+   *
+   * Non è indecisione: sono due domande diverse, e vogliono due strategie
+   * opposte. Misurato oggi sul catalogo vero, dodici colori:
+   *
+   *                        capi_per_palette   capi_per_palette_v2
+   *   senza parole            FUORI TEMPO          378-434 ms
+   *   con parole («stivali»)      479 ms           FUORI TEMPO
+   *
+   * La v2 chiede all'indice spaziale «i più vicini a questo colore» e le
+   * altre righe non le tocca: imbattibile quando i colori sono tutto quello
+   * che si sa. Ma con una parola scritta deve continuare a camminare
+   * l'indice finché non trova capi che quella parola ce l'hanno davvero, e
+   * su una parola rara cammina all'infinito. Lì vince l'altra, che parte
+   * dalla parola — l'indice a trigrammi le dà subito le poche righe giuste —
+   * e le distanze le calcola solo su quelle.
+   *
+   * Quindi: chi cerca per colore va alla v2, chi ha scritto una parola alla
+   * prima. Restituiscono le stesse identiche colonne.
+   */
+  const soloColori = !paroleDaCercare?.length;
+
   const cerca = (colori) =>
-    supabase.rpc("capi_per_palette", {
+    supabase.rpc(soloColori ? "capi_per_palette_v2" : "capi_per_palette", {
       palette: colori.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
       prezzo_min: min ? Number(min) : null,
       prezzo_max: max ? Number(max) : null,
@@ -111,7 +134,12 @@ export async function POST(req) {
    * dodici palette vere: quattro è il punto dove il totale è più basso e il
    * margine sotto i tre secondi è più largo, non più stretto.
    */
-  const META = 4;
+  // Quanti colori per volta. Spezzare serviva perché il costo cresceva con i
+  // colori fino a sfondare il limite; con l'indice spaziale non cresce più
+  // così, e dodici colori in una domanda sola costano meno di quattro
+  // domande da tre — che erano cinque secondi di attesa. Quando invece si
+  // cerca per parole vale ancora il conto di prima, misurato qui sotto.
+  const META = soloColori ? voluti.length : 4;
   const gruppi = [];
   for (let i = 0; i < voluti.length; i += META) gruppi.push(voluti.slice(i, i + META));
 

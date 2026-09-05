@@ -40,7 +40,9 @@ export async function POST(req) {
 
   const paroleDi = new Map(nomi.map((n) => [n, paroleDelloStile(n).map((k) => k.toLowerCase())]));
 
-  const { data, error } = await supabase.rpc("capi_per_palette", {
+  // Qui le parole non si usano — gli stili si scelgono dopo, fra le righe già
+  // in mano — quindi è sempre il caso in cui l'indice spaziale vince.
+  const { data, error } = await supabase.rpc("capi_per_palette_v2", {
     palette: voluti.map((c) => ({ l: c.lab.L, a: c.lab.a, b: c.lab.b })),
     // Il budget dichiarato nel questionario: consigliare un cappotto da
     // seicento euro a chi ne ha detti cinquanta non è un consiglio.
