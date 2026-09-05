@@ -23,6 +23,7 @@ import { soloCifre } from "@/lib/numeri";
 import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { scegliModello } from "@/lib/gemini";
+import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
@@ -1806,4 +1807,69 @@ test("non si sceglie mai un modello che non sa rispondere", () => {
   assert.equal(scegliModello(soloEmbedding, "boh"), null);
   assert.equal(scegliModello([], "boh"), null);
   assert.equal(scegliModello(null, "boh"), null);
+});
+
+// --------------------------------------------------------------------------
+// Due linee separate: le foto da una parte, le parole dall'altra.
+//
+// I compiti sono di due specie. Guardare una foto e scriverci sopra un
+// annuncio vuole un modello che VEDE, e ogni richiesta costa migliaia di
+// token perché l'immagine viaggia con lei. Rifinire delle parole costa una
+// frazione. Sulla stessa fila litigavano: una manciata di foto esauriva il
+// budget al minuto, e da lì anche i compiti di solo testo ripiegavano sui
+// risultati d'esempio senza c'entrare niente.
+// --------------------------------------------------------------------------
+function conAmbiente(variabili, prova) {
+  const prima = {};
+  for (const [k, v] of Object.entries(variabili)) {
+    prima[k] = process.env[k];
+    if (v === null) delete process.env[k];
+    else process.env[k] = v;
+  }
+  try {
+    prova();
+  } finally {
+    for (const [k, v] of Object.entries(prima)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+const CHIAVI = { GROQ_API_KEY: "x", MISTRAL_API_KEY: "y", AI_FOTO: null, AI_PAROLE: null, AI_PROVIDER: null };
+
+test("ai: chi non vede non entra nella fila delle foto", () => {
+  conAmbiente(CHIAVI, () => {
+    // Mandare un'immagine a un modello di solo testo non fallisce e basta:
+    // gli fa bruciare il suo turno nella fila per niente.
+    for (const p of catena("vendi")) assert.ok(p.name, "fornitore senza nome");
+    assert.ok(catena("vendi").length >= 1);
+    assert.ok(catena("analyzeColor").length >= catena("vendi").length);
+  });
+});
+
+test("ai: le due linee si scelgono da fuori, e una non tocca l'altra", () => {
+  conAmbiente({ ...CHIAVI, AI_FOTO: "groq" }, () => {
+    assert.equal(catena("vendi")[0].name, "groq", "le foto non seguono AI_FOTO");
+    assert.notEqual(catena("analyzeColor")[0].name, "groq", "le parole hanno seguito AI_FOTO");
+  });
+
+  conAmbiente({ ...CHIAVI, AI_PAROLE: "groq" }, () => {
+    assert.equal(catena("analyzeColor")[0].name, "groq");
+  });
+});
+
+test("ai: il preferito passa davanti, non resta solo", () => {
+  // Se il preferito sparisse — chiave scaduta, modello ritirato — un compito
+  // senza riserve non avrebbe più nessuno a cui chiedere.
+  conAmbiente({ ...CHIAVI, AI_FOTO: "groq" }, () => {
+    const fila = catena("vendi").map((p) => p.name);
+    assert.equal(fila[0], "groq");
+    assert.ok(fila.length > 1, "il preferito è rimasto da solo nella fila");
+  });
+
+  // Un preferito che non esiste non svuota la fila: si va avanti con gli altri.
+  conAmbiente({ ...CHIAVI, AI_FOTO: "inesistente" }, () => {
+    assert.ok(catena("vendi").length >= 1);
+  });
 });
