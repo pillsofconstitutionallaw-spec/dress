@@ -1782,6 +1782,23 @@ test("se non esiste più, se ne sceglie uno che esiste davvero", () => {
   assert.equal(scelto, "gemini-2.0-flash");
 });
 
+test("il modello che ha appena detto no non si riprova", () => {
+  // Il caso vero, e ci è voluta la produzione per vederlo. Google non toglie
+  // dall'elenco i modelli che chiude: "gemini-2.5-flash" c'è ancora, e alla
+  // richiesta risponde 404 «non è più disponibile per i nuovi utenti».
+  // Quindi lo si ritrovava fra i modelli, lo si riconosceva come preferito,
+  // e si riprovava con lo stesso identico modello appena rifiutato.
+  const elenco = [
+    { name: "models/gemini-2.5-flash", supportedGenerationMethods: ["generateContent"] },
+    { name: "models/gemini-2.0-flash", supportedGenerationMethods: ["generateContent"] },
+  ];
+  assert.equal(scegliModello(elenco, "gemini-2.5-flash"), "gemini-2.5-flash");
+  assert.equal(scegliModello(elenco, "gemini-2.5-flash", ["gemini-2.5-flash"]), "gemini-2.0-flash");
+
+  // E quando non ne resta nessuno si dice, invece di riproporre il rotto.
+  assert.equal(scegliModello(elenco, "gemini-2.5-flash", ["gemini-2.5-flash", "gemini-2.0-flash"]), null);
+});
+
 test("non si sceglie mai un modello che non sa rispondere", () => {
   // "embedding-001" sa fare altro: se finisse scelto, ogni foto tornerebbe
   // con un errore diverso e più difficile da capire di un 404.
