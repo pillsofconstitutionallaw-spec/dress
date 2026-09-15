@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAnon, getSupabaseService } from '@/lib/supabaseClient';
 import { readJson } from '@/lib/authServer';
-import { translateAuthError } from '@/lib/authMessages';
+import { guastoDiRete, translateAuthError } from '@/lib/authMessages';
 import { sembraEmail } from '@/lib/identificativo';
 
 export const runtime = 'nodejs';
@@ -79,7 +79,9 @@ export async function POST(req) {
         error: translateAuthError(messaggio),
         needsConfirmation: daConfermare,
       },
-      { status: daConfermare ? 403 : troppiTentativi ? 429 : 400 },
+      // 400 vuol dire «hai sbagliato tu». Un archivio irraggiungibile non è
+      // un errore di chi sta entrando: quello è 503, «riprova più tardi».
+      { status: daConfermare ? 403 : troppiTentativi ? 429 : guastoDiRete(messaggio) ? 503 : 400 },
     );
   }
 

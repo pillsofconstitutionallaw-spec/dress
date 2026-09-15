@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAnon } from '@/lib/supabaseClient';
 import { readJson } from '@/lib/authServer';
-import { siteOrigin, translateAuthError } from '@/lib/authMessages';
+import { guastoDiRete, siteOrigin, translateAuthError } from '@/lib/authMessages';
 
 export const runtime = 'nodejs';
 
@@ -22,7 +22,12 @@ export async function POST(req) {
     options: { emailRedirectTo: `${siteOrigin(req)}/auth/confirmed` },
   });
 
-  if (error) return NextResponse.json({ error: translateAuthError(error.message) }, { status: 400 });
+  // Un archivio irraggiungibile non è un errore di chi ha chiesto la mail:
+  // 503 dice «riprova più tardi», che è quello che il messaggio gli dice.
+  if (error) {
+    return NextResponse.json({ error: translateAuthError(error.message) },
+      { status: guastoDiRete(error.message) ? 503 : 400 });
+  }
 
   return NextResponse.json({ ok: true, message: 'Mail di conferma inviata di nuovo. Controlla anche lo spam.' });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
-import { siteOrigin, translateAuthError } from "@/lib/authMessages";
+import { guastoDiRete, siteOrigin, translateAuthError } from "@/lib/authMessages";
 
 export const runtime = "nodejs";
 
@@ -26,6 +26,17 @@ export async function POST(req) {
   // Solo gli errori tecnici veri escono; "utente inesistente" no.
   if (error && /rate limit|for security purposes|too many/i.test(error.message)) {
     return NextResponse.json({ error: translateAuthError(error.message) }, { status: 429 });
+  }
+
+  // E un guasto di rete, che tecnico lo è davvero. Il silenzio qui sotto
+  // serve a non dire a un estraneo chi è iscritto, ed è giusto per tutto
+  // quello che riguarda l'indirizzo scritto. Ma se la richiesta al database
+  // non è proprio partita, quel silenzio diventa una promessa falsa:
+  // «riceverai una mail», e nessuna mail può arrivare. Chi ha dimenticato la
+  // password resta ad aspettarla. Un guasto nostro di chi sia iscritto non
+  // dice niente, quindi si può dire.
+  if (error && guastoDiRete(error.message)) {
+    return NextResponse.json({ error: translateAuthError(error.message) }, { status: 503 });
   }
 
   return NextResponse.json({

@@ -16,6 +16,7 @@ import { sembraEmail } from "@/lib/identificativo";
 import { NOMI_COLORE, coloreDaNome, coloreNelTitolo, hexALab, sembraIlFondale } from "@/lib/colore";
 import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiPalette";
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
+import { guastoDiRete, translateAuthError } from "@/lib/authMessages";
 import { consigliaStili } from "@/lib/consigliaStili";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
@@ -1611,6 +1612,61 @@ test("le famiglie che mancavano: sei parole che vedevano quasi niente", () => {
   // «Minigonna» non la prendeva «gonna»: il confine di parola vuole uno
   // spazio prima, e lì c'è una "i".
   assert.ok(trova("gonna", "Minigonna a portafoglio full strass"));
+});
+
+test("quando l'archivio non risponde non si scrive «fetch failed» in faccia", () => {
+  // Successo davvero, e il sintomo che è arrivato non era «il sito è giù»:
+  // era «l'iscrizione non funziona». Chi ci provava vedeva due parole
+  // inglesi — fetch failed — e nessuna idea di cosa fare.
+  //
+  // Il guasto veniva da sotto: il progetto sul database non risolveva più,
+  // NXDOMAIN da due risolutori diversi. Ma il client Supabase un guasto di
+  // rete lo consegna come un errore qualunque, «fetch failed», e la
+  // traduzione non lo riconosceva: non somigliava a nessuno dei messaggi
+  // noti e non aveva la faccia da sigla interna, quindi passava intero.
+  //
+  // Non è una cosa che capita solo quando un database sparisce: un telefono
+  // che perde la linea a metà iscrizione finisce esattamente qui.
+  for (const grezzo of ["fetch failed", "TypeError: fetch failed", "getaddrinfo ENOTFOUND db.supabase.co",
+    "connect ECONNREFUSED 127.0.0.1:443", "network error", "The operation timed out"]) {
+    const tradotto = translateAuthError(grezzo);
+    assert.doesNotMatch(tradotto, /fetch|ENOTFOUND|ECONNREFUSED|getaddrinfo|network|TypeError/i,
+      `esce così com'è: ${tradotto}`);
+    assert.ok(tradotto.length > 20, `troppo corto per spiegare qualcosa: ${tradotto}`);
+  }
+
+  // E quello che si sapeva già dire continua a dirsi.
+  assert.match(translateAuthError("Email not confirmed"), /confermare l'email/i);
+  assert.match(translateAuthError("Invalid login credentials"), /non corretti/i);
+});
+
+test("un guasto di rete si riconosce, e non è un errore di chi scrive", () => {
+  assert.ok(guastoDiRete("fetch failed"));
+  assert.ok(guastoDiRete("getaddrinfo ENOTFOUND db.supabase.co"));
+  assert.ok(guastoDiRete("connect ECONNREFUSED 127.0.0.1:443"));
+  assert.ok(!guastoDiRete("Invalid login credentials"));
+  assert.ok(!guastoDiRete("Email not confirmed"));
+  assert.ok(!guastoDiRete(""));
+});
+
+test("il recupero password non promette una mail che non può partire", () => {
+  // La rotta risponde sempre uguale — «se questo indirizzo è iscritto,
+  // riceverai una mail» — e deve continuare a farlo: è l'unico modo di non
+  // dire a un estraneo chi ha un account qui.
+  //
+  // Ma quella risposta usciva anche quando la richiesta al database non era
+  // partita affatto. Trovato col database davvero irraggiungibile: stato
+  // 200, «riceverai una mail», e nessuna mail sarebbe mai arrivata. Chi ha
+  // dimenticato la password resta ad aspettare.
+  //
+  // Un guasto di rete non riguarda l'indirizzo scritto: riguarda noi, e non
+  // rivela niente di nessuno. Quello si dice.
+  const radice = path.resolve(import.meta.dirname, "..");
+  for (const f of ["app/api/auth/recupera/route.js", "app/api/auth/register/route.js",
+    "app/api/auth/login/route.js", "app/api/auth/resend/route.js"]) {
+    const testo = readFileSync(path.join(radice, f), "utf8");
+    assert.match(testo, /guastoDiRete/, `${f} non distingue un guasto nostro da un errore di chi scrive`);
+  }
 });
 
 test("a chi ha un contrasto medio non si dice che ce l'ha marcato", () => {

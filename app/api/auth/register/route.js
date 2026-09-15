@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAnon, getSupabaseService } from '@/lib/supabaseClient';
 import { readJson } from '@/lib/authServer';
-import { siteOrigin, translateAuthError } from '@/lib/authMessages';
+import { guastoDiRete, siteOrigin, translateAuthError } from '@/lib/authMessages';
 import { controllaDataNascita, controllaPassword, controllaUsername } from '@/lib/password';
 
 export const runtime = 'nodejs';
@@ -77,7 +77,11 @@ export async function POST(req) {
   });
 
   if (error) {
-    return NextResponse.json({ error: translateAuthError(error.message) }, { status: 400 });
+    // 400 vuol dire «hai sbagliato tu», e un archivio irraggiungibile non è
+    // un errore di chi sta scrivendo: quello è 503, «riprova più tardi» —
+    // che è anche quello che il messaggio gli dice di fare.
+    return NextResponse.json({ error: translateAuthError(error.message) },
+      { status: guastoDiRete(error.message) ? 503 : 400 });
   }
 
   // Supabase, per non rivelare chi è già iscritto, risponde comunque "ok" con
