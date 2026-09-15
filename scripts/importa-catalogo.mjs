@@ -189,7 +189,6 @@ export const NEGOZI = [
   // l'ha — Nudie Jeans, Asket, Veja, Dedicated, Octopus — resta fuori dal
   // catalogo e si raggiunge solo con la ricerca.
   { nome: "Blanks", host: "blanks.it", fast: false },
-  { nome: "Pangaia", host: "thepangaia.com", fast: false },
   { nome: "Knowledge Cotton Apparel", host: "knowledgecottonapparel.com", fast: false },
   { nome: "MUD Jeans", host: "mudjeans.eu", fast: false },
   { nome: "Komodo", host: "komodo.co.uk", fast: false },

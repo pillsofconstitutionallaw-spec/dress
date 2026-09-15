@@ -48,31 +48,58 @@ const intestazioni = {
 // scambiare quella di ieri per quella di oggi.
 const DA_QUANDO = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
 
-async function chiedi(percorso) {
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${percorso}`, { headers: intestazioni });
+/**
+ * Quante righe, senza portarsele dietro.
+ *
+ * Chiedere le righe e contarle in JavaScript qui non funziona, e la prima
+ * versione di questo file ci è cascata: il database ne restituisce al massimo
+ * mille per volta, qualunque limite si scriva. Usciva «1000 capi toccati, 29
+ * negozi su 109» e il controllo falliva su un'importazione andata benissimo —
+ * un allarme falso, che è il modo più veloce di far smettere di guardare gli
+ * allarmi. I capi veri erano 88.971.
+ *
+ * Con «count=exact» il conto lo fa il database e torna in un'intestazione,
+ * senza mandare nemmeno una riga.
+ */
+async function quanti(filtro) {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/prodotti?select=id&${filtro}`, {
+    headers: { ...intestazioni, Prefer: "count=exact", Range: "0-0" },
+  });
   if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 120)}`);
-  return res.json();
+  return Number((res.headers.get("content-range") || "").split("/")[1] || 0);
 }
 
-const freschi = await chiedi(`prodotti?select=negozio&aggiornato=gte.${DA_QUANDO}&limit=200000`);
-const perNegozio = new Map();
-for (const c of freschi) perNegozio.set(c.negozio, (perNegozio.get(c.negozio) || 0) + 1);
+const freschi = await quanti(`aggiornato=gte.${DA_QUANDO}`);
 
-console.log(`capi toccati nelle ultime dodici ore: ${freschi.length}`);
-console.log(`negozi che ne hanno almeno uno:       ${perNegozio.size} su ${NEGOZI.length}`);
+// Un negozio alla volta: si chiede una riga sola per sapere se ne ha almeno
+// una fresca. Centonove domande piccole costano meno di una grande che poi
+// non si può contare.
+// Per nome distinto, non per riga dell'elenco: se un negozio ci finisce due
+// volte — è successo con Pangaia, due righe identiche — contarlo due volte
+// farebbe risultare mancante uno che invece ha risposto.
+const NOMI = [...new Set(NEGOZI.map((n) => n.nome))];
+
+const perNegozio = new Map();
+for (const nome of NOMI) {
+  const n = await quanti(`negozio=eq.${encodeURIComponent(nome)}&aggiornato=gte.${DA_QUANDO}`);
+  if (n > 0) perNegozio.set(nome, n);
+}
+
+console.log(`capi toccati nelle ultime dodici ore: ${freschi}`);
+console.log(`negozi che ne hanno almeno uno:       ${perNegozio.size} su ${NOMI.length}`);
 
 // Qualche negozio che non risponde è normale: cambiano indirizzo, vanno giù
 // per manutenzione, mettono il catalogo dietro una porta chiusa. Sotto i due
 // terzi invece non è più il negozio, siamo noi.
-const SOGLIA = Math.round(NEGOZI.length * 0.66);
-const mancanti = NEGOZI.map((n) => n.nome).filter((n) => !perNegozio.has(n));
+const SOGLIA = Math.round(NOMI.length * 0.66);
+const mancanti = NOMI.filter((n) => !perNegozio.has(n));
 
 if (mancanti.length) {
   console.log(`\nnon hanno dato niente (${mancanti.length}): ${mancanti.slice(0, 12).join(", ")}${mancanti.length > 12 ? "…" : ""}`);
 }
 
 if (perNegozio.size < SOGLIA) {
-  console.error(`\nToccati solo ${perNegozio.size} negozi su ${NEGOZI.length}: sotto i ${SOGLIA} che ci si aspetta.`);
+  console.error(`\nToccati solo ${perNegozio.size} negozi su ${NOMI.length}: sotto i ${SOGLIA} che ci si aspetta.`);
   console.error("Il catalogo non è stato rinfrescato. Meglio saperlo adesso che scoprirlo fra dodici giorni.");
   process.exit(1);
 }
