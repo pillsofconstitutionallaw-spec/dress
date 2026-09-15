@@ -17,12 +17,28 @@ const RADICE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 // ── configurazione ───────────────────────────────────────────────────
 
-const env = Object.fromEntries(
-  readFileSync(path.join(RADICE, ".env.local"), "utf8")
-    .split("\n")
-    .filter((r) => r.includes("=") && !r.trim().startsWith("#"))
-    .map((r) => [r.slice(0, r.indexOf("=")).trim(), r.slice(r.indexOf("=") + 1).trim()]),
-);
+// Le chiavi stanno in .env.local quando si lancia a mano, e nell'ambiente
+// quando a lanciarlo è la macchina che lo fa ogni notte: là un file con
+// dentro la chiave di servizio non ci va messo, e non c'è.
+//
+// Il file, se c'è, vince: chi lo apre per provare un negozio sul suo
+// computer si aspetta che valga quello che ci ha scritto.
+function leggiAmbiente() {
+  let daFile = {};
+  try {
+    daFile = Object.fromEntries(
+      readFileSync(path.join(RADICE, ".env.local"), "utf8")
+        .split("\n")
+        .filter((r) => r.includes("=") && !r.trim().startsWith("#"))
+        .map((r) => [r.slice(0, r.indexOf("=")).trim(), r.slice(r.indexOf("=") + 1).trim()]),
+    );
+  } catch {
+    /* nessun file: si va con quello che c'è nell'ambiente */
+  }
+  return { ...process.env, ...daFile };
+}
+
+const env = leggiAmbiente();
 
 const SUPABASE = env.SUPABASE_URL;
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY;

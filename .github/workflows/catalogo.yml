@@ -1,0 +1,70 @@
+# Il catalogo si aggiorna da solo, ogni notte.
+#
+# Fino a ieri lo aggiornava una persona lanciando uno script sul proprio
+# computer, e si è visto cosa costa: il progetto sul database è rimasto senza
+# scritture abbastanza a lungo da farsi mettere in pausa da Supabase, e per
+# dodici giorni l'app ha avuto prezzi vecchi — poi è sparita del tutto, perché
+# un progetto in pausa perde anche il suo indirizzo.
+#
+# Quindi questo lavoro serve due volte: tiene il catalogo fresco, e tenendolo
+# fresco tiene il progetto vivo. Un'importazione a notte è traffico più che
+# sufficiente perché Supabase non lo consideri mai inattivo.
+#
+# L'ora: le 3:20 UTC, cioè le 4:20 o le 5:20 in Italia secondo la stagione.
+# È tardi per chi guarda l'app e presto per i negozi, che i loro cataloghi li
+# aggiornano di giorno. I minuti non sono tondi apposta: alle ore esatte
+# GitHub ha la coda piena e i lavori partono in ritardo.
+name: Catalogo
+
+on:
+  schedule:
+    - cron: "20 3 * * *"
+  # E a mano, da Actions → Catalogo → Run workflow: serve quando si vuole
+  # rimettere in pari subito, senza aspettare la notte.
+  workflow_dispatch:
+
+# Se l'importazione di ieri sta ancora girando, quella di oggi aspetta invece
+# di sovrapporsi: due che scrivono gli stessi capi insieme non si fanno male,
+# ma raddoppiano le richieste ai negozi per niente.
+concurrency:
+  group: catalogo
+  cancel-in-progress: false
+
+jobs:
+  importa:
+    runs-on: ubuntu-latest
+    # Centonove negozi, e per ogni capo senza colore dichiarato si guarda la
+    # foto: sul portatile ci mette circa un'ora. Tre ore sono il limite oltre
+    # il quale è successo qualcosa, non è solo lento.
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 24 o più: scripts/importa-catalogo.mjs usa import.meta.main, che
+      # prima non esiste — e senza, il file si carica ma non fa niente.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      # «npm ci» e non «npm install»: installa esattamente quello che c'è nel
+      # lock. Serve anche sharp, che è fra le devDependencies e legge i colori
+      # dalle foto — con --omit=dev il colore lo prenderebbe solo dai nomi.
+      - run: npm ci
+
+      - name: Importa i cataloghi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/importa-catalogo.mjs --tutti
+
+      # Un'importazione che finisce senza errori ma non ha scritto niente è il
+      # guasto che non si vede: il lavoro risulta verde e il catalogo invecchia
+      # in silenzio. Qui si chiede al database quanti capi sono stati toccati
+      # oggi, e se sono pochi il lavoro fallisce apposta.
+      - name: Controlla che sia servito a qualcosa
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/controlla-importazione.mjs
