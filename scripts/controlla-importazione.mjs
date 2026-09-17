@@ -61,12 +61,32 @@ const DA_QUANDO = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
  * Con «count=exact» il conto lo fa il database e torna in un'intestazione,
  * senza mandare nemmeno una riga.
  */
+//
+// E si riprova, se il database dice che ci ha messo troppo. Questo controllo
+// gira un attimo dopo cinquanta minuti di importazione, cioè col database
+// appena spremuto: due notti su tre il primo conteggio è andato oltre il
+// limite di tempo (codice 57014) e il lavoro è risultato fallito — con
+// l'importazione riuscita e il catalogo fresco. Rifatto a mano poco dopo, lo
+// stesso conteggio ci mette 0,75 secondi. Non era un guasto, era fretta.
+const RIPROVE = 4;
+const attesa = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function quanti(filtro) {
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/prodotti?select=id&${filtro}`, {
-    headers: { ...intestazioni, Prefer: "count=exact", Range: "0-0" },
-  });
-  if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 120)}`);
-  return Number((res.headers.get("content-range") || "").split("/")[1] || 0);
+  for (let tentativo = 1; ; tentativo++) {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/prodotti?select=id&${filtro}`, {
+      headers: { ...intestazioni, Prefer: "count=exact", Range: "0-0" },
+    });
+    if (res.ok) return Number((res.headers.get("content-range") || "").split("/")[1] || 0);
+
+    const testo = (await res.text()).slice(0, 120);
+    // Solo gli errori che passano da soli si riprovano: troppo lento, o il
+    // server che non risponde un momento. Una chiave sbagliata no — quella
+    // non migliora aspettando, e va detta subito.
+    const passeggero = res.status >= 500 || /57014|statement timeout/.test(testo);
+    if (!passeggero || tentativo >= RIPROVE) throw new Error(`${res.status} ${testo}`);
+    console.log(`  il database è ancora occupato (tentativo ${tentativo}), riprovo fra ${tentativo * 20} secondi`);
+    await attesa(tentativo * 20_000);
+  }
 }
 
 const freschi = await quanti(`aggiornato=gte.${DA_QUANDO}`);
