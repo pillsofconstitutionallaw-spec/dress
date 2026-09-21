@@ -1,0 +1,79 @@
+# Mettere da parte le persone, ogni notte.
+#
+# Il 21 settembre 2026 il progetto Supabase è stato cancellato per sbaglio.
+# Il catalogo è tornato da solo — ottantottomila capi ripescati dai negozi in
+# un'ora — ma le persone iscritte no: quelle vivevano in un posto solo e sul
+# piano gratuito di Supabase non esiste nessun salvataggio automatico.
+#
+# Questo lavoro esiste perché non succeda una seconda volta.
+#
+# Il file NON resta qui: il repository di Dress è pubblico, e dentro ci sono
+# email, date di nascita e impronte di password. Va in dress-salvataggi, che
+# è privato, e ci arriva con una chiave che sa fare quella sola cosa: scrivere
+# lì dentro. Non è un token personale, non apre nient'altro.
+name: Salvataggi
+
+on:
+  schedule:
+    # Le 2:40 UTC, prima del catalogo delle 3:20: sono due lavori che non
+    # c'entrano niente l'uno con l'altro, e se il catalogo va storto il
+    # salvataggio deve essere già fatto.
+    - cron: "40 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: salvataggi
+  cancel-in-progress: false
+
+jobs:
+  salva:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Leggi le persone dal database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_REGIONE: eu-west-1
+        run: node scripts/salva-profili.mjs
+
+      - name: Portalo al sicuro
+        env:
+          CHIAVE: ${{ secrets.SALVATAGGI_CHIAVE_SSH }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CHIAVE" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # L'impronta di github.com si prende una volta e si fida, invece di
+          # accettare qualunque cosa risponda a quel nome.
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+          git clone --depth 1 git@github.com:pillsofconstitutionallaw-spec/dress-salvataggi.git deposito
+          cp salvataggi/*.json deposito/
+
+          cd deposito
+          git config user.name "Lavoro notturno di Dress"
+          git config user.email "noreply@dressapp.it"
+          git add .
+          # Se non è cambiato niente non si deposita niente: un commit vuoto
+          # al giorno riempie la cronologia di rumore e nasconde i giorni in
+          # cui qualcosa è successo davvero.
+          if git diff --cached --quiet; then
+            echo "Nessun salvataggio nuovo da depositare."
+          else
+            git commit -m "salvataggio del $(date -u +%Y-%m-%d)"
+            git push
+            echo "Depositato."
+          fi
