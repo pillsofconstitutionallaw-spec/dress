@@ -26,7 +26,7 @@ import { conQuote } from "@/lib/tendenze";
 import { mostraIlCampo, spegniFinoA } from "@/lib/chiediAParole";
 import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
-import { scegliModello } from "@/lib/gemini";
+import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -2113,4 +2113,67 @@ test("nessuna delete senza where nei file SQL", () => {
       assert.match(pulita, /\swhere\s/i, `${nome}: «${pulita}» — Supabase la rifiuta`);
     }
   }
+});
+
+// --------------------------------------------------------------------------
+// Quando conviene cambiare modello invece di arrendersi.
+//
+// Il ricambio automatico dei modelli scattava solo sul 404. Ma Google dice
+// «questo modello non fa per te» in tre modi diversi, e il 404 è solo uno.
+// Con una chiave appena creata, "gemini-2.5-flash" — che è il preferito
+// scritto in configurazione — risponde 429 «quota esaurita»: non perché la
+// quota sia finita, ma perché per un utente nuovo quella quota è zero.
+// Misurato oggi su una chiave nata cinque minuti prima.
+// --------------------------------------------------------------------------
+test("si cambia modello quando è il modello a non funzionare", () => {
+  assert.equal(cambiaModello(404), true, "404: il modello non esiste");
+  assert.equal(cambiaModello(429), true, "429: per noi quel modello vale zero");
+  assert.equal(cambiaModello(503), true, "503: quel modello è sovraccarico, un altro no");
+});
+
+test("non si cambia modello quando il guasto è altrove", () => {
+  // Cambiare modello qui non ripara niente e raddoppia le richieste: la
+  // chiave sbagliata resta sbagliata con qualunque modello.
+  for (const stato of [400, 401, 403, 500, 502]) {
+    assert.equal(cambiaModello(stato), false, `${stato} non si ripara cambiando modello`);
+  }
+});
+
+test("una risposta riuscita non fa cambiare niente", () => {
+  assert.equal(cambiaModello(200), false);
+});
+
+test("fra i ricambi si preferisce l'alias «latest» di Google", () => {
+  // Il caso vero, visto oggi con una chiave nuova. L'elenco di Google
+  // contiene decine di nomi, e la vecchia regola — «il più alto in ordine
+  // alfabetico» — pescava "gemini-omni-1.1-flash", che alla richiesta
+  // rispondeva 429 come quello che stavamo sostituendo. Un ricambio che non
+  // funziona è peggio di nessun ricambio: consuma un giro e finisce uguale.
+  //
+  // "gemini-flash-latest" non è un modello: è il puntatore che Google tiene
+  // aggiornato a quello buono per chi chiede. Cioè esattamente il calcolo
+  // che questa funzione sta cercando di fare a mano.
+  const elenco = [
+    "models/gemini-2.5-flash", "models/gemini-omni-1.1-flash",
+    "models/gemini-flash-latest", "models/gemini-pro-latest",
+  ].map((name) => ({ name, supportedGenerationMethods: ["generateContent"] }));
+
+  assert.equal(scegliModello(elenco, "gemini-2.5-flash", ["gemini-2.5-flash"]), "gemini-flash-latest");
+});
+
+test("l'alias «latest» non scavalca il modello che si è chiesto", () => {
+  // Chi scrive GEMINI_MODEL vuole quello, non il consiglio di Google.
+  const elenco = [
+    { name: "models/gemini-flash-latest", supportedGenerationMethods: ["generateContent"] },
+    { name: "models/gemini-2.0-flash", supportedGenerationMethods: ["generateContent"] },
+  ];
+  assert.equal(scegliModello(elenco, "gemini-2.0-flash"), "gemini-2.0-flash");
+});
+
+test("se l'alias «latest» ha già detto di no, si passa oltre", () => {
+  const elenco = [
+    { name: "models/gemini-flash-latest", supportedGenerationMethods: ["generateContent"] },
+    { name: "models/gemini-2.0-flash", supportedGenerationMethods: ["generateContent"] },
+  ];
+  assert.equal(scegliModello(elenco, "boh", ["gemini-flash-latest"]), "gemini-2.0-flash");
 });
