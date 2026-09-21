@@ -78,7 +78,12 @@ declare
 begin
   -- Dentro una transazione sola: chi legge in questo momento vede o i
   -- conteggi di ieri o quelli di oggi, mai una tabella mezza vuota.
-  delete from public.tendenze;
+  --
+  -- Il «where true» sembra inutile e non lo è: Supabase tiene acceso un
+  -- guardrail che rifiuta le delete senza where — «DELETE requires a WHERE
+  -- clause» — perché una delete senza where di solito è una riga scritta
+  -- male, non una voluta. Qui è voluta: la tabella si rifà tutta ogni notte.
+  delete from public.tendenze where true;
   insert into public.tendenze (taglio, quanti)
     select taglio, quanti from public.tendenze_tagli();
   get diagnostics scritte = row_count;

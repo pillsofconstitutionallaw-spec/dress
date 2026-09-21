@@ -8,7 +8,7 @@
 // sbagliano, sbagliano in silenzio.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { controllaDataNascita, controllaPassword, controllaUsername } from "@/lib/password";
@@ -2096,5 +2096,21 @@ test("una memoria rovinata non nasconde il campo per sempre", () => {
   // localStorage lo scrive chiunque, e ci finisce dentro di tutto.
   for (const rovinata of ["", "boh", { fino: "domani" }, { fino: NaN }, [], 7]) {
     assert.equal(mostraIlCampo(rovinata, Date.now()), true, `nascosto da: ${JSON.stringify(rovinata)}`);
+  }
+});
+
+test("nessuna delete senza where nei file SQL", () => {
+  // Supabase tiene acceso un guardrail che le rifiuta — «DELETE requires a
+  // WHERE clause» — e non lo dice quando si scrive la funzione: lo dice la
+  // notte in cui gira. È costato un giro di andata e ritorno, quindi resta
+  // scritto qui invece che nella memoria di qualcuno.
+  const cartella = path.resolve(import.meta.dirname, "..", "sql");
+  for (const nome of readdirSync(cartella).filter((f) => f.endsWith(".sql"))) {
+    const testo = readFileSync(path.join(cartella, nome), "utf8");
+    for (const riga of testo.split("\n")) {
+      const pulita = riga.replace(/--.*$/, "").trim();
+      if (!/^delete\s+from\s/i.test(pulita)) continue;
+      assert.match(pulita, /\swhere\s/i, `${nome}: «${pulita}» — Supabase la rifiuta`);
+    }
   }
 });
