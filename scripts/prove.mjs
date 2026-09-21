@@ -29,6 +29,7 @@ import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
 import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
+import { coloreDominante, normalizzaCapo } from "@/lib/armadio";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -2301,4 +2302,90 @@ test("una posizione che non è una posizione non passa", () => {
   for (const brutta of [null, {}, { lat: "boh", lon: 1 }, { lat: 200, lon: 0 }, { lat: 0, lon: 999 }]) {
     assert.equal(arrotondaPosizione(brutta), null, `accettata: ${JSON.stringify(brutta)}`);
   }
+});
+
+// --------------------------------------------------------------------------
+// L'armadio: i capi che uno possiede già.
+//
+// Fino a ieri Dress sapeva solo cosa si può comprare. Un armadio serve a
+// sapere cosa si ha, e la differenza si vede la mattina: «cosa mi metto» è
+// una domanda su quello che è appeso in camera, non sul catalogo.
+//
+// Quello che entra qui ci resta per anni, quindi il controllo all'ingresso
+// conta più del solito: un ruolo sbagliato non si vede subito, si vede fra
+// sei mesi quando i completi cominciano a uscire storti.
+// --------------------------------------------------------------------------
+test("un capo entra con quello che serve e niente di più", () => {
+  const c = normalizzaCapo({ titolo: "Camicia di lino bianca", colore_hex: "#F2EFE9", colore_l: 94.2, colore_a: 0.5, colore_b: 3.1 });
+  assert.equal(c.titolo, "Camicia di lino bianca");
+  assert.equal(c.ruolo, "top", "non ha capito che una camicia va sopra");
+  assert.equal(c.colore_hex, "#f2efe9");
+});
+
+test("il ruolo si deduce dal titolo, ma se lo dici tu vince il tuo", () => {
+  // Il modello sbaglia, e chi ha il capo in mano no. Un vestito lungo che
+  // l'app chiama «top» si corregge, e la correzione deve restare.
+  assert.equal(normalizzaCapo({ titolo: "Jeans dritti" }).ruolo, "bottom");
+  assert.equal(normalizzaCapo({ titolo: "Jeans dritti", ruolo: "accessorio" }).ruolo, "accessorio");
+  // Ma un ruolo che non esiste no: quello è il modello che se lo inventa.
+  assert.equal(normalizzaCapo({ titolo: "Jeans dritti", ruolo: "cappello magico" }).ruolo, "bottom");
+});
+
+test("un capo senza titolo non si salva", () => {
+  // Un capo che non si sa come si chiama è una foto, e le foto senza nome
+  // nell'armadio non si ritrovano più.
+  assert.equal(normalizzaCapo({ colore_hex: "#000000" }), null);
+  assert.equal(normalizzaCapo({ titolo: "   " }), null);
+  assert.equal(normalizzaCapo(null), null);
+});
+
+test("un colore inventato non entra", () => {
+  // Le coordinate del colore reggono i completi: una L di 4000 fa uscire
+  // abbinamenti assurdi per sempre, e nessuno saprebbe da dove viene.
+  const c = normalizzaCapo({ titolo: "Maglione", colore_hex: "rosso acceso", colore_l: 4000, colore_a: "boh" });
+  assert.equal(c.colore_hex, null);
+  assert.equal(c.colore_l, null);
+  assert.equal(c.colore_a, null);
+});
+
+test("i titoli lunghissimi si accorciano invece di essere rifiutati", () => {
+  // Chi incolla la descrizione intera del negozio non ha sbagliato niente:
+  // ha solo incollato troppo. Si taglia, non si respinge.
+  const c = normalizzaCapo({ titolo: "Cappotto " + "lunghissimo ".repeat(40) });
+  assert.ok(c.titolo.length <= 120, `titolo di ${c.titolo.length} caratteri`);
+  assert.equal(c.ruolo, "capospalla");
+});
+
+test("le note personali restano, ma con un limite", () => {
+  assert.equal(normalizzaCapo({ titolo: "Gonna", note: "  regalo di mamma  " }).note, "regalo di mamma");
+  assert.ok(normalizzaCapo({ titolo: "Gonna", note: "x".repeat(900) }).note.length <= 500);
+  assert.equal(normalizzaCapo({ titolo: "Gonna" }).note, null);
+});
+
+test("il colore di un capo si legge dal centro della foto, non dai bordi", () => {
+  // Una foto di un capo è quasi sempre il capo al centro e il muro intorno.
+  // Prendere la media di tutto vuol dire misurare il muro: qui il fondale è
+  // bianco e il capo è blu, e deve uscire blu.
+  const lato = 20;
+  const pixel = new Uint8ClampedArray(lato * lato * 4);
+  for (let y = 0; y < lato; y++) {
+    for (let x = 0; x < lato; x++) {
+      // Il capo occupa la metà centrale: deve coprire tutto il riquadro che
+      // la funzione guarda, altrimenti la prova misura il muro e dà la colpa
+      // al codice. Ci sono cascato scrivendola la prima volta.
+      const dentro = x >= 5 && x < 15 && y >= 5 && y < 15;
+      const i = (y * lato + x) * 4;
+      pixel[i] = dentro ? 30 : 250;
+      pixel[i + 1] = dentro ? 60 : 250;
+      pixel[i + 2] = dentro ? 140 : 250;
+      pixel[i + 3] = 255;
+    }
+  }
+  const hex = coloreDominante(pixel, lato);
+  assert.equal(hex, "#1e3c8c", `ha misurato il muro invece del capo: ${hex}`);
+});
+
+test("se la foto non si può leggere non si inventa un colore", () => {
+  assert.equal(coloreDominante(null, 10), null);
+  assert.equal(coloreDominante(new Uint8ClampedArray(4), 0), null);
 });

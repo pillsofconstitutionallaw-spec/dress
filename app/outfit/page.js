@@ -311,6 +311,7 @@ export default function Outfit() {
               Se è in catalogo lo trovi con i tuoi colori; se non c’è, lo cerchiamo nei negozi scelti.
             </p>
             <Link href="/cerca" className="btn-app chiaro">Cerca un capo</Link>
+            <Link href="/armadio" className="btn-app chiaro">Il tuo armadio</Link>
           </div>
         </>
       ) : caricamento ? null : guasto ? (

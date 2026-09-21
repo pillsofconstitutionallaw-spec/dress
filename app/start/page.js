@@ -605,7 +605,8 @@ export default function Start() {
             </div>
 
             <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Link href="/wardrobe" className="btn ghost">Ho già dei capi da abbinare</Link>
+              <Link href="/armadio" className="btn ghost">Metti su il tuo armadio</Link>
+              <Link href="/wardrobe" className="btn ghost">Abbina un capo solo</Link>
               <button className="btn ghost" onClick={() => { setStep(1); setResult(null); }}>Ricomincia</button>
             </div>
           </div>
