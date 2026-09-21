@@ -355,6 +355,13 @@ export default function Cerca() {
         )}
       </p>
 
+      {/* Il catalogo è grande ma è pur sempre uno schermo: c'è chi le cose
+          vuole provarsele, e c'è un momento in cui la risposta giusta è un
+          indirizzo, non un altro link. */}
+      <p className="muted" style={{ fontSize: 13, marginTop: 26 }}>
+        Preferisci provartele? <Link href="/vicini">Guarda i negozi qui intorno</Link>.
+      </p>
+
     </div>
   );
 }

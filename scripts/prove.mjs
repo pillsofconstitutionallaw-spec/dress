@@ -28,6 +28,7 @@ import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
+import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -2217,4 +2218,87 @@ test("il salvataggio porta via anche le credenziali, non solo i dati", () => {
 test("i salvataggi si riconoscono dal nome, senza aprirli", () => {
   const nome = nomeDelFile(new Date("2026-09-21T22:19:17Z"));
   assert.equal(nome, "persone-2026-09-21-22-19-17.json");
+});
+
+// --------------------------------------------------------------------------
+// I negozi vicini, da OpenStreetMap.
+//
+// Non Google Maps: vuole una carta di credito e conta ogni richiesta.
+// OpenStreetMap è gratuito e i dati ci sono davvero — misurato, sessanta
+// negozi di abbigliamento entro 1,2 km dal centro di Napoli. In cambio i dati
+// sono messi male: lo stesso negozio compare due volte, metà non hanno sito,
+// e qualcuno non ha nemmeno il nome.
+// --------------------------------------------------------------------------
+test("la distanza è quella vera, non in linea d'aria sbagliata", () => {
+  // Due punti di cui si conosce la distanza: Piazza del Plebiscito e il
+  // Maschio Angioino, a Napoli. Sono circa 600 metri.
+  const m = distanzaMetri({ lat: 40.8359, lon: 14.2488 }, { lat: 40.8383, lon: 14.2529 });
+  assert.ok(m > 350 && m < 500, `distanza inverosimile: ${Math.round(m)} m`);
+  assert.equal(Math.round(distanzaMetri({ lat: 40.8, lon: 14.2 }, { lat: 40.8, lon: 14.2 })), 0);
+});
+
+test("i negozi escono in ordine di vicinanza", () => {
+  const io = { lat: 40.8359, lon: 14.2488 };
+  const elenco = negoziDaOsm([
+    { id: 1, lat: 40.8400, lon: 14.2540, tags: { name: "Lontano", shop: "clothes" } },
+    { id: 2, lat: 40.8361, lon: 14.2490, tags: { name: "Vicino", shop: "clothes" } },
+  ], io);
+  assert.deepEqual(elenco.map((n) => n.nome), ["Vicino", "Lontano"]);
+  assert.ok(elenco[0].metri < elenco[1].metri);
+});
+
+test("un negozio senza nome non si mostra", () => {
+  // Un puntino che dice «negozio di abbigliamento» e nient'altro non serve a
+  // nessuno: non si può cercare, non si può riconoscere, non ci si va.
+  const elenco = negoziDaOsm([
+    { id: 1, lat: 40.836, lon: 14.249, tags: { shop: "clothes" } },
+    { id: 2, lat: 40.836, lon: 14.249, tags: { name: "Con nome", shop: "clothes" } },
+  ], { lat: 40.8359, lon: 14.2488 });
+  assert.deepEqual(elenco.map((n) => n.nome), ["Con nome"]);
+});
+
+test("lo stesso negozio mappato due volte compare una volta sola", () => {
+  // In OpenStreetMap un negozio è spesso sia un punto sia il contorno
+  // dell'edificio: due elementi, stesso nome, pochi metri di distanza.
+  const elenco = negoziDaOsm([
+    { id: 1, lat: 40.8360, lon: 14.2490, tags: { name: "Imperatrice", shop: "clothes" } },
+    { id: 2, lat: 40.8360, lon: 14.2491, tags: { name: "Imperatrice", shop: "boutique" } },
+  ], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(elenco.length, 1);
+});
+
+test("il sito si prende da dove c'è", () => {
+  const [a, b, c] = negoziDaOsm([
+    { id: 1, lat: 40.836, lon: 14.249, tags: { name: "A", shop: "clothes", website: "https://a.it" } },
+    { id: 2, lat: 40.836, lon: 14.249, tags: { name: "B", shop: "clothes", "contact:website": "http://b.it" } },
+    { id: 3, lat: 40.836, lon: 14.249, tags: { name: "C", shop: "clothes" } },
+  ], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(a.sito, "https://a.it");
+  assert.equal(b.sito, "http://b.it");
+  assert.equal(c.sito, null, "senza sito si dice null, non si inventa un indirizzo");
+});
+
+test("i negozi che abbiamo già in catalogo si riconoscono", () => {
+  // È il punto di tutta la funzione: se il negozio sotto casa è uno di quelli
+  // che importiamo ogni notte, di lui sappiamo già cosa vende e a quanto.
+  const [n] = negoziDaOsm(
+    [{ id: 1, lat: 40.836, lon: 14.249, tags: { name: "Kocca", shop: "clothes", website: "https://www.kocca.it/negozi" } }],
+    { lat: 40.8359, lon: 14.2488 },
+  );
+  assert.equal(n.inCatalogo, "Kocca", "non ha collegato il negozio al catalogo");
+});
+
+test("la posizione si arrotonda prima di uscire di qui", () => {
+  // Per cercare negozi entro un chilometro non serve sapere in che stanza si
+  // è. Tre decimali sono circa cento metri: abbastanza per la ricerca, non
+  // abbastanza per sapere dove abiti.
+  const p = arrotondaPosizione({ lat: 40.83591234, lon: 14.24887654 });
+  assert.equal(p.lat, 40.836);
+  assert.equal(p.lon, 14.249);
+});
+
+test("una posizione che non è una posizione non passa", () => {
+  for (const brutta of [null, {}, { lat: "boh", lon: 1 }, { lat: 200, lon: 0 }, { lat: 0, lon: 999 }]) {
+    assert.equal(arrotondaPosizione(brutta), null, `accettata: ${JSON.stringify(brutta)}`);
+  }
 });
