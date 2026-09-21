@@ -2177,3 +2177,16 @@ test("se l'alias «latest» ha già detto di no, si passa oltre", () => {
   ];
   assert.equal(scegliModello(elenco, "boh", ["gemini-flash-latest"]), "gemini-2.0-flash");
 });
+
+test("nessun file SQL resta fuori dalla ricostruzione", () => {
+  // scripts/applica-sql.mjs rimette in piedi il database da zero, e lo fa
+  // seguendo un elenco scritto a mano, perché l'ordine conta e quello
+  // alfabetico è sbagliato. Il rischio è che qualcuno aggiunga un file in
+  // sql/ e si dimentichi di nominarlo lì: non verrebbe applicato mai, e lo si
+  // scoprirebbe il giorno in cui serve ricostruire — cioè il giorno peggiore.
+  const radice = path.resolve(import.meta.dirname, "..");
+  const script = readFileSync(path.join(radice, "scripts/applica-sql.mjs"), "utf8");
+  for (const nome of readdirSync(path.join(radice, "sql")).filter((f) => f.endsWith(".sql"))) {
+    assert.ok(script.includes(`"${nome}"`), `${nome} non è nell'elenco di applica-sql.mjs`);
+  }
+});
