@@ -17,7 +17,7 @@ Serve per primo perché va incollato in Google.
 2. Apri **Google** e copia il **Callback URL (for OAuth)**. Ha questa forma:
 
    ```
-   https://ejwyrzqhqkwuwrxkxurw.supabase.co/auth/v1/callback
+   https://dyitzxzhlxwxmqiamatr.supabase.co/auth/v1/callback
    ```
 
 Tienilo da parte.
@@ -60,15 +60,15 @@ Supabase accetta di rimandare l'utente solo verso indirizzi che conosce.
 **Authentication** → **URL Configuration**:
 
 - **Site URL**: l'indirizzo del sito in produzione, per esempio
-  `https://dress.vercel.app`
+  `https://www.dressapp.it`
 - **Redirect URLs**, uno per riga:
 
   ```
   http://localhost:3000/**
-  https://dress.vercel.app/**
+  https://www.dressapp.it/**
   ```
 
-Sostituisci `dress.vercel.app` con il dominio vero. Senza queste righe l'accesso
+Senza queste righe l'accesso
 parte, Google acconsente, e poi l'utente rimbalza fuori.
 
 ## 5. La variabile del sito
@@ -76,7 +76,7 @@ parte, Google acconsente, e poi l'utente rimbalza fuori.
 In **Vercel** → il progetto → **Settings** → **Environment Variables**:
 
 ```
-NEXT_PUBLIC_SITE_URL = https://dress.vercel.app
+NEXT_PUBLIC_SITE_URL = https://www.dressapp.it
 ```
 
 Serve ai link dentro le mail di conferma e di recupero password. In locale
@@ -101,3 +101,35 @@ sparire: leggilo, dice quale dei passaggi qui sopra manca.
 Services ID e una chiave firmata, che si creano solo con un **Apple Developer
 Program attivo, 99 €/anno**. Il giorno che serve, si aggiunge allora — il giro
 è lo stesso di Google, con un provider in più in `entraCon()`.
+
+---
+
+## Se il progetto Supabase cambia
+
+Successo il 21 settembre 2026: il progetto è stato cancellato e ricostruito da
+zero. Le credenziali Google **non si rifanno** — quelle vivono su Google Cloud,
+che è un altro account e non è stato toccato. Cambia una cosa sola:
+il Callback URL contiene il riferimento del progetto, e il riferimento è nuovo.
+
+Quindi non si ripete tutta la procedura. Si fanno tre cose:
+
+1. **Google Cloud** → API e servizi → Credenziali → il client `Dress web` →
+   **URI di reindirizzamento autorizzati**: aggiungi quello nuovo
+
+   ```
+   https://dyitzxzhlxwxmqiamatr.supabase.co/auth/v1/callback
+   ```
+
+   Il vecchio puoi toglierlo: punta a un progetto che non esiste più.
+   Nella stessa pagina ci sono **ID client** e **Client secret** già pronti,
+   che servono al passo dopo.
+
+2. **Supabase** → Authentication → Sign In / Providers → Google: accendi
+   l'interruttore e incolla quell'ID client e quel Client secret.
+
+3. **Supabase** → Authentication → URL Configuration: rimetti Site URL e
+   Redirect URLs come al punto 4 qui sopra. Anche quelli vivevano nel progetto
+   cancellato.
+
+Non serve toccare il codice: l'app chiede a Supabase quali accessi sono accesi,
+quindi il tasto «Continua con Google» ricompare da solo.
