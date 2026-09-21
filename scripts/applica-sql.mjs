@@ -110,11 +110,18 @@ for (const nome of ORDINE) {
   const testo = readFileSync(path.join(RADICE, "sql", nome), "utf8");
   process.stdout.write(`  ${nome.padEnd(24)}`);
   try {
-    await cliente.query(testo);
+    await cliente.query(`begin; ${testo}\n; commit;`);
     console.log("fatto");
   } catch (e) {
     falliti++;
     console.log(`FALLITO — ${e.message}`);
+    // Ogni file nella sua transazione, e dopo un errore si disfa.
+    //
+    // Senza, il primo file che sbaglia manda la connessione in «transazione
+    // interrotta» e da lì in poi TUTTI rispondono lo stesso errore, che non
+    // è il loro: la prima volta che è successo sembravano rotti sette file
+    // su dodici, e rotti erano tre. Quattro diagnosi false in una riga sola.
+    await cliente.query("rollback").catch(() => {});
   }
 }
 

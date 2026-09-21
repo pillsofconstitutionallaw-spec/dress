@@ -37,6 +37,27 @@ create table if not exists public.prodotti (
   unique (negozio, id_esterno)
 );
 
+-- Colonne arrivate dopo la prima versione di questo file.
+--
+-- Erano state aggiunte a mano, direttamente sul database in produzione, e
+-- qui non ci sono mai entrate. Il guaio non si è visto finché il database è
+-- rimasto in piedi: si è visto la notte in cui è stato ricostruito da zero,
+-- quando tre file su dodici hanno detto «column does not exist» e il
+-- catalogo non si è potuto caricare.
+--
+-- Per questo stanno qui e non in un file a parte: chi ricostruisce applica
+-- sql/, e sql/ deve dire tutta la verità su com'è fatta questa tabella.
+alter table public.prodotti
+  -- Nei negozi multimarca la marca del capo non è il negozio: da Pittarello
+  -- si comprano Nike, e cercare «Nike» deve trovarle.
+  add column if not exists marca text,
+  -- Tutti i colori del capo, non solo il principale: quello dichiarato dal
+  -- negozio più quelli letti dalla foto, ciascuno col suo peso.
+  add column if not exists colori jsonb not null default '[]'::jsonb,
+  -- Da dove viene il colore principale: «nome» se lo diceva il negozio,
+  -- «foto» se lo abbiamo misurato noi. Serve a sapere di chi fidarsi.
+  add column if not exists colore_da text;
+
 -- Ricerche tipiche: per colore, per prezzo, per negozio.
 create index if not exists prodotti_colore   on public.prodotti (colore_l, colore_a, colore_b);
 create index if not exists prodotti_prezzo   on public.prodotti (prezzo);
