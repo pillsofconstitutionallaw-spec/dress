@@ -18,3 +18,8 @@
 genere-prima-*.json
 qualita-prima-*.json
 colore-prima-*.json
+
+# I salvataggi delle persone iscritte: email, date di nascita, impronte
+# di password. Questo repository è pubblico, quindi qui dentro non entrano
+# mai. Una prova in scripts/prove.mjs controlla che questa riga resti.
+salvataggi/

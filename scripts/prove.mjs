@@ -27,6 +27,7 @@ import { mostraIlCampo, spegniFinoA } from "@/lib/chiediAParole";
 import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { cambiaModello, scegliModello } from "@/lib/gemini";
+import { nomeDelFile } from "@/scripts/salva-profili.mjs";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -2189,4 +2190,31 @@ test("nessun file SQL resta fuori dalla ricostruzione", () => {
   for (const nome of readdirSync(path.join(radice, "sql")).filter((f) => f.endsWith(".sql"))) {
     assert.ok(script.includes(`"${nome}"`), `${nome} non è nell'elenco di applica-sql.mjs`);
   }
+});
+
+// --------------------------------------------------------------------------
+// I salvataggi delle persone non devono finire in un repository pubblico.
+//
+// Il file che produce scripts/salva-profili.mjs contiene email, date di
+// nascita e impronte di password. Questo repository è pubblico. Fra le due
+// cose c'è una riga di .gitignore, e una riga si cancella per sbaglio.
+// --------------------------------------------------------------------------
+test("la cartella dei salvataggi è tenuta fuori da git", () => {
+  const radice = path.resolve(import.meta.dirname, "..");
+  const ignorati = readFileSync(path.join(radice, ".gitignore"), "utf8");
+  assert.match(ignorati, /^salvataggi\/$/m, "senza questa riga i dati delle persone finiscono online");
+});
+
+test("il salvataggio porta via anche le credenziali, non solo i dati", () => {
+  // L'errore facile è salvare solo public.profiles: si riporterebbero
+  // indietro i dati di persone che non possono più entrare a vederli. Un
+  // salvataggio che sembra completo e non serve a niente.
+  const script = readFileSync(path.resolve(import.meta.dirname, "salva-profili.mjs"), "utf8");
+  assert.match(script, /from auth\.users/, "manca auth.users: nessuno potrebbe più rientrare");
+  assert.match(script, /from public\.profiles/, "mancano i profili");
+});
+
+test("i salvataggi si riconoscono dal nome, senza aprirli", () => {
+  const nome = nomeDelFile(new Date("2026-09-21T22:19:17Z"));
+  assert.equal(nome, "persone-2026-09-21-22-19-17.json");
 });
