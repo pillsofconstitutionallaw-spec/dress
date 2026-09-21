@@ -7,6 +7,7 @@ import { periodoCorrente } from "@/lib/periodiAnno";
 import { paletteAggiornata, paletteDelPeriodo } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
 import Attesa from "@/components/Attesa";
+import { mostraIlCampo, spegniFinoA } from "@/lib/chiediAParole";
 
 // I quattro completi dell'anno, dello stile scelto, nei propri colori.
 export default function Outfit() {
@@ -29,6 +30,10 @@ export default function Outfit() {
   const [frase, setFrase] = useState("");
   const [capito, setCapito] = useState(null);
   const [leggendo, setLeggendo] = useState(false);
+  // Parte nascosto e non mostrato: il server è lo stesso per tutti e non sa
+  // cosa c'è in questo browser, quindi se decidesse lui la prima pittura e
+  // la seconda non combacerebbero. Si decide qui, al primo giro.
+  const [campoAParole, setCampoAParole] = useState(false);
 
   useEffect(() => {
     try {
@@ -106,6 +111,20 @@ export default function Outfit() {
     };
   }, [palette, stile, genere, budget, forma, altezza, tentativo]);
 
+  // Il campo si mostra se l'ultima volta qualcuno ha saputo leggere — o se
+  // non si è mai provato. Se nessuno rispondeva, resta via per un giorno e
+  // poi torna da sé: la chiave può essere sistemata in qualsiasi momento, e
+  // nessuno tornerà qui a riaccenderlo a mano.
+  useEffect(() => {
+    let memoria = null;
+    try {
+      memoria = JSON.parse(localStorage.getItem("dress:chiedi") || "null");
+    } catch {
+      /* browser in incognito, memoria piena, roba di un'altra versione */
+    }
+    setCampoAParole(mostraIlCampo(memoria));
+  }, []);
+
   // Si manda la frase a chi la sa leggere, e quello che torna si APPLICA ai
   // comandi che stanno già in pagina: lo stile, il periodo, il budget. Così
   // chi ha scritto vede dove è finita la sua richiesta e può correggerla a
@@ -125,6 +144,15 @@ export default function Outfit() {
       const d = await res.json().catch(() => null);
       if (!res.ok || !d?.ok) throw new Error("no");
       setCapito(d);
+      // Non ha risposto nessun modello: il campo dice la verità una volta e
+      // poi si toglie, invece di restare a rispondere di no a ogni frase.
+      if (d.nessunLettore) {
+        try {
+          localStorage.setItem("dress:chiedi", JSON.stringify(spegniFinoA()));
+        } catch {
+          /* se non si può ricordare, pazienza: si riproverà */
+        }
+      }
       const r = d.richiesta || {};
       if (r.stile) {
         setStile(r.stile);
@@ -164,6 +192,7 @@ export default function Outfit() {
       </p>
 
       {/* chiedere a parole */}
+      {campoAParole ? (
       <form onSubmit={chiedi} style={{ marginTop: 22 }}>
         <label className="label" style={{ display: "block", marginBottom: 8 }} htmlFor="frase">
           Oppure chiedi a parole
@@ -198,6 +227,7 @@ export default function Outfit() {
           </p>
         ) : null}
       </form>
+      ) : null}
 
       {/* lo stile */}
       {stiliDisponibili.length > 1 ? (

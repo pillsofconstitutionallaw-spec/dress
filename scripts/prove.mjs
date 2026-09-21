@@ -23,6 +23,7 @@ import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
 import { conQuote } from "@/lib/tendenze";
+import { mostraIlCampo, spegniFinoA } from "@/lib/chiediAParole";
 import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { scegliModello } from "@/lib/gemini";
@@ -2061,4 +2062,39 @@ test("un taglio che in catalogo non c'è non diventa un tasto", () => {
 test("senza niente da contare non si divide per zero", () => {
   assert.deepEqual(conQuote([]), []);
   assert.deepEqual(conQuote(null), []);
+});
+
+// --------------------------------------------------------------------------
+// Il campo «chiedi a parole» si nasconde quando non c'è nessuno che legge.
+//
+// La frase la legge un modello, e i modelli finiscono: la chiave scade, il
+// piano gratuito si esaurisce, il fornitore risponde 401. Quando succede, il
+// campo resta lì e a ogni frase risponde «non riesco» — che è onesto una
+// volta e maleducato la seconda. Meglio toglierlo, e riprovare domani.
+// --------------------------------------------------------------------------
+test("all'inizio il campo si mostra", () => {
+  assert.equal(mostraIlCampo(null, Date.now()), true);
+  assert.equal(mostraIlCampo({}, Date.now()), true);
+});
+
+test("dopo che nessuno ha saputo leggere, il campo sparisce", () => {
+  const adesso = Date.parse("2026-09-21T10:00:00Z");
+  assert.equal(mostraIlCampo(spegniFinoA(adesso), adesso), false);
+});
+
+test("il giorno dopo si riprova da solo", () => {
+  // Nessuno tornerà a riaccenderlo a mano: se la chiave viene sistemata, il
+  // campo deve tornare da sé. Ventiquattro ore.
+  const adesso = Date.parse("2026-09-21T10:00:00Z");
+  const memoria = spegniFinoA(adesso);
+  const giorno = 24 * 60 * 60 * 1000;
+  assert.equal(mostraIlCampo(memoria, adesso + giorno - 1000), false, "ha riacceso troppo presto");
+  assert.equal(mostraIlCampo(memoria, adesso + giorno + 1000), true, "non ha mai riacceso");
+});
+
+test("una memoria rovinata non nasconde il campo per sempre", () => {
+  // localStorage lo scrive chiunque, e ci finisce dentro di tutto.
+  for (const rovinata of ["", "boh", { fino: "domani" }, { fino: NaN }, [], 7]) {
+    assert.equal(mostraIlCampo(rovinata, Date.now()), true, `nascosto da: ${JSON.stringify(rovinata)}`);
+  }
 });

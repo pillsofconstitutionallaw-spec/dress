@@ -44,6 +44,10 @@ export async function POST(req) {
     return NextResponse.json({
       ok: true,
       capito: false,
+      // Diverso da «non ho capito la frase»: qui non ha risposto nessuno. La
+      // pagina lo usa per togliere il campo invece di lasciarlo lì a dire di
+      // no a ogni frase — vedi lib/chiediAParole.js.
+      nessunLettore: true,
       perche: "In questo momento non riesco a leggere la richiesta scritta. Ti propongo i completi dei tuoi colori.",
       richiesta: normalizzaRichiesta(null),
     });
