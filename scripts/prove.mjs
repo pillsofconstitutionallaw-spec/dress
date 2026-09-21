@@ -18,6 +18,7 @@ import { comeLoHaiChiamato, perChiCerca, perChiE, pertinenza } from "@/lib/capiP
 import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricerca";
 import { guastoDiRete, translateAuthError } from "@/lib/authMessages";
 import { consigliaStili } from "@/lib/consigliaStili";
+import { normalizzaRichiesta } from "@/lib/richiesta";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
@@ -1667,6 +1668,65 @@ test("il recupero password non promette una mail che non può partire", () => {
     const testo = readFileSync(path.join(radice, f), "utf8");
     assert.match(testo, /guastoDiRete/, `${f} non distingue un guasto nostro da un errore di chi scrive`);
   }
+});
+
+// --------------------------------------------------------------------------
+// «Un outfit per un colloquio»: dalla frase ai parametri.
+//
+// Il modello legge la richiesta, il catalogo risponde. È la stessa regola che
+// quest'app si è data per le tendenze dei tagli — a un modello linguistico non
+// si chiede cosa esiste, perché risponde comunque e con sicurezza. Qui gli si
+// chiede solo di capire cosa è stato chiesto, e quello che torna si verifica:
+// uno stile che non esiste in catalogo non è uno stile, è un'invenzione.
+// --------------------------------------------------------------------------
+test("dalla frase escono solo parametri che il motore conosce davvero", () => {
+  const r = normalizzaRichiesta({
+    stile: "Minimal", periodo: "estate", genere: "donna",
+    capi: ["camicia", "pantaloni"], budget: 120,
+  });
+  assert.equal(r.stile, "Minimal");
+  assert.equal(r.periodo, "estate");
+  assert.equal(r.genere, "donna");
+  assert.deepEqual(r.capi, ["camicia", "pantaloni"]);
+  assert.equal(r.budget, 120);
+});
+
+test("quello che il modello si inventa non passa", () => {
+  // Uno stile che in catalogo non c'è, un periodo che non esiste, un genere
+  // che non è fra quelli che l'app usa: tutti diventano «non detto», e il
+  // motore fa quello che farebbe senza. Meglio un consiglio generico che uno
+  // costruito su una parola inventata.
+  const r = normalizzaRichiesta({
+    stile: "Cyberpunk Barocco", periodo: "monsone", genere: "boh",
+    capi: ["astronave", "camicia"], budget: "tantissimo",
+  });
+  assert.equal(r.stile, null, `ha tenuto uno stile inventato: ${r.stile}`);
+  assert.equal(r.periodo, null);
+  assert.equal(r.genere, null);
+  assert.deepEqual(r.capi, ["camicia"], "ha tenuto un capo che non esiste");
+  assert.equal(r.budget, null);
+});
+
+test("uno stile scritto quasi giusto si riconosce", () => {
+  // I modelli scrivono «minimal» minuscolo, «Quiet Luxury» senza la seconda
+  // parte, «Old money» invece di «Quiet luxury / Old money». Buttare via
+  // quelle risposte vorrebbe dire buttare via la richiesta di chi scrive.
+  assert.equal(normalizzaRichiesta({ stile: "minimal" }).stile, "Minimal");
+  assert.equal(normalizzaRichiesta({ stile: "STREETWEAR" }).stile, "Streetwear");
+  assert.equal(normalizzaRichiesta({ stile: "Old money" }).stile, "Quiet luxury / Old money");
+});
+
+test("il budget si legge come lo scrive una persona", () => {
+  assert.equal(normalizzaRichiesta({ budget: "150 €" }).budget, 150);
+  assert.equal(normalizzaRichiesta({ budget: "1.000" }).budget, 1000);
+  assert.equal(normalizzaRichiesta({ budget: 0 }).budget, null, "zero non è un budget");
+  assert.equal(normalizzaRichiesta({ budget: -20 }).budget, null);
+});
+
+test("senza niente da capire non si inventa niente", () => {
+  const r = normalizzaRichiesta({});
+  assert.deepEqual(r, { stile: null, periodo: null, genere: null, capi: [], evita: [], budget: null, occasione: null });
+  assert.deepEqual(normalizzaRichiesta(null), r);
 });
 
 test("a chi ha un contrasto medio non si dice che ce l'ha marcato", () => {
