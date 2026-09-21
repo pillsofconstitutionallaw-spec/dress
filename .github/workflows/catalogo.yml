@@ -68,3 +68,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/controlla-importazione.mjs
+
+      # I tagli di moda si contano sul catalogo, e adesso il catalogo è
+      # appena cambiato. Si fa qui, di notte, perché il conteggio prende sei
+      # secondi e nessuno deve aspettarli aprendo la pagina di ricerca.
+      - name: Riconta i tagli di moda
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/aggiorna-tendenze.mjs

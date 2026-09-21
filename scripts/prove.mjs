@@ -22,6 +22,7 @@ import { normalizzaRichiesta } from "@/lib/richiesta";
 import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
+import { conQuote } from "@/lib/tendenze";
 import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { scegliModello } from "@/lib/gemini";
@@ -2014,4 +2015,50 @@ test("ai: il preferito passa davanti, non resta solo", () => {
   conAmbiente({ ...CHIAVI, AI_FOTO: "inesistente" }, () => {
     assert.ok(catena("vendi").length >= 1);
   });
+});
+
+// --------------------------------------------------------------------------
+// Le tendenze: contate una volta a notte, non a ogni visita.
+//
+// Il conteggio sul catalogo prende sei secondi, e il database ne concede
+// otto: finché lo si faceva mentre qualcuno aspettava la pagina, bastava una
+// notte di catalogo più grosso per passare dall'altra parte. Ora il conteggio
+// sta in una tabella di quattordici righe e la pagina la legge, quindi qui si
+// prova solo quello che resta da decidere a mano: le quote.
+// --------------------------------------------------------------------------
+test("le quote si calcolano sul totale e sono percentuali vere", () => {
+  const t = conQuote([
+    { taglio: "Cargo", quanti: 300 },
+    { taglio: "Baggy", quanti: 100 },
+  ]);
+  assert.deepEqual(t.map((x) => x.quota), [75, 25]);
+  assert.equal(t.reduce((s, x) => s + x.quota, 0), 100);
+});
+
+test("i numeri che arrivano come testo restano numeri", () => {
+  // PostgREST restituisce i bigint come stringhe: «"quanti": "1200"». Senza
+  // convertire, la somma diventa una concatenazione e le quote impazziscono.
+  const t = conQuote([{ taglio: "Slim", quanti: "3" }, { taglio: "Mom", quanti: "1" }]);
+  assert.equal(t[0].quanti, 3);
+  assert.equal(t[0].quota, 75);
+});
+
+test("i tagli si mettono in fila dal più portato, comunque arrivino", () => {
+  const t = conQuote([
+    { taglio: "Mom", quanti: 10 },
+    { taglio: "Cargo", quanti: 90 },
+    { taglio: "Slim", quanti: 50 },
+  ]);
+  assert.deepEqual(t.map((x) => x.taglio), ["Cargo", "Slim", "Mom"]);
+});
+
+test("un taglio che in catalogo non c'è non diventa un tasto", () => {
+  // Un tasto che porta a zero risultati è una promessa non mantenuta.
+  const t = conQuote([{ taglio: "Barrel", quanti: 0 }, { taglio: "Cargo", quanti: 5 }]);
+  assert.deepEqual(t.map((x) => x.taglio), ["Cargo"]);
+});
+
+test("senza niente da contare non si divide per zero", () => {
+  assert.deepEqual(conQuote([]), []);
+  assert.deepEqual(conQuote(null), []);
 });
