@@ -24,6 +24,11 @@ export default function Outfit() {
   // vanno dette diverse: vedi il messaggio in fondo.
   const [guasto, setGuasto] = useState(false);
   const [tentativo, setTentativo] = useState(0);
+  // La richiesta scritta a parole: la frase, cosa ne abbiamo capito, e se
+  // stiamo ancora leggendola.
+  const [frase, setFrase] = useState("");
+  const [capito, setCapito] = useState(null);
+  const [leggendo, setLeggendo] = useState(false);
 
   useEffect(() => {
     try {
@@ -101,6 +106,41 @@ export default function Outfit() {
     };
   }, [palette, stile, genere, budget, forma, altezza, tentativo]);
 
+  // Si manda la frase a chi la sa leggere, e quello che torna si APPLICA ai
+  // comandi che stanno già in pagina: lo stile, il periodo, il budget. Così
+  // chi ha scritto vede dove è finita la sua richiesta e può correggerla a
+  // mano, invece di trovarsi dei capi e non sapere perché.
+  async function chiedi(e) {
+    e?.preventDefault?.();
+    const testo = frase.trim();
+    if (!testo || leggendo) return;
+    setLeggendo(true);
+    setCapito(null);
+    try {
+      const res = await fetch("/api/chiedi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frase: testo }),
+      });
+      const d = await res.json().catch(() => null);
+      if (!res.ok || !d?.ok) throw new Error("no");
+      setCapito(d);
+      const r = d.richiesta || {};
+      if (r.stile) {
+        setStile(r.stile);
+        setStiliDisponibili((elenco) => (elenco.includes(r.stile) ? elenco : [r.stile, ...elenco]));
+      }
+      if (r.periodo) setPeriodo(r.periodo);
+      if (r.genere) setGenere(r.genere);
+      if (r.budget) setBudget(String(r.budget));
+    } catch {
+      // Stessa regola del resto della pagina: «non ha funzionato» si dice,
+      // non si lascia indovinare.
+      setCapito({ capito: false, perche: "Non sono riuscito a leggere la richiesta. Riprova fra un momento." });
+    }
+    setLeggendo(false);
+  }
+
   const attuale = useMemo(() => completi.find((c) => c.periodo === periodo), [completi, periodo]);
   const coloriPeriodo = useMemo(() => paletteDelPeriodo(palette, periodo), [palette, periodo]);
 
@@ -122,6 +162,42 @@ export default function Outfit() {
       <p className="muted" style={{ fontSize: 14 }}>
         Uno per periodo dell’anno, dello stile che hai scelto, nei tuoi colori.
       </p>
+
+      {/* chiedere a parole */}
+      <form onSubmit={chiedi} style={{ marginTop: 22 }}>
+        <label className="label" style={{ display: "block", marginBottom: 8 }} htmlFor="frase">
+          Oppure chiedi a parole
+        </label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input
+            id="frase"
+            className="control"
+            style={{ flex: "1 1 220px", minWidth: 0 }}
+            value={frase}
+            onChange={(e) => setFrase(e.target.value)}
+            placeholder="es. un outfit per un colloquio"
+            maxLength={400}
+          />
+          <button type="submit" className="btn-app" disabled={leggendo || !frase.trim()}>
+            {leggendo ? "Leggo…" : "Chiedi"}
+          </button>
+        </div>
+        {capito ? (
+          <p className="muted" style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
+            {capito.capito
+              ? `Ho capito: ${[
+                  capito.richiesta?.occasione,
+                  capito.richiesta?.stile ? `stile ${capito.richiesta.stile}` : null,
+                  capito.richiesta?.periodo,
+                  capito.richiesta?.genere,
+                  capito.richiesta?.budget ? `fino a ${capito.richiesta.budget} €` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}. Se ho capito male, correggi qui sotto.`
+              : capito.perche}
+          </p>
+        ) : null}
+      </form>
 
       {/* lo stile */}
       {stiliDisponibili.length > 1 ? (

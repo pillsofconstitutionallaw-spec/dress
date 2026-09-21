@@ -1,8 +1,10 @@
 /node_modules
 /.next
 /out
-.env
-.env*.local
+# Qualunque .env resta sul computer: .env.example è l'unico da pubblicare,
+# perché elenca i nomi delle chiavi e non i loro valori.
+.env*
+!.env.example
 .DS_Store
 *.log
 
