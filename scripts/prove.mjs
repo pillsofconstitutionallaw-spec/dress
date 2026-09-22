@@ -30,7 +30,7 @@ import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
 import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
 import { consiglioMeteo, periodoDaGradi } from "@/lib/meteo";
-import { coloreDominante, normalizzaCapo } from "@/lib/armadio";
+import { coloreDominante, daQuantoNonLoMetti, dimenticatiPrima, normalizzaCapo } from "@/lib/armadio";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -2488,4 +2488,58 @@ test("il consiglio dice la cosa che cambia cosa ti metti", () => {
 test("senza dati il consiglio tace invece di indovinare", () => {
   assert.equal(consiglioMeteo({}), null);
   assert.equal(consiglioMeteo(null), null);
+});
+
+// --------------------------------------------------------------------------
+// Da quanto non lo metti.
+//
+// È l'unica cosa onesta che un armadio possa dire a chi continua a comprare,
+// e l'unica che il catalogo non può dire per definizione. Ma va detta con
+// misura: un capo comprato la settimana scorsa e non ancora messo non è un
+// rimprovero, è una settimana. Il silenzio, qui, è la risposta giusta più
+// spesso di quanto sembri.
+// --------------------------------------------------------------------------
+const GIORNO = 24 * 60 * 60 * 1000;
+const ADESSO = Date.parse("2026-09-22T10:00:00Z");
+
+test("un capo appena arrivato non si rimprovera", () => {
+  assert.equal(daQuantoNonLoMetti({ creato: new Date(ADESSO - 5 * GIORNO).toISOString() }, ADESSO), null);
+});
+
+test("un capo mai messo, dopo mesi, si dice", () => {
+  const c = { creato: new Date(ADESSO - 200 * GIORNO).toISOString(), volte: 0 };
+  const frase = daQuantoNonLoMetti(c, ADESSO);
+  assert.match(frase, /mai/i, `non ha detto che non l'ha mai messo: ${frase}`);
+});
+
+test("un capo messo tanto tempo fa si dice, con quanto", () => {
+  const c = { creato: new Date(ADESSO - 900 * GIORNO).toISOString(), volte: 3, ultima: new Date(ADESSO - 240 * GIORNO).toISOString() };
+  const frase = daQuantoNonLoMetti(c, ADESSO);
+  assert.match(frase, /otto mesi/i, `atteso «otto mesi», ricevuto: ${frase}`);
+});
+
+test("un capo messo di recente non si commenta", () => {
+  const c = { volte: 9, ultima: new Date(ADESSO - 3 * GIORNO).toISOString(), creato: new Date(ADESSO - 400 * GIORNO).toISOString() };
+  assert.equal(daQuantoNonLoMetti(c, ADESSO), null);
+});
+
+test("le date rotte non diventano rimproveri", () => {
+  // Una data che non si legge non è «non lo metti da mai»: è una data che
+  // non si legge, e su quella non si dice niente.
+  for (const rotto of [{ ultima: "domani" }, { ultima: null, creato: "boh" }, {}, null]) {
+    assert.equal(daQuantoNonLoMetti(rotto, ADESSO), null, `ha commentato: ${JSON.stringify(rotto)}`);
+  }
+});
+
+test("quello che metti di più viene contato, non giudicato", () => {
+  // La lista si ordina per «dimenticati prima», ma chi non ha niente da
+  // rimproverarsi resta nell'ordine in cui è arrivato.
+  const capi = [
+    { id: 1, volte: 9, ultima: new Date(ADESSO - 2 * GIORNO).toISOString(), creato: new Date(ADESSO - 300 * GIORNO).toISOString() },
+    { id: 2, volte: 0, creato: new Date(ADESSO - 300 * GIORNO).toISOString() },
+    { id: 3, volte: 1, ultima: new Date(ADESSO - 400 * GIORNO).toISOString(), creato: new Date(ADESSO - 500 * GIORNO).toISOString() },
+  ];
+  const ordinati = dimenticatiPrima(capi, ADESSO);
+  assert.equal(ordinati[0].id, 3, "il più dimenticato non è primo");
+  assert.equal(ordinati[ordinati.length - 1].id, 1, "quello che usi sempre non è ultimo");
 });

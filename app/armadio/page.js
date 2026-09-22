@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch, getUser } from "@/lib/session";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import { coloreDominante, RUOLI_ARMADIO } from "@/lib/armadio";
+import { coloreDominante, daQuantoNonLoMetti, dimenticatiPrima, RUOLI_ARMADIO } from "@/lib/armadio";
 import { fileToDataUrl } from "@/lib/img";
 
 // Il tuo armadio.
@@ -174,14 +174,27 @@ export default function Armadio() {
     setStato("fermo");
   }
 
+  /** L'ho messo oggi. Più uno, e la data. */
+  async function messoOggi(id) {
+    // Si aggiorna subito a schermo e si scrive dietro: un tocco che resta lì
+    // mezzo secondo senza fare niente si ripete, e si finisce con due.
+    const ora = new Date().toISOString();
+    setCapi((elenco) => elenco.map((c) => (c.id === id ? { ...c, volte: (c.volte || 0) + 1, ultima: ora } : c)));
+    try {
+      await apiFetch(`/api/armadio?id=${id}`, { method: "PATCH" });
+    } catch {
+      setProblema("Non sono riuscito a segnarlo. Riprova.");
+    }
+  }
+
   async function butta(id) {
     setCapi((elenco) => elenco.filter((c) => c.id !== id));
     await apiFetch(`/api/armadio?id=${id}`, { method: "DELETE" });
   }
 
   const perRuolo = useMemo(() => {
-    const gruppi = RUOLI_ARMADIO.map((r) => ({ ...r, capi: capi.filter((c) => c.ruolo === r.chiave) }));
-    const senza = capi.filter((c) => !RUOLI_ARMADIO.some((r) => r.chiave === c.ruolo));
+    const gruppi = RUOLI_ARMADIO.map((r) => ({ ...r, capi: dimenticatiPrima(capi.filter((c) => c.ruolo === r.chiave)) }));
+    const senza = dimenticatiPrima(capi.filter((c) => !RUOLI_ARMADIO.some((r) => r.chiave === c.ruolo)));
     if (senza.length) gruppi.push({ chiave: "altro", etichetta: "Da sistemare", capi: senza });
     return gruppi.filter((g) => g.capi.length);
   }, [capi]);
@@ -355,13 +368,26 @@ export default function Armadio() {
                     ) : null}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14 }}>{c.titolo}</div>
-                      {c.note ? <div className="muted" style={{ fontSize: 11 }}>{c.note}</div> : null}
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {/* Prima il rimprovero, se c'è: è l'informazione per
+                            cui si apre questa pagina. Poi il conto, che è un
+                            fatto e non un giudizio. */}
+                        {daQuantoNonLoMetti(c) || (c.volte ? `Messo ${c.volte} ${c.volte === 1 ? "volta" : "volte"}.` : c.note || "")}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => messoOggi(c.id)}
+                      className="chip"
+                      style={{ cursor: "pointer", fontSize: 12, flex: "0 0 auto" }}
+                    >
+                      l'ho messo
+                    </button>
                     <button
                       type="button"
                       onClick={() => butta(c.id)}
                       className="muted"
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, padding: 4 }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, padding: 4, flex: "0 0 auto" }}
                     >
                       togli
                     </button>

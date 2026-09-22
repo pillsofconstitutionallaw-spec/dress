@@ -72,3 +72,45 @@ export async function DELETE(req) {
   // diventa un messaggio d'errore per una cosa andata bene.
   return NextResponse.json({ ok: true });
 }
+
+/**
+ * L'ho messo oggi.
+ *
+ * Un'operazione sola, e volutamente povera: più uno, e la data. Niente
+ * modifica del titolo o del colore — quelli si correggono altrove, e
+ * mescolare «segno che l'ho indossato» con «cambio cos'è» in una sola
+ * chiamata è il modo di ritrovarsi, fra un anno, con un tasto che fa due
+ * cose e una delle due sbagliata.
+ *
+ * Il conteggio si legge e si riscrive invece di essere incrementato dal
+ * database. Su un armadio di una persona sola non c'è nessuno con cui
+ * accavallarsi, e una funzione SQL in più sarebbe un pezzo da ricordarsi di
+ * applicare a ogni ricostruzione.
+ */
+export async function PATCH(req) {
+  const { db, error } = await requireUser(req);
+  if (error) return error;
+
+  const id = soloCifre(new URL(req.url).searchParams.get("id"), 12);
+  if (!id) return NextResponse.json({ error: "Quale capo?" }, { status: 400 });
+
+  const { data: prima, error: erroreLettura } = await db
+    .from("armadio")
+    .select("volte")
+    .eq("id", Number(id))
+    .maybeSingle();
+  if (erroreLettura) return NextResponse.json({ error: erroreLettura.message }, { status: 500 });
+  // Non esiste, o non è suo: le regole del database non distinguono, e va
+  // bene così — da fuori le due cose devono somigliarsi.
+  if (!prima) return NextResponse.json({ error: "Questo capo non c'è." }, { status: 404 });
+
+  const { data, error: erroreScrittura } = await db
+    .from("armadio")
+    .update({ volte: (prima.volte || 0) + 1, ultima: new Date().toISOString() })
+    .eq("id", Number(id))
+    .select("id, volte, ultima")
+    .single();
+
+  if (erroreScrittura) return NextResponse.json({ error: erroreScrittura.message }, { status: 500 });
+  return NextResponse.json({ ok: true, capo: data });
+}
