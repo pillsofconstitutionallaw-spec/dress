@@ -19,7 +19,7 @@ import { NEGOZI, descriviCapo, negoziPerGenere, urlNeiNegozi } from "@/lib/ricer
 import { guastoDiRete, translateAuthError } from "@/lib/authMessages";
 import { consigliaStili } from "@/lib/consigliaStili";
 import { normalizzaRichiesta } from "@/lib/richiesta";
-import { paroleEspanse, regoleDa } from "@/lib/sinonimi";
+import { gruppiPerRicerca, paroleEspanse, regoleDa } from "@/lib/sinonimi";
 import { capiDelloStile, paroleDelloStile } from "@/lib/stiliCapi";
 import { soloCifre } from "@/lib/numeri";
 import { conQuote } from "@/lib/tendenze";
@@ -2388,4 +2388,50 @@ test("il colore di un capo si legge dal centro della foto, non dai bordi", () =>
 test("se la foto non si può leggere non si inventa un colore", () => {
   assert.equal(coloreDominante(null, 10), null);
   assert.equal(coloreDominante(new Uint8ClampedArray(4), 0), null);
+});
+
+test("cercare due parole vuole tutte e due, ma ognuna con la sua famiglia", () => {
+  // L'errore che ho fatto scrivendo la ricerca per l'armadio: mettere in AND
+  // anche i sinonimi. «camicia bianca» diventava «camici E shirt E blus E
+  // bianca», che non esiste in nessun catalogo del mondo — zero risultati su
+  // ogni ricerca di due parole, e una su una parola sola che funzionava e
+  // faceva sembrare tutto a posto.
+  const g = gruppiPerRicerca("camicia bianca");
+  assert.equal(g.length, 2, "un gruppo per parola scritta");
+  assert.ok(g[0].includes("camici") && g[0].includes("shirt"), `famiglia di camicia: ${g[0]}`);
+  assert.ok(g[1].some((p) => p.startsWith("bianc")), `famiglia di bianca: ${g[1]}`);
+});
+
+test("una parola sola resta un gruppo solo", () => {
+  const g = gruppiPerRicerca("jeans");
+  assert.equal(g.length, 1);
+  assert.ok(g[0].length >= 1);
+});
+
+test("dalla ricerca non esce niente che rompa la domanda al database", () => {
+  // Le virgole e le parentesi hanno un significato nella sintassi di
+  // PostgREST: se arrivano da quello che uno scrive, la domanda cambia forma.
+  const g = gruppiPerRicerca("camicia, bianca (o beige) *%");
+  for (const gruppo of g) {
+    for (const p of gruppo) {
+      assert.match(p, /^[a-z0-9à-ù]+$/, `parola pericolosa: ${JSON.stringify(p)}`);
+    }
+  }
+});
+
+test("senza niente da cercare non si cerca", () => {
+  assert.deepEqual(gruppiPerRicerca(""), []);
+  assert.deepEqual(gruppiPerRicerca("   "), []);
+  assert.deepEqual(gruppiPerRicerca(null), []);
+});
+
+test("un indirizzo di foto troppo lungo si butta, non si accorcia", () => {
+  // Tagliare un titolo lo rende più corto; tagliare un indirizzo lo rende
+  // sbagliato. Il primo si legge lo stesso, il secondo porta a un'immagine
+  // che non c'è, e chi guarda vede un riquadro vuoto senza sapere perché.
+  const lungo = "https://negozio.it/" + "x".repeat(600) + ".jpg";
+  assert.equal(normalizzaCapo({ titolo: "Camicia", foto: lungo }).foto, null);
+  assert.equal(normalizzaCapo({ titolo: "Camicia", foto: "https://negozio.it/a.jpg" }).foto, "https://negozio.it/a.jpg");
+  // E un percorso dentro il secchio, che è corto e non è un indirizzo.
+  assert.equal(normalizzaCapo({ titolo: "Camicia", foto: "abc-123/1758.jpg" }).foto, "abc-123/1758.jpg");
 });

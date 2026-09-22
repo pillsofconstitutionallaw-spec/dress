@@ -24,6 +24,9 @@ export default function Armadio() {
   const [stato, setStato] = useState("fermo"); // fermo | leggo | salvo
   const [bozza, setBozza] = useState(null);
   const [problema, setProblema] = useState("");
+  const [cerca, setCerca] = useState("");
+  const [trovati, setTrovati] = useState(null); // null = non ho ancora cercato
+  const [cercando, setCercando] = useState(false);
   const campo = useRef(null);
 
   useEffect(() => {
@@ -31,8 +34,8 @@ export default function Armadio() {
       const u = await getUser().catch(() => null);
       setChi(u || null);
       if (!u) return;
-      const { data } = await apiFetch("/api/armadio");
-      if (data?.ok) setCapi(data.capi);
+      const risposta = await apiFetch("/api/armadio").catch(() => null);
+      if (risposta?.ok) setCapi(risposta.capi);
     })();
   }, []);
 
@@ -85,7 +88,7 @@ export default function Armadio() {
     setProblema("");
     try {
       const foto = await caricaLaFoto(bozza.file);
-      const { data } = await apiFetch("/api/armadio", {
+      const risposta = await apiFetch("/api/armadio", {
         method: "POST",
         body: {
           capo: {
@@ -98,11 +101,75 @@ export default function Armadio() {
           },
         },
       });
-      if (!data?.ok) throw new Error(data?.error || "no");
-      setCapi((elenco) => [data.capo, ...elenco]);
+      if (!risposta?.ok) throw new Error("no");
+      setCapi((elenco) => [risposta.capo, ...elenco]);
       setBozza(null);
     } catch (e) {
       setProblema(e.message === "no" ? "Non sono riuscito a salvarlo. Riprova." : e.message);
+    }
+    setStato("fermo");
+  }
+
+  /**
+   * Cercare il capo nel catalogo invece di fotografarlo.
+   *
+   * È il modo migliore, e non è ovvio. Una foto fatta in camera da letto dà
+   * un titolo indovinato da un modello e un colore misurato su un lenzuolo.
+   * Una riga di catalogo dà marca, nome esatto, foto del negozio e colore
+   * già misurato — gli stessi dati con cui l'app ragiona per tutto il resto.
+   *
+   * Fotografare resta, per tutto quello che in catalogo non c'è: i regali,
+   * l'usato, la roba di dieci anni fa.
+   */
+  async function cercaInCatalogo(e) {
+    e?.preventDefault?.();
+    const q = cerca.trim();
+    if (q.length < 2 || cercando) return;
+    setCercando(true);
+    setProblema("");
+    try {
+      const r = await fetch(`/api/catalogo?q=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      setTrovati(d.ok ? d.capi : []);
+    } catch {
+      setProblema("Il catalogo non risponde in questo momento.");
+      setTrovati(null);
+    }
+    setCercando(false);
+  }
+
+  async function prendiDalCatalogo(c) {
+    setStato("salvo");
+    try {
+      const risposta = await apiFetch("/api/armadio", {
+        method: "POST",
+        body: {
+          capo: {
+            titolo: c.titolo,
+            categoria: c.categoria,
+            // Il colore del catalogo è già misurato, e meglio del nostro:
+            // viene dalla foto del negozio, fatta in studio, non dal muro
+            // di una camera.
+            colore_hex: c.colore_hex,
+            colore_nome: c.colore_nome,
+            colore_l: c.colore_l,
+            colore_a: c.colore_a,
+            colore_b: c.colore_b,
+            foto: c.immagine,
+            note: c.marca || c.negozio || undefined,
+          },
+        },
+      });
+      if (risposta?.ok) {
+        setCapi((elenco) => [risposta.capo, ...elenco]);
+        setTrovati((elenco) => (elenco || []).filter((x) => x.id !== c.id));
+      } else {
+        setProblema("Non sono riuscito a salvarlo.");
+      }
+    } catch (e) {
+      // apiFetch alza un'eccezione già tradotta quando il server dice di no:
+      // mostrarla è meglio che sostituirla con una frase generica.
+      setProblema(e.message || "Non sono riuscito a salvarlo.");
     }
     setStato("fermo");
   }
@@ -142,7 +209,56 @@ export default function Armadio() {
 
       {!bozza ? (
         <>
-          <label className="btn-app" style={{ marginTop: 22, display: "block", textAlign: "center", cursor: "pointer" }}>
+          <form onSubmit={cercaInCatalogo} style={{ marginTop: 22 }}>
+            <label className="label" style={{ display: "block", marginBottom: 8 }} htmlFor="cerca">
+              Cercalo nel catalogo
+            </label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                id="cerca"
+                className="control"
+                style={{ flex: "1 1 200px", minWidth: 0 }}
+                value={cerca}
+                onChange={(e) => setCerca(e.target.value)}
+                placeholder="es. camicia bianca"
+                maxLength={80}
+              />
+              <button type="submit" className="btn-app" disabled={cercando || cerca.trim().length < 2}>
+                {cercando ? "Cerco…" : "Cerca"}
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+              Se il capo è di un negozio che seguiamo, di lui sappiamo già tutto: marca, colore
+              misurato, foto pulita. Meglio di una foto fatta in camera.
+            </p>
+          </form>
+
+          {trovati?.length ? (
+            <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
+              {trovati.map((c) => (
+                <li key={c.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderTop: "1px solid #f0f0f0" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {c.immagine ? <img src={c.immagine} alt="" style={{ width: 40, height: 52, objectFit: "cover", flex: "0 0 auto" }} /> : null}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13 }}>{c.titolo}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>
+                      {[c.marca || c.negozio, c.prezzo ? `${c.prezzo} €` : null].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                  <button type="button" className="chip" style={{ cursor: "pointer" }} onClick={() => prendiDalCatalogo(c)}>
+                    è mio
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : trovati ? (
+            <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>
+              Nel catalogo non c'è. Fotografalo: funziona per tutto il resto.
+            </p>
+          ) : null}
+
+          <p className="muted" style={{ fontSize: 12, marginTop: 22, marginBottom: 6 }}>Oppure</p>
+          <label className="btn-app" style={{ display: "block", textAlign: "center", cursor: "pointer" }}>
             {stato === "leggo" ? "Guardo…" : "Fotografa un capo"}
             <input
               ref={campo}
@@ -226,10 +342,21 @@ export default function Armadio() {
               <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {g.capi.map((c) => (
                   <li key={c.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderTop: "1px solid #f0f0f0" }}>
-                    {c.colore_hex ? (
-                      <span style={{ width: 22, height: 22, background: c.colore_hex, border: "1px solid #ddd", flex: "0 0 auto" }} />
+                    {/* La foto c'è solo per i capi presi dal catalogo: quelle
+                        fotografate in casa stanno in un secchio non pubblico e
+                        per mostrarle serve un link firmato. Per ora un
+                        quadratino del colore, che è l'informazione che conta.
+                        eslint-disable-next-line @next/next/no-img-element */}
+                    {c.foto && c.foto.startsWith("http") ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.foto} alt="" style={{ width: 34, height: 44, objectFit: "cover", flex: "0 0 auto" }} />
+                    ) : c.colore_hex ? (
+                      <span style={{ width: 34, height: 44, background: c.colore_hex, border: "1px solid #ddd", flex: "0 0 auto" }} />
                     ) : null}
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 14 }}>{c.titolo}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14 }}>{c.titolo}</div>
+                      {c.note ? <div className="muted" style={{ fontSize: 11 }}>{c.note}</div> : null}
+                    </div>
                     <button
                       type="button"
                       onClick={() => butta(c.id)}
