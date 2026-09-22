@@ -35,6 +35,7 @@ import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
 import { indizioPelle, labDelTono, TONI_PELLE, tonoPelle } from "@/lib/pelle";
+import { smaltiPer, soloFoto } from "@/lib/unghie";
 import { stagioneDa } from "@/lib/stagioni";
 import { PERIODI, adattoAlPeriodo, ruoliDaRiempire, ruoloDelCapo } from "@/lib/periodiAnno";
 import { combina, esitoDelTest } from "@/lib/testArmocromia";
@@ -2689,4 +2690,90 @@ test("quando le alternative finiscono si ricomincia, invece di non dare niente",
   const primo = completoDallArmadio(armadio, PALETTE);
   const secondo = completoDallArmadio(armadio, PALETTE, { evita: [1, 2] });
   assert.deepEqual(secondo.capi.map((c) => c.id), primo.capi.map((c) => c.id));
+});
+
+// --------------------------------------------------------------------------
+// Gli smalti.
+//
+// La richiesta era «le tendenze mensili di come farsi le unghie». Le tendenze
+// non si possono fare oneste: non esiste una fonte gratuita e legittima, e
+// chiederle a un modello è esattamente l'errore che quest'app si rifiuta di
+// fare per i tagli — un modello risponde comunque, con sicurezza, sbagliando.
+//
+// Quello che si può fare è più utile e soprattutto è vero: quali smalti
+// stanno bene a chi guarda, scelti sul sottotono misurato sul suo viso. Su
+// una pelle con fondo dorato un rosso bluastro spegne le mani; su una con
+// fondo rosato un corallo le ingiallisce. Non è un'opinione di stagione, è
+// come funzionano i colori vicini.
+// --------------------------------------------------------------------------
+test("su una pelle calda gli smalti vengono caldi", () => {
+  const s = smaltiPer({ tono: "miele-chiaro" });   // indizio +1.4, dorata
+  assert.ok(s.length >= 3, "troppo pochi smalti");
+  for (const x of s) assert.ok(x.hex && /^#[0-9a-f]{6}$/i.test(x.hex), `colore storto: ${x.hex}`);
+  assert.ok(s.some((x) => /coral|arancio|rame|bronzo|mattone/i.test(x.nome)), `nessun caldo: ${s.map((x) => x.nome)}`);
+});
+
+test("su una pelle fredda gli smalti vengono freddi", () => {
+  const s = smaltiPer({ tono: "porcellana" });     // indizio -1.6, rosata
+  assert.ok(s.some((x) => /ciliegia|prugna|lampone|rubino|malva/i.test(x.nome)), `nessun freddo: ${s.map((x) => x.nome)}`);
+  assert.ok(!s.some((x) => /corallo/i.test(x.nome)), `un corallo su pelle rosata ingiallisce le mani: ${s.map((x) => x.nome)}`);
+});
+
+test("ogni smalto dice perché sta bene, non solo che sta bene", () => {
+  // «Ti sta bene» non è un consiglio, è un'affermazione. Il motivo si può
+  // controllare, e chi legge impara qualcosa che vale anche il mese dopo.
+  for (const x of smaltiPer({ tono: "oliva-media" })) {
+    assert.ok(x.perche && x.perche.length > 15, `senza motivo: ${x.nome}`);
+  }
+});
+
+test("i colori della palette arrivano anche sulle unghie", () => {
+  const s = smaltiPer({ tono: "sabbia", palette: [{ hex: "#2f4f6f", nome: "Blu ottanio" }] });
+  assert.ok(s.some((x) => x.hex.toLowerCase() === "#2f4f6f"), "non ha proposto un colore della palette");
+});
+
+test("senza analisi non si consiglia niente", () => {
+  // Senza il tono misurato si tirerebbe a indovinare, e un consiglio di
+  // colore tirato a indovinare vale meno di nessun consiglio.
+  assert.deepEqual(smaltiPer({}), []);
+  assert.deepEqual(smaltiPer({ tono: "inventato" }), []);
+  assert.deepEqual(smaltiPer(null), []);
+});
+
+test("le foto si tengono solo se sono foto", () => {
+  // Su Wikimedia Commons «nail» pesca anche libri scansionati, riviste del
+  // 1912 e PDF di commissioni parlamentari. Misurato.
+  // Gli indirizzi sono quelli veri: Commons appende dei parametri dopo il
+  // nome del file, quindi NON finiscono per «.jpg». La prima versione di
+  // questa prova li scriveva puliti, e il filtro guardava l'estensione
+  // dell'indirizzo: passava tutto qui e non passava niente in produzione.
+  const suffisso = "?lang=it&utm_campaign=imageinfo&utm_content=thumbnail";
+  const grezze = [
+    { title: "File:French tip nail art.jpg", url: "https://x/500px-a.jpg" + suffisso, licenza: "CC BY-SA 4.0", autore: "Tizio" },
+    { title: "File:LifeMagazine5Dec1912.pdf", url: "https://x/b.pdf" + suffisso, licenza: "Public domain", autore: "" },
+    { title: "File:Holiday catalogue. (IA holidaycatalogue00john).jpg", url: "https://x/c.jpg" + suffisso, licenza: "CC BY 2.0", autore: "" },
+    { title: "File:Djuna Barnes - Villager.gif", url: "https://x/d.gif" + suffisso, licenza: "Public domain", autore: "" },
+  ];
+  const buone = soloFoto(grezze);
+  assert.deepEqual(buone.map((f) => f.title), ["File:French tip nail art.jpg"]);
+});
+
+test("passano solo le immagini che dicono di essere di unghie", () => {
+  // Quelle che il primo filtro lasciava passare, viste in produzione: un
+  // manifesto di guerra, una réclame vittoriana e una rivista del 1948.
+  // Vietarle una per una è una lista nera che non finisce mai; pretendere
+  // che il titolo nomini le unghie è una regola sola che le esclude tutte.
+  const suffisso = "?utm_campaign=imageinfo";
+  const grezze = [
+    { title: "File:The Woman Who Wouldn't Art.IWMPST149.jpg", url: "https://x/a.jpg" + suffisso, licenza: "Public domain" },
+    { title: "File:London Toilet Bazar Company (3093691512).jpg", url: "https://x/b.jpg" + suffisso, licenza: "Public domain" },
+    { title: "File:The Ladies' home journal (1948) (147).jpg", url: "https://x/c.jpg" + suffisso, licenza: "Public domain" },
+    { title: "File:Acrylic nail art with crystal.jpg", url: "https://x/d.jpg" + suffisso, licenza: "CC BY-SA 4.0" },
+    { title: "File:Natural French manicure.jpg", url: "https://x/e.jpg" + suffisso, licenza: "CC BY 2.0" },
+  ];
+  assert.deepEqual(soloFoto(grezze).map((f) => f.title.slice(5, 25)), ["Acrylic nail art wit", "Natural French manic"]);
+});
+
+test("una foto senza licenza leggibile non si pubblica", () => {
+  assert.deepEqual(soloFoto([{ title: "File:bella.jpg", url: "https://x/a.jpg?x=1", licenza: "", autore: "Tizio" }]), []);
 });

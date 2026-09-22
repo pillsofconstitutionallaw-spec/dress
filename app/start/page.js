@@ -606,6 +606,15 @@ export default function Start() {
 
             <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link href="/armadio" className="btn ghost">Metti su il tuo armadio</Link>
+              {/* Solo a chi ha dichiarato sesso femminile, come da richiesta.
+                  Non è un giudizio su chi porta lo smalto: è che mettere una
+                  voce in più a tutti, per una cosa che alla maggior parte
+                  degli uomini non serve, rende la schermata più lunga per
+                  tutti e più utile per nessuno. Chi la vuole la trova
+                  comunque dall'indirizzo. */}
+              {profile.sex === "female" ? (
+                <Link href="/unghie" className="btn ghost">Smalti nei tuoi colori</Link>
+              ) : null}
               <Link href="/wardrobe" className="btn ghost">Abbina un capo solo</Link>
               <button className="btn ghost" onClick={() => { setStep(1); setResult(null); }}>Ricomincia</button>
             </div>
