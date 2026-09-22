@@ -27,6 +27,7 @@ export default function Armadio() {
   const [cerca, setCerca] = useState("");
   const [trovati, setTrovati] = useState(null); // null = non ho ancora cercato
   const [cercando, setCercando] = useState(false);
+  const [staScontornando, setStaScontornando] = useState(false);
   const campo = useRef(null);
 
   useEffect(() => {
@@ -47,12 +48,7 @@ export default function Armadio() {
     setStato("leggo");
     try {
       const dataUrl = await fileToDataUrl(file);
-
-      // Il colore lo misuriamo qui nel telefono, non lo chiediamo al modello:
-      // di un colore un modello dà il nome, e i nomi dei colori sono
-      // opinioni. Le tre coordinate sono una misura, e sono quelle che poi
-      // reggono gli abbinamenti.
-      const hex = await misuraColore(dataUrl);
+      const hex = await misuraColore(dataUrl, false);
 
       // Cosa sia, invece, lo chiediamo: è l'unica parte in cui un modello
       // vede qualcosa che noi non sappiamo calcolare.
@@ -72,6 +68,34 @@ export default function Armadio() {
       }
 
       setBozza({ file, anteprima: dataUrl, titolo, categoria, ruolo: "", colore_hex: hex, note: "" });
+
+      // Lo scontorno parte adesso e non fa aspettare nessuno.
+      //
+      // Misurato in un browser senza scheda grafica: quindici secondi per
+      // foto, e non è lo scaricamento del modello — è il calcolo, perché
+      // ricade sul processore. Su un telefono con WebGPU sarà più veloce, ma
+      // non è una cosa che si possa dare per scontata, e quindici secondi di
+      // schermata ferma sono un'app che si chiude.
+      //
+      // Quindi il capo si può già nominare e salvare, e il ritaglio arriva
+      // quando arriva: se fa in tempo migliora la foto e il colore, se non fa
+      // in tempo non si è perso niente.
+      setStaScontornando(true);
+      togliIlFondo(file).then(async (ritagliato) => {
+        setStaScontornando(false);
+        if (!ritagliato) return;
+        // Adesso il colore si misura su tutti i pixel rimasti, che SONO il
+        // capo: niente più riquadro centrale e speranza che dentro ci sia
+        // qualcosa. Su una gonna a ruota il centro era il buco.
+        const meglio = await misuraColore(ritagliato.dataUrl, true);
+        setBozza((b) =>
+          // Se nel frattempo si è salvato o annullato, il ritaglio non serve
+          // più a nessuno e sparisce senza far danni.
+          b && b.anteprima === dataUrl
+            ? { ...b, file: ritagliato.file, anteprima: ritagliato.dataUrl, colore_hex: meglio || b.colore_hex, scontornata: true }
+            : b,
+        );
+      });
     } catch {
       setProblema("Questa foto non riesco a leggerla. Provane un'altra.");
     }
@@ -283,7 +307,9 @@ export default function Armadio() {
             />
           </label>
           <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            Meglio su un fondo semplice, il capo al centro. La foto resta tua: la vedi solo tu.
+            Meglio su un fondo semplice, il capo al centro. La foto resta tua: la vedi solo tu —
+            anche il ritaglio del fondo lo fa il telefono, non un servizio là fuori. Ci mette
+            qualche secondo e non devi aspettarlo.
           </p>
         </>
       ) : (
@@ -305,7 +331,12 @@ export default function Armadio() {
               {bozza.colore_hex ? (
                 <p className="muted" style={{ fontSize: 12, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ width: 14, height: 14, background: bozza.colore_hex, border: "1px solid #ccc", display: "inline-block" }} />
-                  colore misurato dalla foto
+                  {bozza.scontornata ? "colore del capo, fondo tolto" : "colore misurato dalla foto"}
+                </p>
+              ) : null}
+              {staScontornando ? (
+                <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
+                  Sto togliendo il fondo. Puoi salvare subito: se faccio in tempo, la foto migliora da sé.
                 </p>
               ) : null}
             </div>
@@ -402,8 +433,8 @@ export default function Armadio() {
   );
 }
 
-/** Il colore medio del centro della foto, senza mandarla a nessuno. */
-async function misuraColore(dataUrl) {
+/** Il colore del capo, senza mandare la foto a nessuno. */
+async function misuraColore(dataUrl, scontornato = false) {
   return new Promise((risolvi) => {
     const img = new Image();
     img.onload = () => {
@@ -413,7 +444,7 @@ async function misuraColore(dataUrl) {
         tela.height = LATO_MISURA;
         const c = tela.getContext("2d", { willReadFrequently: true });
         c.drawImage(img, 0, 0, LATO_MISURA, LATO_MISURA);
-        risolvi(coloreDominante(c.getImageData(0, 0, LATO_MISURA, LATO_MISURA).data, LATO_MISURA));
+        risolvi(coloreDominante(c.getImageData(0, 0, LATO_MISURA, LATO_MISURA).data, LATO_MISURA, { scontornato }));
       } catch {
         risolvi(null);
       }
@@ -443,6 +474,56 @@ async function caricaLaFoto(file) {
     const dove = `${chi}/${Date.now()}.${estensione}`;
     const { error } = await sb.storage.from("armadio").upload(dove, file, { contentType: file.type });
     return error ? null : dove;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Toglie il fondo alla foto, dentro il telefono.
+ *
+ * Alta Daily fa la stessa cosa con SAM di Meta, e nel loro racconto il motivo
+ * per cui non si sono appoggiati a un servizio esterno è il prezzo: «pochi
+ * centesimi per immagine», per venti milioni di immagini. Alla nostra scala
+ * il conto è diverso ma la conclusione è più forte — qui il modello gira nel
+ * browser di chi carica la foto, quindi non costa niente a nessuno e la foto
+ * dei vestiti di casa non esce dal telefono nemmeno per essere ritagliata.
+ *
+ * Il modello si scarica alla prima foto — una cinquantina di megabyte — e poi
+ * resta in cache. Per questo si carica solo QUI, quando qualcuno ha davvero
+ * scattato: metterlo fra le importazioni in cima al file vorrebbe dire farlo
+ * scaricare anche a chi apre la pagina e se ne va.
+ *
+ * Se non riesce, non è un guasto: si va avanti con la foto intera e il colore
+ * si misura dal centro, come si faceva prima.
+ */
+// La versione è fissata apposta: un «latest» che cambia da solo è un pezzo
+// dell'app che si aggiorna senza che nessuno l'abbia deciso.
+const SCONTORNO = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+
+async function togliIlFondo(file) {
+  try {
+    // Preso da una rete di distribuzione invece che impacchettato con l'app.
+    //
+    // Non è una scorciatoia gratis e vale la pena dirlo: onnxruntime-web, su
+    // cui questa libreria si appoggia, si porta dietro anche la versione per
+    // Node, e il minificatore di Next si rompe su quella — «'import' and
+    // 'export' cannot be used outside of module code». Sistemarlo vuol dire
+    // mettere le mani nella configurazione di webpack per escludere dei file
+    // che non useremo mai, ed è il tipo di riparazione che si rompe da sola
+    // al prossimo aggiornamento.
+    //
+    // Il prezzo: il CODICE arriva da jsdelivr. La FOTO no — quella resta nel
+    // telefono, e resta il punto.
+    //
+    // webpackIgnore dice a Next di non provare a impacchettarlo: senza, cerca
+    // di risolvere quell'indirizzo durante la compilazione e fallisce.
+    const { removeBackground } = await import(/* webpackIgnore: true */ SCONTORNO);
+    const ritagliata = await removeBackground(file, { output: { format: "image/png" } });
+    return {
+      file: new File([ritagliata], "capo.png", { type: "image/png" }),
+      dataUrl: await fileToDataUrl(new File([ritagliata], "capo.png", { type: "image/png" })),
+    };
   } catch {
     return null;
   }

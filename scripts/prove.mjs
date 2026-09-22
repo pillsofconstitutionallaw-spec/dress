@@ -2543,3 +2543,38 @@ test("quello che metti di più viene contato, non giudicato", () => {
   assert.equal(ordinati[0].id, 3, "il più dimenticato non è primo");
   assert.equal(ordinati[ordinati.length - 1].id, 1, "quello che usi sempre non è ultimo");
 });
+
+test("su una foto scontornata il colore si misura su tutto il capo", () => {
+  // Qui sta il valore vero dello scontorno, e non è l'estetica.
+  //
+  // Senza, si guarda il riquadro centrale e si spera che dentro ci sia il
+  // capo: su una gonna a ruota il centro è il buco, su una cintura è la
+  // fibbia. Con il fondo tolto, i pixel che restano SONO il capo — tutti, e
+  // solo quelli. Si smette di sperare e si misura.
+  const lato = 20;
+  const pixel = new Uint8ClampedArray(lato * lato * 4);
+  for (let y = 0; y < lato; y++) {
+    for (let x = 0; x < lato; x++) {
+      // Una ciambella: capo rosso sui bordi, buco trasparente al centro.
+      // Il buco deve coprire tutto il riquadro centrale — per un lato di 20
+      // è [6,14) — altrimenti la prova misura i bordi del riquadro e dà la
+      // colpa al codice. È la seconda volta che ci casco.
+      const nelBuco = x >= 6 && x < 14 && y >= 6 && y < 14;
+      const i = (y * lato + x) * 4;
+      pixel[i] = 200; pixel[i + 1] = 30; pixel[i + 2] = 40;
+      pixel[i + 3] = nelBuco ? 0 : 255;
+    }
+  }
+  // Guardando solo il centro non si trova niente: il centro è il buco.
+  assert.equal(coloreDominante(pixel, lato), null);
+  // Guardando tutto quello che è rimasto opaco, si trova il rosso.
+  assert.equal(coloreDominante(pixel, lato, { scontornato: true }), "#c81e28");
+});
+
+test("una foto scontornata male non inventa un colore", () => {
+  // Se il modello toglie tutto, non restano pixel: meglio nessun colore che
+  // il colore del niente.
+  const lato = 10;
+  const pixel = new Uint8ClampedArray(lato * lato * 4); // tutto trasparente
+  assert.equal(coloreDominante(pixel, lato, { scontornato: true }), null);
+});
