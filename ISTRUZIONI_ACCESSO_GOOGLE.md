@@ -24,27 +24,46 @@ Tienilo da parte.
 
 ## 2. Le credenziali, da Google Cloud
 
+> Google ha rifatto questa parte del pannello nel 2026: non si chiama più
+> «Schermata consenso OAuth» ma **Google Auth Platform**, e la procedura è
+> una sola invece di due. Quello che segue è la versione nuova, verificata
+> il 22 settembre 2026.
+
 1. Vai su **console.cloud.google.com** ed entra con l'account Google che vuoi
    usare come proprietario.
-2. In alto, crea un progetto nuovo (per esempio `Dress`) o scegline uno esistente.
-3. Menù → **API e servizi** → **Schermata consenso OAuth**.
-   - Tipo di utente: **Esterno**.
-   - Nome dell'app: `Dress`. Email di assistenza e di contatto: la tua.
-   - Salva e continua fino in fondo. Gli **ambiti** lasciali come sono: servono
-     solo `email` e `profile`, che ci sono già.
-   - Finché l'app è in **Test**, possono entrare solo gli indirizzi che aggiungi
-     a mano in «Utenti di test». Per aprirla a tutti, premi **Pubblica app**.
-4. Menù → **API e servizi** → **Credenziali** → **Crea credenziali** →
-   **ID client OAuth**.
-   - Tipo di applicazione: **Applicazione web**.
-   - Nome: `Dress web`.
-   - **URI di reindirizzamento autorizzati** → Aggiungi URI → incolla il
-     Callback URL di Supabase copiato al punto 1.
-   - Crea. Google mostra **ID client** e **Client secret**: copiali.
+2. In alto, accanto al logo, scegli il progetto (o creane uno, per esempio
+   `DressApp`).
+3. Apri **https://console.cloud.google.com/auth/overview**.
+   - Se dice **«Google Auth Platform non ancora configurata»**, premi
+     **Inizia** e compila:
+     - *Nome dell'app*: `Dress`, *Email di assistenza*: la tua
+     - **Pubblico: Esterno**. Con *Interno* entrano solo gli indirizzi della
+       tua organizzazione, cioè quasi nessuno — ed è l'errore che costa mezza
+       giornata a capire, perché non dà nessun messaggio: semplicemente non
+       entra nessuno.
+     - *Informazioni di contatto*: il tuo indirizzo
+     - Accetti e premi **Crea**
+4. Nella colonna di sinistra, **Client** → **Crea client**.
+   - Tipo di applicazione: **Applicazione web**
+   - Nome: `Dress web`
+   - **URI di reindirizzamento autorizzati** → aggiungi il Callback URL del
+     punto 1
+   - Crea. Google mostra **ID client** e **Client secret**: copiali subito,
+     il secret potrebbe non essere più mostrato.
 
 > Il redirect da autorizzare in Google è **solo** quello di Supabase. Gli
-> indirizzi di Dress (`localhost` e il sito su Vercel) non vanno qui: li
-> gestisce Supabase al punto 4.
+> indirizzi di Dress non vanno qui: li gestisce Supabase al punto 4.
+
+**Come verificare senza aprire un browser**, che è il modo per sapere se il
+punto 4 è andato a buon fine prima di scoprirlo dagli utenti:
+
+```
+https://accounts.google.com/o/oauth2/v2/auth?client_id=<ID>&redirect_uri=<callback>&response_type=code&scope=email
+```
+
+Se risponde portando alla schermata di accesso, l'indirizzo è registrato. Se
+risponde `redirect_uri_mismatch`, no. Provalo anche con un indirizzo finto:
+deve essere rifiutato, altrimenti stai leggendo male la risposta.
 
 ## 3. Incollarle in Supabase
 
