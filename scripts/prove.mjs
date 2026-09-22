@@ -30,7 +30,7 @@ import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
 import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
 import { consiglioMeteo, periodoDaGradi } from "@/lib/meteo";
-import { coloreDominante, daQuantoNonLoMetti, dimenticatiPrima, normalizzaCapo } from "@/lib/armadio";
+import { coloreDominante, completoDallArmadio, daQuantoNonLoMetti, dimenticatiPrima, normalizzaCapo } from "@/lib/armadio";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
 import { analizzaColori, correggiLuce, daiPixelGrezzi, misuraDaiPixel, sembraPelle } from "@/lib/analisiFoto";
@@ -2577,4 +2577,116 @@ test("una foto scontornata male non inventa un colore", () => {
   const lato = 10;
   const pixel = new Uint8ClampedArray(lato * lato * 4); // tutto trasparente
   assert.equal(coloreDominante(pixel, lato, { scontornato: true }), null);
+});
+
+// --------------------------------------------------------------------------
+// Il completo costruito con le cose che hai già.
+//
+// Non è la prova virtuale: nessuno vede sé stesso con addosso la giacca. È
+// la domanda che uno si fa davanti all'armadio la mattina — «questi tre
+// stanno insieme?» — a cui si può rispondere gratis, con le foto vere dei
+// propri capi, senza generare niente.
+//
+// Il vincolo che conta: i capi si scelgono dentro la palette. Un armadio
+// pieno di cose non ti dice cosa metterti; un armadio filtrato sui tuoi
+// colori sì.
+// --------------------------------------------------------------------------
+const PALETTE = [
+  { hex: "#1b1b1b" },   // nero
+  { hex: "#f2efe9" },   // bianco caldo
+  { hex: "#2f4f6f" },   // blu ottanio
+];
+
+function capo(id, ruolo, hex, extra = {}) {
+  const lab = hexALab(hex);
+  return { id, ruolo, titolo: `capo ${id}`, colore_hex: hex, colore_l: lab.L, colore_a: lab.a, colore_b: lab.b, ...extra };
+}
+
+test("il completo prende un capo per ruolo, e nessuno due volte", () => {
+  const armadio = [
+    capo(1, "top", "#f2efe9"), capo(2, "top", "#1b1b1b"),
+    capo(3, "bottom", "#2f4f6f"), capo(4, "scarpe", "#1b1b1b"),
+  ];
+  const c = completoDallArmadio(armadio, PALETTE);
+  const ruoli = c.capi.map((x) => x.ruolo);
+  assert.deepEqual([...new Set(ruoli)].sort(), ruoli.sort(), "ha messo due capi nello stesso ruolo");
+  assert.ok(c.capi.some((x) => x.ruolo === "top"), "manca il sopra");
+  assert.ok(c.capi.some((x) => x.ruolo === "bottom"), "manca il sotto");
+});
+
+test("fra due capi dello stesso ruolo vince quello nei tuoi colori", () => {
+  const armadio = [
+    capo(1, "top", "#8fbf4f"),   // verde acido: fuori palette
+    capo(2, "top", "#f2efe9"),   // bianco caldo: in palette
+    capo(3, "bottom", "#2f4f6f"),
+  ];
+  const c = completoDallArmadio(armadio, PALETTE);
+  assert.equal(c.capi.find((x) => x.ruolo === "top").id, 2, "ha scelto il capo fuori palette");
+});
+
+test("un armadio senza niente in palette non inventa un completo", () => {
+  // Meglio dire «non ho abbastanza roba tua» che mettere insieme tre cose
+  // a caso e chiamarlo consiglio.
+  const armadio = [capo(1, "top", "#8fbf4f"), capo(2, "top", "#c04fd0")];
+  assert.equal(completoDallArmadio(armadio, PALETTE), null);
+});
+
+test("senza sopra o senza sotto non c'è completo", () => {
+  const soloTop = [capo(1, "top", "#1b1b1b"), capo(2, "scarpe", "#1b1b1b")];
+  assert.equal(completoDallArmadio(soloTop, PALETTE), null, "un completo senza pantaloni non è un completo");
+});
+
+test("d'estate il capospalla resta nell'armadio", () => {
+  const armadio = [
+    capo(1, "capospalla", "#1b1b1b"), capo(2, "top", "#f2efe9"),
+    capo(3, "bottom", "#2f4f6f"), capo(4, "scarpe", "#1b1b1b"),
+  ];
+  const estate = completoDallArmadio(armadio, PALETTE, { periodo: "estate" });
+  assert.ok(!estate.capi.some((x) => x.ruolo === "capospalla"), "d'estate ha messo il cappotto");
+  const inverno = completoDallArmadio(armadio, PALETTE, { periodo: "inverno" });
+  assert.ok(inverno.capi.some((x) => x.ruolo === "capospalla"), "d'inverno ha lasciato fuori il capospalla");
+});
+
+test("a parità di colore viene avanti quello che non metti mai", () => {
+  // Un armadio che propone sempre le stesse tre cose è un armadio inutile:
+  // quelle tre le trovi da solo.
+  const ora = Date.now(), g = 86400000;
+  const armadio = [
+    capo(1, "top", "#1b1b1b", { volte: 30, ultima: new Date(ora - g).toISOString() }),
+    capo(2, "top", "#1b1b1b", { volte: 0, creato: new Date(ora - 300 * g).toISOString() }),
+    capo(3, "bottom", "#2f4f6f"),
+  ];
+  assert.equal(completoDallArmadio(armadio, PALETTE).capi.find((x) => x.ruolo === "top").id, 2);
+});
+
+test("senza palette non si sceglie a caso", () => {
+  const armadio = [capo(1, "top", "#1b1b1b"), capo(2, "bottom", "#2f4f6f")];
+  assert.equal(completoDallArmadio(armadio, []), null);
+  assert.equal(completoDallArmadio(null, PALETTE), null);
+});
+
+test("«un altro completo» ne dà davvero un altro", () => {
+  // Un tasto che promette varietà e restituisce sempre la stessa cosa è una
+  // bugia piccola, ma è quella che fa smettere di premerlo.
+  const armadio = [
+    capo(1, "top", "#1b1b1b"), capo(2, "top", "#f2efe9"),
+    capo(3, "bottom", "#2f4f6f"), capo(4, "bottom", "#1b1b1b"),
+  ];
+  const primo = completoDallArmadio(armadio, PALETTE);
+  const secondo = completoDallArmadio(armadio, PALETTE, { evita: primo.capi.map((c) => c.id) });
+  assert.notDeepEqual(
+    secondo.capi.map((c) => c.id).sort(),
+    primo.capi.map((c) => c.id).sort(),
+    "ha riproposto lo stesso completo",
+  );
+});
+
+test("quando le alternative finiscono si ricomincia, invece di non dare niente", () => {
+  // Con un solo sopra e un solo sotto, «un altro» non può che essere quello:
+  // meglio rimostrarlo che rispondere «non ho niente» a un armadio che ha
+  // appena prodotto un completo.
+  const armadio = [capo(1, "top", "#1b1b1b"), capo(2, "bottom", "#2f4f6f")];
+  const primo = completoDallArmadio(armadio, PALETTE);
+  const secondo = completoDallArmadio(armadio, PALETTE, { evita: [1, 2] });
+  assert.deepEqual(secondo.capi.map((c) => c.id), primo.capi.map((c) => c.id));
 });

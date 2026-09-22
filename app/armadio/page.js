@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch, getUser } from "@/lib/session";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import { coloreDominante, daQuantoNonLoMetti, dimenticatiPrima, RUOLI_ARMADIO } from "@/lib/armadio";
+import { coloreDominante, completoDallArmadio, daQuantoNonLoMetti, dimenticatiPrima, RUOLI_ARMADIO } from "@/lib/armadio";
+import { periodoCorrente } from "@/lib/periodiAnno";
 import { fileToDataUrl } from "@/lib/img";
 
 // Il tuo armadio.
@@ -28,6 +29,10 @@ export default function Armadio() {
   const [trovati, setTrovati] = useState(null); // null = non ho ancora cercato
   const [cercando, setCercando] = useState(false);
   const [staScontornando, setStaScontornando] = useState(false);
+  // I capi scelti per il completo, e gli indirizzi firmati delle foto private.
+  const [completo, setCompleto] = useState(null);
+  const [palette, setPalette] = useState([]);
+  const [indirizzi, setIndirizzi] = useState({});
   const campo = useRef(null);
 
   useEffect(() => {
@@ -35,8 +40,20 @@ export default function Armadio() {
       const u = await getUser().catch(() => null);
       setChi(u || null);
       if (!u) return;
+      // La palette viene dall'analisi dei colori, che sta già nel telefono.
+      // Senza, il completo non si può fare: sceglierebbe a caso.
+      try {
+        const s = JSON.parse(localStorage.getItem("dress:session") || "null");
+        if (s?.result?.palette?.length) setPalette(s.result.palette);
+      } catch {
+        /* nessuna analisi fatta */
+      }
+
       const risposta = await apiFetch("/api/armadio").catch(() => null);
-      if (risposta?.ok) setCapi(risposta.capi);
+      if (risposta?.ok) {
+        setCapi(risposta.capi);
+        firmaLeFoto(risposta.capi).then(setIndirizzi);
+      }
     })();
   }, []);
 
@@ -211,6 +228,26 @@ export default function Armadio() {
     }
   }
 
+  function fammiUnCompleto() {
+    setProblema("");
+    // Quelli appena visti si evitano, così «un altro completo» ne dà davvero
+    // un altro finché ce ne sono.
+    const scelto = completoDallArmadio(capi, palette, {
+      periodo: periodoCorrente(),
+      evita: completo ? completo.capi.map((c) => c.id) : [],
+    });
+    if (!scelto) {
+      setProblema(
+        palette.length
+          ? "Non ho abbastanza roba tua nei tuoi colori per fare un completo. Servono almeno un sopra e un sotto."
+          : "Prima serve l'analisi dei colori: senza, sceglierei a caso.",
+      );
+      setCompleto(null);
+      return;
+    }
+    setCompleto(scelto);
+  }
+
   async function butta(id) {
     setCapi((elenco) => elenco.filter((c) => c.id !== id));
     await apiFetch(`/api/armadio?id=${id}`, { method: "DELETE" });
@@ -375,6 +412,36 @@ export default function Armadio() {
 
       {problema ? <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{problema}</p> : null}
 
+      {capi.length >= 2 ? (
+        <div style={{ marginTop: 26 }}>
+          <button type="button" className="btn-app" style={{ width: "100%" }} onClick={fammiUnCompleto}>
+            {completo ? "Un altro completo" : "Fammi un completo con le mie cose"}
+          </button>
+
+          {completo ? (
+            <div style={{ marginTop: 14, padding: 14, border: "1px solid #e8e8e8" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                {completo.capi.map((c) => (
+                  <div key={c.id} style={{ textAlign: "center", width: 88 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {indirizzi[c.id] ? (
+                      <img src={indirizzi[c.id]} alt="" style={{ width: 88, height: 110, objectFit: "contain" }} />
+                    ) : (
+                      <span style={{ display: "block", width: 88, height: 110, background: c.colore_hex || "#eee", border: "1px solid #ddd" }} />
+                    )}
+                    <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{c.titolo}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+                Scelti fra le tue cose, dentro i tuoi colori. Non è una prova virtuale: sono le tue
+                foto vere, non una ricostruzione di come potrebbero starti.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {capi.length ? (
         <>
           <p className="muted" style={{ fontSize: 13, marginTop: 28 }}>
@@ -527,4 +594,37 @@ async function togliIlFondo(file) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Gli indirizzi per vedere le foto, compresi quelli privati.
+ *
+ * I capi presi dal catalogo hanno la foto del negozio, che è pubblica. Quelli
+ * fotografati stanno in un secchio chiuso, e per vederli serve un indirizzo
+ * firmato che scade: è il prezzo di avere le foto dei vestiti di casa in un
+ * posto dove non entra chi passa.
+ *
+ * Un'ora di validità. Se la firma non riesce, quel capo si mostra col suo
+ * quadratino di colore: meno bello, ma la pagina non si rompe per una foto.
+ */
+async function firmaLeFoto(capi) {
+  const indirizzi = {};
+  for (const c of capi || []) {
+    if (c.foto && c.foto.startsWith("http")) indirizzi[c.id] = c.foto;
+  }
+
+  const privati = (capi || []).filter((c) => c.foto && !c.foto.startsWith("http"));
+  if (!privati.length) return indirizzi;
+
+  try {
+    const sb = getSupabaseBrowser();
+    if (!sb) return indirizzi;
+    const { data } = await sb.storage.from("armadio").createSignedUrls(privati.map((c) => c.foto), 3600);
+    (data || []).forEach((firmato, i) => {
+      if (firmato?.signedUrl) indirizzi[privati[i].id] = firmato.signedUrl;
+    });
+  } catch {
+    /* si resta coi quadratini di colore */
+  }
+  return indirizzi;
 }
