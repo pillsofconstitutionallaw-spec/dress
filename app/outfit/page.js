@@ -34,6 +34,10 @@ export default function Outfit() {
   // cosa c'è in questo browser, quindi se decidesse lui la prima pittura e
   // la seconda non combacerebbero. Si decide qui, al primo giro.
   const [campoAParole, setCampoAParole] = useState(false);
+  // Il tempo che fa qui, se lo chiedi: gradi, consiglio, e il periodo scelto
+  // dal termometro invece che dal calendario.
+  const [meteo, setMeteo] = useState(null);
+  const [chiedoIlMeteo, setChiedoIlMeteo] = useState(false);
 
   useEffect(() => {
     try {
@@ -129,6 +133,46 @@ export default function Outfit() {
   // comandi che stanno già in pagina: lo stile, il periodo, il budget. Così
   // chi ha scritto vede dove è finita la sua richiesta e può correggerla a
   // mano, invece di trovarsi dei capi e non sapere perché.
+  /**
+   * Il periodo dal termometro, non dal calendario.
+   *
+   * La posizione non si chiede all'apertura della pagina: si chiede se uno
+   * preme. È la stessa regola dei negozi vicini — una finestra che domanda
+   * «dove sei?» appena si apre una schermata è il modo più veloce di ricevere
+   * un no, e qui il tempo è un miglioramento, non una condizione per usare
+   * l'app.
+   */
+  function guardaCheTempoFa() {
+    if (!navigator.geolocation || chiedoIlMeteo) return;
+    setChiedoIlMeteo(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const q = new URLSearchParams({ lat: String(pos.coords.latitude), lon: String(pos.coords.longitude) });
+          const r = await fetch(`/api/meteo?${q}`);
+          const d = await r.json();
+          if (d.ok) {
+            setMeteo(d);
+            // Il periodo si sposta da solo, ma resta cambiabile a mano: se
+            // uno sta preparando la valigia per un altro posto, il termometro
+            // di casa sua non c'entra niente.
+            if (d.periodo) setPeriodo(d.periodo);
+          } else {
+            setMeteo({ errore: d.error });
+          }
+        } catch {
+          setMeteo({ errore: "Non so che tempo fa dalle tue parti in questo momento." });
+        }
+        setChiedoIlMeteo(false);
+      },
+      () => {
+        setMeteo({ errore: "Senza sapere dove sei non posso guardare il tempo. Scegli il periodo a mano." });
+        setChiedoIlMeteo(false);
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
+    );
+  }
+
   async function chiedi(e) {
     e?.preventDefault?.();
     const testo = frase.trim();
@@ -268,6 +312,36 @@ export default function Outfit() {
           </button>
         ))}
       </div>
+
+      {/* Il tempo che fa, se lo vuoi. Sotto ai periodi perché è quello che li
+          sceglie: prima si vede cosa c'è, poi da cosa dipende. */}
+      {meteo?.consiglio ? (
+        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+          {meteo.consiglio}{" "}
+          {/* La licenza CC BY 4.0 chiede il nome e un collegamento, non solo
+              il nome: è il prezzo di previsioni gratuite in tutto il mondo. */}
+          <a
+            href="https://api.met.no/doc/License"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ opacity: 0.7 }}
+          >
+            Previsioni MET Norway
+          </a>
+        </p>
+      ) : meteo?.errore ? (
+        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>{meteo.errore}</p>
+      ) : (
+        <button
+          type="button"
+          onClick={guardaCheTempoFa}
+          disabled={chiedoIlMeteo}
+          className="muted"
+          style={{ background: "none", border: "none", padding: "10px 0 0", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}
+        >
+          {chiedoIlMeteo ? "Guardo…" : "Scegli in base al tempo che fa qui"}
+        </button>
+      )}
 
       {attuale ? (
         <>

@@ -29,6 +29,7 @@ import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
 import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
+import { consiglioMeteo, periodoDaGradi } from "@/lib/meteo";
 import { coloreDominante, normalizzaCapo } from "@/lib/armadio";
 import { catena } from "@/lib/ai/index";
 import { demo } from "@/lib/ai/demo";
@@ -2434,4 +2435,57 @@ test("un indirizzo di foto troppo lungo si butta, non si accorcia", () => {
   assert.equal(normalizzaCapo({ titolo: "Camicia", foto: "https://negozio.it/a.jpg" }).foto, "https://negozio.it/a.jpg");
   // E un percorso dentro il secchio, che è corto e non è un indirizzo.
   assert.equal(normalizzaCapo({ titolo: "Camicia", foto: "abc-123/1758.jpg" }).foto, "abc-123/1758.jpg");
+});
+
+// --------------------------------------------------------------------------
+// Il tempo che fa davvero, al posto del calendario.
+//
+// Finora l'app diceva «autunno» e proponeva un cappotto. Ma a Napoli il 15
+// novembre ci sono venti gradi o nove, e non è lo stesso cappotto. Il
+// calendario è un'approssimazione grossolana di quello che una persona
+// sente uscendo di casa, e la temperatura vera è gratis.
+// --------------------------------------------------------------------------
+test("il periodo si sceglie dai gradi, non dal mese", () => {
+  assert.equal(periodoDaGradi(2), "inverno");
+  assert.equal(periodoDaGradi(11), "autunno");
+  assert.equal(periodoDaGradi(18), "primavera");
+  assert.equal(periodoDaGradi(29), "estate");
+});
+
+test("venti gradi a novembre non sono autunno", () => {
+  // Il caso che ha fatto nascere questa funzione. Il calendario direbbe
+  // autunno e uscirebbe un cappotto; fuori si sta in camicia.
+  assert.equal(periodoDaGradi(21), "primavera");
+  // E otto gradi ad aprile non sono primavera: sono da capospalla.
+  assert.equal(periodoDaGradi(8), "autunno");
+});
+
+test("senza una temperatura non si inventa un periodo", () => {
+  // Meglio lasciare decidere al calendario che a un numero che non c'è.
+  for (const niente of [null, undefined, "caldo", NaN, {}]) {
+    assert.equal(periodoDaGradi(niente), null, `ha deciso con: ${JSON.stringify(niente)}`);
+  }
+});
+
+test("le temperature assurde si rifiutano, non si arrotondano", () => {
+  // Un guasto del servizio non deve diventare un consiglio di abbigliamento.
+  assert.equal(periodoDaGradi(-90), null);
+  assert.equal(periodoDaGradi(200), null);
+});
+
+test("il consiglio dice la cosa che cambia cosa ti metti", () => {
+  const pioggia = consiglioMeteo({ gradi: 12, probabilitaPioggia: 80 });
+  assert.match(pioggia, /piov|pioggia/i, `non ha nominato la pioggia: ${pioggia}`);
+
+  const freddo = consiglioMeteo({ gradi: 1, probabilitaPioggia: 0 });
+  assert.match(freddo, /1°/, `non ha detto quanti gradi fa: ${freddo}`);
+
+  // E quando non c'è niente da segnalare, non si inventa un allarme.
+  const normale = consiglioMeteo({ gradi: 19, probabilitaPioggia: 5 });
+  assert.doesNotMatch(normale, /piov|pioggia/i, `ha parlato di pioggia col sole: ${normale}`);
+});
+
+test("senza dati il consiglio tace invece di indovinare", () => {
+  assert.equal(consiglioMeteo({}), null);
+  assert.equal(consiglioMeteo(null), null);
 });
