@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { taglieDa } from "@/lib/taglie";
 import PrimaLAnalisi from "@/components/PrimaLAnalisi";
 import OutfitPeriodo from "@/components/OutfitPeriodo";
 import { periodoCorrente } from "@/lib/periodiAnno";
@@ -19,6 +20,7 @@ export default function Outfit() {
   const [budget, setBudget] = useState("");
   const [forma, setForma] = useState("");
   const [altezza, setAltezza] = useState("");
+  const [taglie, setTaglie] = useState({});
   const [completi, setCompleti] = useState([]);
   const [periodo, setPeriodo] = useState(periodoCorrente());
   const [caricamento, setCaricamento] = useState(true);
@@ -50,6 +52,7 @@ export default function Outfit() {
       if (s?.budget) setBudget(s.budget);
       if (s?.profile?.forma) setForma(s.profile.forma);
       if (s?.profile?.height) setAltezza(s.profile.height);
+      setTaglie(taglieDa(s?.profile));
       const sesso = s?.profile?.sex;
       if (sesso === "female") setGenere("donna");
       else if (sesso === "male") setGenere("uomo");
@@ -64,7 +67,7 @@ export default function Outfit() {
       return;
     }
     let vivo = true;
-    const chiave = `dress:completi:${stile}|${genere}|${forma}|${altezza}|${budget}|${palette.map((c) => c.hex).join("")}`;
+    const chiave = `dress:completi:${stile}|${genere}|${forma}|${altezza}|${budget}|${Object.values(taglie).join(",")}|${palette.map((c) => c.hex).join("")}`;
 
     // Se questi completi li abbiamo già calcolati, si mostrano subito e si
     // aggiornano dietro. Ricalcolarli da capo ogni volta che si torna sulla
@@ -90,6 +93,7 @@ export default function Outfit() {
         genere: genere || null,
         forma: forma || null,
         altezza: altezza || null,
+        taglie,
         max: budget ? Math.round(Number(String(budget).replace(/\D/g, "")) * 1.6) : null,
         escludiFast: true,
       }),
@@ -114,7 +118,7 @@ export default function Outfit() {
     return () => {
       vivo = false;
     };
-  }, [palette, stile, genere, budget, forma, altezza, tentativo]);
+  }, [palette, stile, genere, budget, forma, altezza, taglie, tentativo]);
 
   // Il campo si mostra se l'ultima volta qualcuno ha saputo leggere — o se
   // non si è mai provato. Se nessuno rispondeva, resta via per un giorno e

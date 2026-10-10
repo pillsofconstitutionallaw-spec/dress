@@ -4,6 +4,7 @@ import { paletteAggiornata } from "@/lib/stagioni";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { taglieDa } from "@/lib/taglie";
 import { NEGOZI, fasciaDaBudget, negoziPerGenere, urlNeiNegozi, urlShopping } from "@/lib/ricerca";
 import CapiTrovati from "@/components/CapiTrovati";
 import { soloCifre } from "@/lib/numeri";
@@ -12,6 +13,10 @@ export default function Cerca() {
   const [capo, setCapo] = useState("");
   const [colore, setColore] = useState("");
   const [taglia, setTaglia] = useState("");
+  // Le taglie del profilo: tolgono dai risultati i capi che nella tua
+  // taglia non esistono. Diverse dalla «taglia» qui sopra, che è una parola
+  // da aggiungere alla ricerca fuori dal catalogo.
+  const [taglie, setTaglie] = useState({});
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
   const [escludiFast, setEscludiFast] = useState(true);
@@ -51,6 +56,7 @@ export default function Cerca() {
       if (s?.result?.palette?.length) setPalette(paletteAggiornata(s.result));
       if (s?.result?.stili?.length) setStiliDisponibili(s.result.stili.map((x) => x.nome));
       if (s?.result?.stileScelto) setStile(s.result.stileScelto);
+      setTaglie(taglieDa(s?.profile));
       const sesso = s?.profile?.sex;
       if (sesso === "female") setGenere("donna");
       else if (sesso === "male") setGenere("uomo");
@@ -87,6 +93,7 @@ export default function Cerca() {
             capo: capo.trim() || null,
             colore: colore || null,
             escludiFast, quanti: 48,
+            taglie,
           }),
         });
         const dati = await res.json().catch(() => null);
@@ -109,7 +116,7 @@ export default function Cerca() {
       vivo = false;
       clearTimeout(quando);
     };
-  }, [palette, min, max, genere, stile, capo, colore, escludiFast, tentativo]);
+  }, [palette, min, max, genere, stile, capo, colore, escludiFast, tentativo, taglie]);
 
   // Anche la ricerca fuori tiene conto di chi sei: prima il tasto diceva
   // "cerca nei 48 negozi scelti" e ce li infilava tutti, Kocca e Pinko

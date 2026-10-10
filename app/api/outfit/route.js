@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { esisteNellaTuaTaglia, taglieDa } from "@/lib/taglie";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { differenza, hexALab } from "@/lib/colore";
@@ -22,6 +23,7 @@ export async function POST(req) {
   if (badJson) return badJson;
 
   const { palette, stile = null, genere = null, max = null, escludiFast = false, forma = null, altezza = null } = body || {};
+  const tue = taglieDa(body?.taglie);
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
@@ -118,6 +120,9 @@ export async function POST(req) {
   // escono sono gli stessi quattro. Il doppio del tempo per niente.
   const tutto = await pesca(null);
   if (tutto.error) return NextResponse.json({ error: tutto.error.message }, { status: 500 });
+  // Un completo con una giacca che nella tua taglia non esiste non è un
+  // completo che puoi mettere: si tolgono prima di comporli.
+  tutto.data = (tutto.data || []).filter((c) => esisteNellaTuaTaglia(c, tue));
 
   const suoi = stile ? capiDelloStile(tutto.data, stile) : null;
   const conStile = { data: suoi?.length ? suoi : null };

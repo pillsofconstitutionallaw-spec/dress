@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { taglieDa } from "@/lib/taglie";
 import PrimaLAnalisi from "@/components/PrimaLAnalisi";
 import { paletteAggiornata } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
@@ -79,6 +80,7 @@ export default function TuoStile() {
         genere: profilo?.sex === "female" ? "donna" : profilo?.sex === "male" ? "uomo" : null,
         escludiFast: true,
         perStile: 3,
+        taglie: taglieDa(profilo),
         // Dentro quello che hai detto di poter spendere: sotto, perché
         // nessuno spende esattamente la cifra pensata, e un po' sopra.
         ...(budget ? fasciaDaBudget(budget) : {}),
@@ -90,7 +92,7 @@ export default function TuoStile() {
     return () => {
       vivo = false;
     };
-  }, [analisi?.palette, analisi?.stili, profilo?.sex, budget]);
+  }, [analisi?.palette, analisi?.stili, profilo?.sex, profilo?.tagliaSopra, profilo?.tagliaSotto, profilo?.tagliaScarpe, budget]);
 
   const scegliStile = useCallback(
     (nome) => {

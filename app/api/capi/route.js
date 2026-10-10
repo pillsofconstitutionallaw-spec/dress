@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { arricchisci, coloriVoluti, comeLoHaiChiamato, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
+import { esisteNellaTuaTaglia, taglieDa } from "@/lib/taglie";
 import { paroleDelloStile } from "@/lib/stiliCapi";
 import { paroleEspanse } from "@/lib/sinonimi";
 
@@ -20,6 +21,7 @@ export async function POST(req) {
   if (badJson) return badJson;
 
   const { palette, min, max, genere, stile = null, capo = null, colore = null, escludiFast = false, quanti = 48 } = body || {};
+  const tue = taglieDa(body?.taglie);
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
@@ -152,7 +154,11 @@ export async function POST(req) {
 
   // Per ultimo chi sta guardando: via i capi da bambino e quelli del genere
   // sbagliato, e i capi senza genere scritto in fondo invece che in mezzo.
-  const scelti = perChiCerca(ordinati, genere).slice(0, quantiNeVoglio);
+  // E via quelli che nella tua taglia non esistono — solo quando è sicuro:
+  // vedi lib/taglie.js.
+  const scelti = perChiCerca(ordinati, genere)
+    .filter((c) => esisteNellaTuaTaglia(c, tue))
+    .slice(0, quantiNeVoglio);
 
   return NextResponse.json({ ok: true, capi: scelti, quanti: scelti.length });
 }

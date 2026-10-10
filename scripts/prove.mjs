@@ -28,7 +28,8 @@ import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
-import { senzaDatiInutili, taglieInBreve } from "@/lib/taglie";
+import { conScadenza, ordinaPerRiposo } from "@/lib/ai/index";
+import { esisteNellaTuaTaglia, senzaDatiInutili, taglieDa, taglieInBreve } from "@/lib/taglie";
 import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
 import { consiglioMeteo, periodoDaGradi } from "@/lib/meteo";
 import { coloreDominante, completoDallArmadio, daQuantoNonLoMetti, dimenticatiPrima, normalizzaCapo } from "@/lib/armadio";
@@ -2879,4 +2880,62 @@ test("il peso dei profili vecchi non sopravvive alla rilettura", () => {
 test("le taglie si leggono in una riga, solo quelle date", () => {
   assert.equal(taglieInBreve({ tagliaSopra: "M", tagliaScarpe: "39" }), "Sopra M · Scarpe 39");
   assert.equal(taglieInBreve({}), "");
+});
+
+test("un capo a lettere senza la tua taglia si nasconde", () => {
+  const io = { tagliaSopra: "M" };
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Camicia di lino", taglie: ["XS", "S"] }, io), false);
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Camicia di lino", taglie: ["S", "M", "L"] }, io), true);
+});
+
+test("le taglie scritte strane si riconoscono lo stesso", () => {
+  // «Adult | M» è di un negozio, «2XL» di un altro: sono M e XXL.
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Felpa", taglie: ["Adult | S", "Adult | M"] }, { tagliaSopra: "M" }), true);
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Felpa", taglie: ["L", "XL", "2XL"] }, { tagliaSopra: "XXL" }), true);
+});
+
+test("nel dubbio il capo resta", () => {
+  const io = { tagliaSopra: "M", tagliaSotto: "S", tagliaScarpe: "38" };
+  // Numeri che possono essere italiani o americani: non si giudica.
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Camicia", taglie: ["0", "2", "4", "6"] }, io), true);
+  // Taglia unica, nessuna taglia, scala mista.
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Maglione", taglie: ["UNICA"] }, io), true);
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Maglione", taglie: [] }, io), true);
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Maglione", taglie: ["42", "44", "M"] }, io), true);
+  // Chi non ha detto la sua taglia vede tutto.
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Camicia", taglie: ["XS"] }, {}), true);
+});
+
+test("ogni capo si confronta con la taglia giusta", () => {
+  const io = { tagliaSopra: "XL", tagliaSotto: "S", tagliaScarpe: "38" };
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Jeans dritti", taglie: ["S", "M"] }, io), true, "i jeans vanno con la taglia di sotto");
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Sneakers in pelle", taglie: ["40", "41", "42"] }, io), false);
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Sneakers in pelle", taglie: ["37", "38", "38.5"] }, io), true);
+  // Una borsa non ha la tua taglia, e non si nasconde mai.
+  assert.equal(esisteNellaTuaTaglia({ titolo: "Borsa a spalla", taglie: ["XS"] }, io), true);
+});
+
+test("dalla pagina passano solo taglie vere", () => {
+  assert.deepEqual(taglieDa({ tagliaSopra: "m", tagliaSotto: "<script>", tagliaScarpe: 39 }), { tagliaSopra: "M", tagliaScarpe: "39" });
+  assert.deepEqual(taglieDa(null), {});
+});
+
+// --------------------------------------------------------------------------
+// La fila dell'AI e il tempo.
+//
+// Vercel chiude la funzione dopo trenta secondi. Un fornitore lento in
+// testa alla fila faceva chiudere la funzione prima di chiedere al secondo.
+// --------------------------------------------------------------------------
+test("chi ha finito la quota va in fondo alla fila, non fuori", () => {
+  const fila = [{ name: "gemini" }, { name: "mistral" }, { name: "groq" }];
+  const riposi = new Map([["gemini", 2000]]);
+  assert.deepEqual(ordinaPerRiposo(fila, riposi, 1000).map((p) => p.name), ["mistral", "groq", "gemini"]);
+  // Passato il riposo torna al suo posto.
+  assert.deepEqual(ordinaPerRiposo(fila, riposi, 3000).map((p) => p.name), ["gemini", "mistral", "groq"]);
+});
+
+test("un fornitore lento non si aspetta oltre il tempo che resta", async () => {
+  const lento = new Promise((si) => setTimeout(() => si("tardi"), 500));
+  await assert.rejects(conScadenza(lento, 30, "gemini"), /gemini: tempo finito/);
+  assert.equal(await conScadenza(Promise.resolve("ok"), 30, "groq"), "ok");
 });

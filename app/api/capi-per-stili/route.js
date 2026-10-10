@@ -3,6 +3,7 @@ import { getSupabaseAnon } from "@/lib/supabaseClient";
 import { readJson } from "@/lib/authServer";
 import { paroleDellaFamiglia, paroleDelloStile } from "@/lib/stiliCapi";
 import { arricchisci, coloriVoluti, distribuisci, perChiCerca, senzaDoppioni } from "@/lib/capiPalette";
+import { esisteNellaTuaTaglia, taglieDa } from "@/lib/taglie";
 import { ruoloDelCapo } from "@/lib/periodiAnno";
 
 export const runtime = "nodejs";
@@ -29,6 +30,7 @@ export async function POST(req) {
   if (badJson) return badJson;
 
   const { palette, stili = [], genere = null, escludiFast = false, perStile = 4, min = null, max = null } = body || {};
+  const tue = taglieDa(body?.taglie);
   if (!Array.isArray(palette) || !palette.length) {
     return NextResponse.json({ error: "SERVE_LA_PALETTE" }, { status: 400 });
   }
@@ -69,7 +71,7 @@ export async function POST(req) {
   const capi = perChiCerca(
     senzaDoppioni(
       arricchisci(data, voluti)
-        .filter((c) => ruoloDelCapo(c.titolo, c.categoria))
+        .filter((c) => ruoloDelCapo(c.titolo, c.categoria) && esisteNellaTuaTaglia(c, tue))
         .sort((a, b) => a.scarto - b.scarto),
     ),
     genere,
