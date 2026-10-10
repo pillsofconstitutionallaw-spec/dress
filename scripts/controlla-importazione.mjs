@@ -48,40 +48,34 @@ const intestazioni = {
 // scambiare quella di ieri per quella di oggi.
 const DA_QUANDO = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
 
-/**
- * Quante righe, senza portarsele dietro.
- *
- * Chiedere le righe e contarle in JavaScript qui non funziona, e la prima
- * versione di questo file ci è cascata: il database ne restituisce al massimo
- * mille per volta, qualunque limite si scriva. Usciva «1000 capi toccati, 29
- * negozi su 109» e il controllo falliva su un'importazione andata benissimo —
- * un allarme falso, che è il modo più veloce di far smettere di guardare gli
- * allarmi. I capi veri erano 88.971.
- *
- * Con «count=exact» il conto lo fa il database e torna in un'intestazione,
- * senza mandare nemmeno una riga.
- */
+// Quanti capi freschi per negozio, in una domanda sola.
 //
-// E si riprova, se il database dice che ci ha messo troppo. Questo controllo
-// gira un attimo dopo cinquanta minuti di importazione, cioè col database
-// appena spremuto: due notti su tre il primo conteggio è andato oltre il
-// limite di tempo (codice 57014) e il lavoro è risultato fallito — con
-// l'importazione riuscita e il catalogo fresco. Rifatto a mano poco dopo, lo
-// stesso conteggio ci mette 0,75 secondi. Non era un guasto, era fretta.
+// Prima erano centodieci domande — il totale, poi un negozio alla volta — e
+// ognuna rileggeva tutta la tabella, perché «aggiornato» non ha un indice (in
+// sql/controlla_importazione.sql c'è scritto perché è giusto che non ce
+// l'abbia). Col catalogo cresciuto, una lettura intera ha superato gli otto
+// secondi che il database concede, e il lavoro falliva con l'importazione
+// riuscita. Adesso il conto lo fa una funzione del database, una volta sola,
+// con due minuti di tempo.
+//
+// E si riprova lo stesso, se il server dice di no per qualcosa che passa da
+// solo: questo controllo gira col database appena spremuto da un'ora di
+// importazione.
 const RIPROVE = 4;
 const attesa = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function quanti(filtro) {
+async function capiFreschi() {
   for (let tentativo = 1; ; tentativo++) {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/prodotti?select=id&${filtro}`, {
-      headers: { ...intestazioni, Prefer: "count=exact", Range: "0-0" },
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/capi_freschi`, {
+      method: "POST",
+      headers: { ...intestazioni, "Content-Type": "application/json" },
+      body: JSON.stringify({ da: DA_QUANDO }),
     });
-    if (res.ok) return Number((res.headers.get("content-range") || "").split("/")[1] || 0);
+    if (res.ok) return res.json();
 
     const testo = (await res.text()).slice(0, 120);
-    // Solo gli errori che passano da soli si riprovano: troppo lento, o il
-    // server che non risponde un momento. Una chiave sbagliata no — quella
-    // non migliora aspettando, e va detta subito.
+    // Una chiave sbagliata, o la funzione che manca, non migliorano
+    // aspettando: vanno dette subito.
     const passeggero = res.status >= 500 || /57014|statement timeout/.test(testo);
     if (!passeggero || tentativo >= RIPROVE) throw new Error(`${res.status} ${testo}`);
     console.log(`  il database è ancora occupato (tentativo ${tentativo}), riprovo fra ${tentativo * 20} secondi`);
@@ -89,21 +83,16 @@ async function quanti(filtro) {
   }
 }
 
-const freschi = await quanti(`aggiornato=gte.${DA_QUANDO}`);
+const righe = await capiFreschi();
+const perNegozio = new Map(righe.map((r) => [r.negozio, Number(r.quanti)]));
+const freschi = righe.reduce((somma, r) => somma + Number(r.quanti), 0);
 
-// Un negozio alla volta: si chiede una riga sola per sapere se ne ha almeno
-// una fresca. Centonove domande piccole costano meno di una grande che poi
-// non si può contare.
 // Per nome distinto, non per riga dell'elenco: se un negozio ci finisce due
 // volte — è successo con Pangaia, due righe identiche — contarlo due volte
-// farebbe risultare mancante uno che invece ha risposto.
+// farebbe risultare mancante uno che invece ha risposto. E solo i negozi
+// dell'elenco: uno tolto ieri ha ancora capi freschi, ma non conta.
 const NOMI = [...new Set(NEGOZI.map((n) => n.nome))];
-
-const perNegozio = new Map();
-for (const nome of NOMI) {
-  const n = await quanti(`negozio=eq.${encodeURIComponent(nome)}&aggiornato=gte.${DA_QUANDO}`);
-  if (n > 0) perNegozio.set(nome, n);
-}
+for (const nome of perNegozio.keys()) if (!NOMI.includes(nome)) perNegozio.delete(nome);
 
 console.log(`capi toccati nelle ultime dodici ore: ${freschi}`);
 console.log(`negozi che ne hanno almeno uno:       ${perNegozio.size} su ${NOMI.length}`);
