@@ -66,7 +66,6 @@ export const NEGOZI = [
   { nome: "Terranova", host: "www.terranovastyle.com", fast: true },
   { nome: "Yamamay", host: "yamamay.com", fast: false },
   { nome: "Dolly Noire", host: "www.dollynoire.com", fast: false },
-  { nome: "Piazza Italia", host: "www.piazzaitalia.it", fast: true },
 
   // scarpe
   { nome: "Pittarello", host: "www.pittarello.com", fast: false },
@@ -91,7 +90,6 @@ export const NEGOZI = [
   { nome: "Brandy Melville", host: "brandymelville.eu", fast: false, genere: "donna" },
 
   // segnalati da te
-  { nome: "Fincut Men", host: "fincutmen-it.com", fast: false, genere: "uomo" },
   { nome: "OYD", host: "oydlife.com", fast: false },
 
   // intimo e lingerie
@@ -133,12 +131,10 @@ export const NEGOZI = [
   // nordici e contemporanei
   { nome: "Nanushka", host: "nanushka.com", fast: false },
   { nome: "Baum und Pferdgarten", host: "baumundpferdgarten.com", fast: false, genere: "donna" },
-  { nome: "Moves", host: "moves.dk", fast: false },
   { nome: "Les Deux", host: "www.lesdeux.com", fast: false, genere: "uomo" },
   { nome: "Norse Projects", host: "norseprojects.com", fast: false },
   { nome: "Percival", host: "percivalclo.com", fast: false, genere: "uomo" },
   { nome: "Oliver Cabell", host: "olivercabell.com", fast: false },
-  { nome: "Knowledge Cotton", host: "knowledgecottonapparel.com", fast: false },
   { nome: "Pangaia", host: "thepangaia.com", fast: false },
   { nome: "Everlane", host: "everlane.com", fast: false },
 
@@ -160,7 +156,6 @@ export const NEGOZI = [
   // scarpe, seconda tornata
   { nome: "Frau", host: "frau.it", fast: false },
   { nome: "Philippe Model", host: "philippemodel.com", fast: false },
-  { nome: "Womsh", host: "womsh.com", fast: false },
   { nome: "Allbirds", host: "allbirds.com", fast: false },
   { nome: "Thousand Fell", host: "thousandfell.com", fast: false },
 
@@ -193,6 +188,12 @@ export const NEGOZI = [
   { nome: "MUD Jeans", host: "mudjeans.eu", fast: false },
   { nome: "Komodo", host: "komodo.co.uk", fast: false },
   { nome: "Slam Jam", host: "slamjam.com", fast: false },
+
+  // Tolti il 10 ottobre 2026, perché da settimane non davano più niente:
+  // Piazza Italia e Fincut Men sono passati a un sito che /products.json non
+  // lo espone più, Moves ha messo il negozio dietro una password, Womsh
+  // risponde con un catalogo vuoto. E Knowledge Cotton c'era due volte, con
+  // due nomi: ogni suo capo compariva doppio nei risultati.
 ];
 
 // Quanti capi al massimo per negozio: meglio molti negozi con qualche
@@ -547,8 +548,12 @@ async function aggiungiColoriDaFoto(righe) {
 
 // ── salvataggio ──────────────────────────────────────────────────────
 
+// Restituisce quanti blocchi sono stati rifiutati: chi poi toglie i capi
+// spariti deve saperlo, perché un capo in un blocco rifiutato non è sparito
+// dal negozio — è solo rimasto indietro qui.
 async function salva(righe) {
-  if (!righe.length) return;
+  let rifiutati = 0;
+  if (!righe.length) return rifiutati;
   for (let i = 0; i < righe.length; i += 200) {
     const blocco = righe.slice(i, i + 200);
     const res = await fetch(`${SUPABASE}/rest/v1/prodotti?on_conflict=negozio,id_esterno`, {
@@ -566,8 +571,56 @@ async function salva(righe) {
       // si prosegue. Meglio un negozio importato all'ottanta per cento che
       // un'importazione che si ferma a metà elenco.
       console.log(`    blocco saltato (${res.status}): ${(await res.text()).slice(0, 120)}`);
+      rifiutati++;
     }
   }
+  return rifiutati;
+}
+
+/**
+ * Toglie i capi che il negozio non ha più, o non ha più da vendere.
+ *
+ * Un capo esaurito in catalogo è un capo che l'app propone e che non si può
+ * comprare: chi lo apre trova «sold out» e la volta dopo si fida meno. E un
+ * capo che il negozio ha tolto del tutto è peggio, perché resta segnato
+ * «disponibile» per sempre — nessuno torna a dirci il contrario. A ottobre
+ * erano sedicimila così.
+ *
+ * Funziona per differenza: l'importazione di stanotte ha toccato tutti i capi
+ * che il negozio vende adesso, quindi quelli rimasti più vecchi di
+ * «inizio» sono quelli che non vende più. Ma vale solo se il negozio è stato
+ * letto tutto: con una pagina andata storta, o un blocco rifiutato, i capi
+ * non toccati non sono spariti, sono solo rimasti indietro.
+ */
+async function togliSpariti(negozio, inizio, rimasti) {
+  const filtro = `negozio=eq.${encodeURIComponent(negozio.nome)}&aggiornato=lt.${inizio}`;
+  const intestazioni = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` };
+
+  const conta = await fetch(`${SUPABASE}/rest/v1/prodotti?select=id&${filtro}`, {
+    headers: { ...intestazioni, Prefer: "count=exact", Range: "0-0" },
+  });
+  const daTogliere = Number((conta.headers.get("content-range") || "").split("/")[1] || 0);
+  if (!daTogliere) return 0;
+
+  // Un negozio non perde metà del catalogo in una notte. Se sembra di sì, è
+  // più probabile che abbia risposto male lui — una pagina vuota, un
+  // catalogo a metà durante un aggiornamento — e cancellare sarebbe buttare
+  // via capi buoni. Si lascia stare e lo si dice; se è vero, i capi se ne
+  // andranno lo stesso fra una settimana (sql/pulisci_catalogo.sql).
+  if (daTogliere > rimasti) {
+    console.log(`    ${daTogliere} capi spariti su ${daTogliere + rimasti}: troppi per crederci, non tolgo niente`);
+    return 0;
+  }
+
+  const res = await fetch(`${SUPABASE}/rest/v1/prodotti?${filtro}`, {
+    method: "DELETE",
+    headers: { ...intestazioni, Prefer: "return=minimal" },
+  });
+  if (!res.ok) {
+    console.log(`    non sono riuscito a togliere gli spariti (${res.status}): ${(await res.text()).slice(0, 120)}`);
+    return 0;
+  }
+  return daTogliere;
 }
 
 // ── esecuzione ───────────────────────────────────────────────────────
@@ -578,33 +631,61 @@ async function importa(negozio) {
   let conColore = 0;
   let conTessuto = 0;
 
+  // Il momento da cui un capo conta come «visto stanotte». Cinque minuti
+  // prima di cominciare, perché «aggiornato» lo scrive l'orologio del
+  // database e questo è l'orologio della macchina che importa: se il
+  // database fosse un attimo indietro, i primi capi salvati risulterebbero
+  // più vecchi dell'inizio, e verrebbero tolti appena scritti.
+  const inizio = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  // Letto tutto? Diventa vero solo quando il negozio dice di aver finito —
+  // una pagina corta, o vuota — e non c'è stato niente di storto prima.
+  let completo = false;
+  let storto = false;
+
   for (let pagina = 1; pagina <= 20; pagina++) {
     let prodotti;
     try {
       prodotti = await scarica(negozio.host, pagina);
     } catch (e) {
       console.log(`  pagina ${pagina}: ${e.message} — mi fermo`);
+      storto = true;
       break;
     }
-    if (!prodotti.length) break;
+    if (!prodotti.length) {
+      completo = true;
+      break;
+    }
     letti += prodotti.length;
 
-    const righe = prodotti.map((p) => normalizza(p, negozio)).filter(Boolean);
+    // Gli esauriti non entrano: non si possono comprare, e guardarne la foto
+    // per il colore era la parte lenta dell'importazione.
+    const righe = prodotti
+      .map((p) => normalizza(p, negozio))
+      .filter((r) => r && r.disponibile);
     await aggiungiColoriDaFoto(righe);
     conColore += righe.filter((r) => r.colore_hex).length;
     conTessuto += righe.filter((r) => r.tessuto).length;
 
-    await salva(righe);
+    if (await salva(righe)) storto = true;
     salvati += righe.length;
 
-    if (prodotti.length < 250 || salvati >= TETTO_PER_NEGOZIO) break;
+    if (prodotti.length < 250) {
+      completo = true;
+      break;
+    }
+    // Col tetto il negozio non è stato letto tutto: i capi oltre non sono
+    // spariti, sono solo quelli che stanotte non si sono guardati.
+    if (salvati >= TETTO_PER_NEGOZIO) break;
     await new Promise((r) => setTimeout(r, 800)); // ospiti corretti
   }
+
+  const tolti = completo && !storto && letti > 0 ? await togliSpariti(negozio, inizio, salvati) : 0;
 
   const pct = (n) => (salvati ? Math.round((n / salvati) * 100) : 0);
   console.log(
     `  ${negozio.nome.padEnd(18)} ${String(salvati).padStart(5)} capi   ` +
-      `colore ${String(pct(conColore)).padStart(3)}%   composizione ${String(pct(conTessuto)).padStart(3)}%`,
+      `colore ${String(pct(conColore)).padStart(3)}%   composizione ${String(pct(conTessuto)).padStart(3)}%` +
+      (tolti ? `   tolti ${tolti}` : ""),
   );
   return salvati;
 }

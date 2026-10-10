@@ -39,11 +39,11 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Node 24 o più: scripts/importa-catalogo.mjs usa import.meta.main, che
       # prima non esiste — e senza, il file si carica ma non fa niente.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: npm
@@ -54,6 +54,7 @@ jobs:
       - run: npm ci
 
       - name: Importa i cataloghi
+        id: importa
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -72,7 +73,13 @@ jobs:
       # I tagli di moda si contano sul catalogo, e adesso il catalogo è
       # appena cambiato. Si fa qui, di notte, perché il conteggio prende sei
       # secondi e nessuno deve aspettarli aprendo la pagina di ricerca.
+      #
+      # E si fa anche se il controllo qui sopra è rosso: il controllo dice se
+      # l'importazione è servita, non se il catalogo c'è. Per cinque notti di
+      # ottobre è fallito il controllo, il catalogo era fresco, e le tendenze
+      # sono rimaste ferme perché venivano dopo.
       - name: Riconta i tagli di moda
+        if: ${{ !cancelled() && steps.importa.outcome == 'success' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
