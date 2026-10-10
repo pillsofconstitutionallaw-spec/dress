@@ -28,6 +28,7 @@ import { doveMandare, identificativoDa } from "@/lib/session";
 import { normalizzaAbbinamento, normalizzaVendita } from "@/lib/ai/capo";
 import { cambiaModello, scegliModello } from "@/lib/gemini";
 import { nomeDelFile } from "@/scripts/salva-profili.mjs";
+import { senzaDatiInutili, taglieInBreve } from "@/lib/taglie";
 import { arrotondaPosizione, distanzaMetri, negoziDaOsm } from "@/lib/vicini";
 import { consiglioMeteo, periodoDaGradi } from "@/lib/meteo";
 import { coloreDominante, completoDallArmadio, daQuantoNonLoMetti, dimenticatiPrima, normalizzaCapo } from "@/lib/armadio";
@@ -2857,4 +2858,25 @@ test("passano solo le immagini che dicono di essere di unghie", () => {
 
 test("una foto senza licenza leggibile non si pubblica", () => {
   assert.deepEqual(soloFoto([{ title: "File:bella.jpg", url: "https://x/a.jpg?x=1", licenza: "", autore: "Tizio" }]), []);
+});
+
+// --------------------------------------------------------------------------
+// Le taglie, al posto del peso.
+//
+// Il peso si chiedeva «per proporti la taglia giusta» e non lo usava niente.
+// Un dato che non si usa non si conserva: chi l'aveva dato prima lo perde
+// alla prima rilettura del profilo.
+// --------------------------------------------------------------------------
+test("il peso dei profili vecchi non sopravvive alla rilettura", () => {
+  const vecchio = { height: "170", weight: "64", hair: "Neri" };
+  const pulito = senzaDatiInutili(vecchio);
+  assert.equal("weight" in pulito, false);
+  assert.equal(pulito.height, "170");
+  assert.equal(pulito.hair, "Neri");
+  assert.equal(senzaDatiInutili(null), null);
+});
+
+test("le taglie si leggono in una riga, solo quelle date", () => {
+  assert.equal(taglieInBreve({ tagliaSopra: "M", tagliaScarpe: "39" }), "Sopra M · Scarpe 39");
+  assert.equal(taglieInBreve({}), "");
 });

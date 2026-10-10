@@ -4,9 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { fileToDataUrl } from "@/lib/img";
 import { fallbackOutfits } from "@/lib/fallback";
-import { FAMIGLIE_STILI, HAIR, EYES, OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
-import { FORME } from "@/lib/proporzioni";
-import BrandMark from "@/components/BrandMark";
+import { OUTFIT_MODES, RETAILERS, FAST_FASHION_NOTE, spiegaStile } from "@/lib/data";
 import { getUser, hasAccounts, resendConfirmation, signIn } from "@/lib/session";
 import { principali } from "@/lib/stagioni";
 import { arricchisciConAI, eseguiAnalisi, salvaAnalisi } from "@/lib/analisiCompleta";
@@ -15,6 +13,8 @@ import ColorePelle from "@/components/ColorePelle";
 import TestArmocromia from "@/components/TestArmocromia";
 import Drappeggio from "@/components/Drappeggio";
 import { soloCifre } from "@/lib/numeri";
+import { senzaDatiInutili } from "@/lib/taglie";
+import Questionario from "@/components/Questionario";
 
 function Swatch({ c }) {
   return (
@@ -50,7 +50,12 @@ function BuyRow({ term, budget }) {
 
 export default function Start() {
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState({ height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "" });
+  const [profile, setProfile] = useState({ height: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "", tagliaSopra: "", tagliaSotto: "", tagliaScarpe: "" });
+  // A quale domanda siamo. Una per schermata: prima stavano tutte in una
+  // pagina sola, otto campi uno sotto l'altro con peso e altezza in cima, e
+  // la prima cosa che uno vedeva era un modulo da compilare invece del
+  // motivo per cui era venuto.
+  const [domanda, setDomanda] = useState(0);
   const [closeup, setCloseup] = useState(null);
   const [fullbody, setFullbody] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -80,10 +85,11 @@ export default function Start() {
       const saved = localStorage.getItem("dress:session");
       if (saved) {
         const s = JSON.parse(saved);
-        if (s.profile) setProfile((p) => ({ ...p, ...s.profile }));
+        if (s.profile) setProfile((p) => ({ ...p, ...senzaDatiInutili(s.profile) }));
         if (s.closeup) setCloseup(s.closeup);
         if (s.fullbody) setFullbody(s.fullbody);
-        if (s.step) setStep(s.step);
+        if (s.step) setStep(s.step === 4 ? 4 : 1);
+        if (Number.isInteger(s.domanda)) setDomanda(s.domanda);
         if (s.mode) setMode(s.mode);
         if (s.budget) setBudget(s.budget);
         if (s.result) setResult(s.result);
@@ -106,10 +112,10 @@ export default function Start() {
 
   useEffect(() => {
     try {
-      const s = { profile, closeup, fullbody, step, mode, budget, result, testRisposte, correzione };
+      const s = { profile, closeup, fullbody, step, domanda, mode, budget, result, testRisposte, correzione };
       localStorage.setItem("dress:session", JSON.stringify(s));
     } catch (e) {}
-  }, [profile, closeup, fullbody, step, mode, budget, result, testRisposte, correzione]);
+  }, [profile, closeup, fullbody, step, domanda, mode, budget, result, testRisposte, correzione]);
 
   async function onPhoto(setter, e) {
     const file = e.target.files?.[0];
@@ -137,6 +143,18 @@ export default function Start() {
       if (e.needsConfirmation) setPending({ email: signup.email, message: "" });
     }
     setBusy(false);
+  }
+
+  // Il tasto «Rimandami la mail» c'era, la funzione no: alla prima email
+  // non confermata la pagina andava in errore invece di rimandarla.
+  async function resendMail() {
+    setErr("");
+    try {
+      const data = await resendConfirmation(signup.email);
+      setPending({ email: signup.email, message: data?.message || "Te l'abbiamo rimandata." });
+    } catch (e) {
+      setErr(String(e.message || e));
+    }
   }
 
   async function analyze() {
@@ -176,18 +194,22 @@ export default function Start() {
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 900 }}>
 
-      {/* Landing with Iscriviti / Accedi when user not signed up */}
-      {!signedUp && (
-        <div style={{ display: "grid", gap: 18, justifyContent: "center", alignItems: "center", paddingTop: 40 }}>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button className="btn" onClick={() => setShowSignupModal(true)}>Iscriviti</button>
-            <button className="btn ghost" onClick={() => setShowLoginModal(true)}>Accedi</button>
-          </div>
-          <div style={{ marginTop: 6 }}>
-            <BrandMark small={false} />
-          </div>
-        </div>
-      )}
+      {/* Chi ha già un account lo dice qui, in una riga. Prima stavano in
+          cima due bottoni grandi — Iscriviti e Accedi — sopra il logo, e
+          sotto partiva il questionario: non si capiva se bisognasse prima
+          iscriversi o rispondere. Si risponde; l'account è facoltativo. */}
+      {!signedUp && step !== 4 ? (
+        <p className="muted" style={{ fontSize: 14, margin: "0 0 18px" }}>
+          Hai già un account?{" "}
+          <button
+            type="button"
+            onClick={() => setShowLoginModal(true)}
+            style={{ padding: 0, background: "none", border: 0, font: "inherit", color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" }}
+          >
+            Accedi
+          </button>
+        </p>
+      ) : null}
 
       {/* Signup modal */}
       {showSignupModal && (
@@ -226,7 +248,10 @@ export default function Start() {
             <label className="field"><span className="label">Password</span><input className="control" type="password" value={signup.password} onChange={(e) => setSignup((s) => ({ ...s, password: e.target.value }))} /></label>
             {err ? <div style={{ color: "var(--signal)", marginBottom: 10 }}>{err}</div> : null}
             {pending ? (
-              <button className="btn ghost" style={{ marginBottom: 10 }} onClick={resendMail}>Rimandami la mail di conferma</button>
+              <>
+                <button className="btn ghost" style={{ marginBottom: 10 }} onClick={resendMail}>Rimandami la mail di conferma</button>
+                {pending.message ? <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{pending.message}</p> : null}
+              </>
             ) : null}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="btn ghost" onClick={() => { setSignup({ name: "", email: "", password: "", consent: true }); setErr(""); setShowLoginModal(false); }}>Annulla</button>
@@ -235,151 +260,21 @@ export default function Start() {
           </div>
         </div>
       )}
-      {/* progress */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 36 }}>
-        {[1, 2, 3, 4].map((n) => (
-          <div key={n} style={{ flex: 1, height: 3, background: step >= n ? "var(--ink)" : "var(--line)" }} />
-        ))}
-      </div>
-
       {err ? <p style={{ color: "var(--signal)", marginBottom: 20 }}>{err}</p> : null}
 
-      {step === 1 && (
-        <section>
-          <p className="eyebrow">Passo 1</p>
-          <h1 className="h2" style={{ marginTop: 10, marginBottom: 28 }}>Presentati</h1>
-          <p className="muted" style={{ marginBottom: 24, maxWidth: "56ch" }}>
-            Questi dati ci aiutano a costruire una lettura più precisa del tuo stile, senza costringerti a rispondere a domande complicate.
-          </p>
-
-          <label className="field">
-            <span className="label">Altezza (cm)</span>
-            <input className="control" inputMode="numeric" value={profile.height} onChange={(e) => set("height")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 178" />
-          </label>
-
-          <label className="field">
-            <span className="label">Peso (kg) — facoltativo</span>
-            <input className="control" inputMode="numeric" value={profile.weight} onChange={(e) => set("weight")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 72" />
-            <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
-              Serve solo a proporti la taglia giusta. Non lo commentiamo, non lo mostriamo a nessuno,
-              e puoi lasciarlo vuoto.
-            </span>
-          </label>
-
-          <label className="field">
-            <span className="label">Proporzioni — facoltativo</span>
-            <select className="control" value={profile.forma} onChange={set("forma")}>
-              <option value="">Preferisco non dirlo</option>
-              {FORME.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
-            </select>
-            <span className="muted" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
-              Serve solo a capire quali tagli cadono meglio: lo stesso pantalone su due persone
-              diverse cade in due modi diversi. Non lo commentiamo mai.
-            </span>
-          </label>
-
-          <label className="field">
-            <span className="label">Colore capelli</span>
-            <select className="control" value={profile.hair} onChange={set("hair")}>
-              <option value="">Scegli…</option>
-              {HAIR.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </label>
-
-          <label className="field">
-            <span className="label">Colore occhi</span>
-            <select className="control" value={profile.eyes} onChange={set("eyes")}>
-              <option value="">Scegli…</option>
-              {EYES.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </label>
-
-          {/* Il colore della pelle si sceglie guardandolo, non nominandolo:
-              nell'elenco a tendina finiva "oliva" anche chi ha la pelle rosa
-              tenue, e da lì usciva la palette di un'altra persona. */}
-          <div className="field">
-            <span className="label">Colore della pelle</span>
-            <ColorePelle valore={profile.pelle} onCambia={(id) => setProfile((p) => ({ ...p, pelle: id }))} />
-          </div>
-
-          <label className="field">
-            <span className="label">Sesso</span>
-            <select className="control" value={profile.sex} onChange={(e) => setProfile((p) => ({ ...p, sex: e.target.value }))}>
-              <option value="">Preferisco non specificare</option>
-              <option value="female">Donna</option>
-              <option value="male">Uomo</option>
-              <option value="nonbinary">Non binario</option>
-            </select>
-          </label>
-
-          <label className="field">
-            <span className="label">Il tuo stile attuale</span>
-            <select className="control" value={profile.style} onChange={set("style")}>
-              <option value="">Scegli…</option>
-              <option value="Non so ancora — aiutami a scoprirlo">Non so ancora — aiutami a scoprirlo</option>
-              {FAMIGLIE_STILI.map((f) => (
-                <optgroup key={f.famiglia} label={f.famiglia}>
-                  {f.stili.map((s) => (
-                    <option key={s} value={s} title={spiegaStile(s)}>
-                      {s}{spiegaStile(s) ? ` — ${spiegaStile(s).split(/[.:]/)[0]}` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-
-          <button className="btn" onClick={() => setStep(2)}>Continua</button>
-        </section>
-      )}
-
-      {step === 2 && (
-        <section>
-          <p className="eyebrow">Passo 2</p>
-          <h1 className="h2" style={{ marginTop: 10, marginBottom: 12 }}>Due foto</h1>
-          <p className="muted" style={{ marginBottom: 28, maxWidth: "56ch" }}>
-            Un primo piano del viso (luce naturale, senza filtri) e una figura intera.
-            Le immagini vengono ridotte e inviate solo per l'analisi, quindi non servono foto perfette: basta una luce naturale e un po' di spontaneità.
-          </p>
-
-          <div className="two-eq">
-            {[
-              ["Primo piano", closeup, (e) => onPhoto(setCloseup, e)],
-              ["Figura intera", fullbody, (e) => onPhoto(setFullbody, e)],
-            ].map(([label, val, handler]) => (
-              <label key={label} className="card" style={{ padding: 16, cursor: "pointer", display: "block" }}>
-                <span className="label" style={{ display: "block", marginBottom: 10 }}>{label}</span>
-                <div style={{ aspectRatio: "3/4", background: "var(--stone)", display: "grid", placeItems: "center", overflow: "hidden" }}>
-                  {val ? <img src={val} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span className="muted" style={{ fontSize: 13 }}>Tocca per caricare</span>}
-                </div>
-                <input type="file" accept="image/*" onChange={handler} style={{ display: "none" }} />
-              </label>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
-            <button className="btn ghost" onClick={() => setStep(1)}>Indietro</button>
-            <button className="btn" onClick={() => setStep(3)}>Continua</button>
-          </div>
-        </section>
-      )}
-
-      {step === 3 && (
-        <section>
-          <p className="eyebrow">Passo 3</p>
-          <h1 className="h2" style={{ marginTop: 10, marginBottom: 12 }}>Genera la tua palette</h1>
-          <div className="summary-card" style={{ marginBottom: 24, maxWidth: 620 }}>
-            <p className="eyebrow" style={{ marginBottom: 8 }}>Riepilogo</p>
-            <p className="muted" style={{ margin: 0, fontSize: 15 }}>
-              {profile.height || "—"} cm · {profile.weight ? `${profile.weight} kg · ` : ""}capelli {profile.hair || "—"} · occhi {profile.eyes || "—"} · pelle {tonoPelle(profile.pelle)?.nome || "—"} · stile {profile.style || "—"}.
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button className="btn ghost" onClick={() => setStep(2)}>Indietro</button>
-            <button className="btn" onClick={analyze} disabled={loading}>{loading ? "Analizzo…" : "Crea la mia palette"}</button>
-          </div>
-        </section>
-      )}
+      {step !== 4 ? (
+        <Questionario
+          domanda={domanda}
+          setDomanda={setDomanda}
+          profile={profile}
+          setProfile={setProfile}
+          closeup={closeup}
+          fullbody={fullbody}
+          onFoto={(quale, e) => onPhoto(quale === "closeup" ? setCloseup : setFullbody, e)}
+          analizza={analyze}
+          loading={loading}
+        />
+      ) : null}
 
       {step === 4 && result && (
         <section>
@@ -472,7 +367,7 @@ export default function Start() {
                 {avvisi.map((a) => (
                   <p key={a} className="muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>{a}</p>
                 ))}
-                <button className="btn ghost" style={{ marginTop: 4, justifySelf: "start" }} onClick={() => setStep(3)}>
+                <button className="btn ghost" style={{ marginTop: 4, justifySelf: "start" }} onClick={() => { setDomanda(0); setStep(1); }}>
                   Aggiungi le foto
                 </button>
               </div>
@@ -616,7 +511,7 @@ export default function Start() {
                 <Link href="/unghie" className="btn ghost">Smalti nei tuoi colori</Link>
               ) : null}
               <Link href="/wardrobe" className="btn ghost">Abbina un capo solo</Link>
-              <button className="btn ghost" onClick={() => { setStep(1); setResult(null); }}>Ricomincia</button>
+              <button className="btn ghost" onClick={() => { setDomanda(0); setStep(1); setResult(null); }}>Ricomincia</button>
             </div>
           </div>
         </section>

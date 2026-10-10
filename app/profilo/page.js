@@ -15,6 +15,8 @@ import { tonoPelle } from "@/lib/pelle";
 import { aggiornaSessione, arricchisciConAI, eseguiAnalisi, leggiSessione, salvaAnalisi } from "@/lib/analisiCompleta";
 import { apiFetch, completaProfilo, getUser, hasAccounts } from "@/lib/session";
 import { soloCifre } from "@/lib/numeri";
+import { senzaDatiInutili, taglieInBreve } from "@/lib/taglie";
+import SceltaTaglie from "@/components/SceltaTaglie";
 
 // Il profilo.
 //
@@ -36,7 +38,8 @@ const COLORI_PROFILO = [
 ];
 
 const VUOTO = {
-  height: "", weight: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "",
+  height: "", forma: "", hair: "", eyes: "", pelle: "", style: "", sex: "",
+  tagliaSopra: "", tagliaSotto: "", tagliaScarpe: "",
 };
 
 // La correzione a mano, tradotta in numeri.
@@ -183,7 +186,7 @@ export default function Profilo() {
       // comodità di ritrovarle su un altro telefono.
       const sessione = leggiSessione();
       if (vivo && sessione) {
-        const p = { ...VUOTO, ...(sessione.profile || {}) };
+        const p = { ...VUOTO, ...senzaDatiInutili(sessione.profile || {}) };
         setInfo(p);
         setBozza(p);
         setFoto({ closeup: sessione.closeup || null, fullbody: sessione.fullbody || null });
@@ -222,7 +225,7 @@ export default function Profilo() {
           // Il profilo sul server riempie i buchi del browser, non lo
           // sovrascrive: chi ha appena cambiato qualcosa qui deve ritrovarlo.
           if (!sessione?.profile && profile?.dati?.profilo) {
-            const p = { ...VUOTO, ...profile.dati.profilo };
+            const p = { ...VUOTO, ...senzaDatiInutili(profile.dati.profilo) };
             setInfo(p);
             setBozza(p);
             setBudget(profile.dati.profilo.budget || "");
@@ -554,7 +557,7 @@ export default function Profilo() {
 
               <div>
                 <Riga voce="Altezza" valore={info.height ? `${info.height} cm` : ""} />
-                <Riga voce="Peso" valore={info.weight ? `${info.weight} kg` : ""} />
+                <Riga voce="Taglie" valore={taglieInBreve(info)} />
                 <Riga voce="Proporzioni" valore={nomeForma(info.forma)} />
                 <Riga voce="Capelli" valore={info.hair} />
                 <Riga voce="Occhi" valore={info.eyes} />
@@ -591,8 +594,12 @@ export default function Profilo() {
               <label className="field"><span className="label">Altezza (cm)</span>
                 <input className="control" inputMode="numeric" value={bozza.height} onChange={(e) => cambiaBozza("height")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 178" /></label>
 
-              <label className="field"><span className="label">Peso (kg) — facoltativo</span>
-                <input className="control" inputMode="numeric" value={bozza.weight} onChange={(e) => cambiaBozza("weight")({ target: { value: soloCifre(e.target.value, 3) } })} placeholder="es. 72" /></label>
+              <div className="field">
+                <span className="label">Taglie che porti di solito — facoltative</span>
+                <div style={{ marginTop: 8 }}>
+                  <SceltaTaglie valori={bozza} onCambia={(campo, v) => setBozza((b) => ({ ...b, [campo]: v }))} />
+                </div>
+              </div>
 
               <label className="field"><span className="label">Proporzioni — facoltativo</span>
                 <select className="control" value={bozza.forma} onChange={cambiaBozza("forma")}>
