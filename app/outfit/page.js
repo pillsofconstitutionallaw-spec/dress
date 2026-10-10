@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import PrimaLAnalisi from "@/components/PrimaLAnalisi";
 import OutfitPeriodo from "@/components/OutfitPeriodo";
 import { periodoCorrente } from "@/lib/periodiAnno";
 import { paletteAggiornata, paletteDelPeriodo } from "@/lib/stagioni";
@@ -218,12 +219,12 @@ export default function Outfit() {
 
   if (!palette.length && !caricamento) {
     return (
-      <div className="wrap" style={{ paddingTop: 60, paddingBottom: 40, maxWidth: 520 }}>
-        <h1 className="h2">I tuoi completi</h1>
-        <p className="muted">
-          Prima serve l’analisi: senza i tuoi colori non sapremmo che completi metterti insieme.
-        </p>
-        <Link href="/start" className="btn-app" style={{ marginTop: 20, display: "flex" }}>Fai l’analisi</Link>
+      <div className="wrap" style={{ paddingTop: 32, paddingBottom: 40, maxWidth: 560 }}>
+        <PrimaLAnalisi
+          titolo="I tuoi completi"
+          tipo="completi"
+          perche="Un completo per ogni stagione, messo insieme nei tuoi colori, con capi veri che puoi comprare."
+        />
       </div>
     );
   }

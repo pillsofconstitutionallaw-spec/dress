@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import PrimaLAnalisi from "@/components/PrimaLAnalisi";
 import { smaltiPer } from "@/lib/unghie";
 import { tonoPelle } from "@/lib/pelle";
 
@@ -52,16 +52,17 @@ export default function Unghie() {
   return (
     <div className="wrap" style={{ paddingTop: 32, paddingBottom: 40, maxWidth: 640 }}>
       <h1 className="h2" style={{ marginBottom: 4 }}>Smalti che ti stanno bene</h1>
-      <p className="muted" style={{ fontSize: 14 }}>
-        Scelti sul sottotono della tua pelle, misurato durante l&apos;analisi.
-      </p>
+      {smalti.length ? (
+        <p className="muted" style={{ fontSize: 14 }}>
+          Scelti sul sottotono della tua pelle, misurato durante l&apos;analisi.
+        </p>
+      ) : null}
 
       {!smalti.length ? (
-        <p className="muted" style={{ fontSize: 14, marginTop: 22 }}>
-          Prima serve l&apos;analisi dei colori: senza sapere che sottotono ha la tua pelle,
-          consiglierei uno smalto a caso — e uno smalto sbagliato si vede più di una maglietta
-          sbagliata. <Link href="/start">Falla adesso</Link>, sono due minuti.
-        </p>
+        <PrimaLAnalisi
+          tipo="smalti"
+          perche="Gli smalti scelti sul sottotono della tua pelle: quello lo misura l'analisi, e senza sarebbe un consiglio a caso."
+        />
       ) : (
         <>
           {/* Dire su cosa si basa il consiglio, non solo darlo. È la

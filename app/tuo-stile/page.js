@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import PrimaLAnalisi from "@/components/PrimaLAnalisi";
 import { paletteAggiornata } from "@/lib/stagioni";
 import { spiegaStile } from "@/lib/data";
 import { tonoPelle } from "@/lib/pelle";
@@ -131,16 +132,11 @@ export default function TuoStile() {
   // Nessuna analisi: non si mostra una pagina vuota, si dice cosa fare.
   if (!palette.length) {
     return (
-      <div className="wrap" style={{ paddingTop: 56, paddingBottom: 40, maxWidth: 640 }}>
-        <p className="eyebrow">I tuoi colori</p>
-        <h1 className="h1" style={{ fontSize: "clamp(28px, 5vw, 46px)", marginTop: 14, marginBottom: 12 }}>
-          Non li hai ancora
-        </h1>
-        <p className="lead" style={{ marginBottom: 28 }}>
-          Servono una foto e qualche risposta: cinque minuti, una volta sola. Poi i tuoi colori e i
-          tuoi stili stanno qui, e li ritrovi ogni volta che apri.
-        </p>
-        <Link className="btn" href="/start">Fai l&apos;analisi</Link>
+      <div className="wrap" style={{ paddingTop: 32, paddingBottom: 40, maxWidth: 560 }}>
+        <PrimaLAnalisi
+          titolo="I tuoi colori"
+          perche="Dodici colori scelti sulla luce del tuo viso, e gli stili che ti somigliano. Li ritrovi qui ogni volta che apri."
+        />
       </div>
     );
   }

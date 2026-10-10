@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import PrimaLAnalisi from "@/components/PrimaLAnalisi";
 import Avatar from "@/components/Avatar";
 import ColorePelle from "@/components/ColorePelle";
 import Drappeggio from "@/components/Drappeggio";
@@ -438,6 +439,10 @@ export default function Profilo() {
   }
 
   const tono = tonoPelle(info.pelle);
+  // Niente risultato e niente foto: l'analisi non è mai cominciata. Se c'è
+  // almeno una foto invece è cominciata e magari non è riuscita, e i dati
+  // vanno lasciati in vista per poterli correggere.
+  const maiFatta = !risultato?.palette?.length && !foto.closeup && !foto.fullbody;
   const quanteRisposte = Object.values(bozzaTest).filter((v) => v !== undefined && v !== null).length;
 
   return (
@@ -527,7 +532,14 @@ export default function Profilo() {
         </Gruppo>
       ) : null}
 
+      {/* Senza analisi non c'è niente da modificare: le foto e le risposte
+          sarebbero riquadri vuoti e campi vuoti. Si dice cosa fare, una volta. */}
+      {maiFatta ? (
+        <PrimaLAnalisi perche="Dalle tue risposte e da due foto escono i tuoi colori. Poi qui le ritrovi, e le cambi quando vuoi." />
+      ) : null}
+
       {/* ── Informazioni ────────────────────────────────────────────── */}
+      {!maiFatta ? (
       <Gruppo
         titolo="Informazioni"
         detta="Le risposte e le foto da cui escono i tuoi colori. Cambiane una, o tutte: al salvataggio la palette si rifà."
@@ -693,6 +705,8 @@ export default function Profilo() {
         </section>
       </Gruppo>
 
+      ) : null}
+
       {/* ── Quello che ne esce ──────────────────────────────────────── */}
       {risultato?.palette?.length ? (
         <Gruppo titolo="Quello che ne esce" detta="Il risultato di adesso. Cambia da solo ogni volta che salvi qui sopra.">
@@ -767,19 +781,7 @@ export default function Profilo() {
             </div>
           </section>
         </Gruppo>
-      ) : (
-        <Gruppo titolo="Quello che ne esce" detta="Non hai ancora un’analisi.">
-          <div>
-            <Link href="/start" className="btn">Falla adesso</Link>
-          </div>
-        </Gruppo>
-      )}
-
-      <Gruppo titolo="Altro" detta="Password, accesso, negozi che segui, cancellazione dell’account.">
-        <div>
-          <Link href="/impostazioni" className="btn ghost">Impostazioni</Link>
-        </div>
-      </Gruppo>
+      ) : null}
     </div>
   );
 }

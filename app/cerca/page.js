@@ -251,7 +251,7 @@ export default function Cerca() {
         </p>
       ) : (
         <p className="muted" style={{ fontSize: 13, marginTop: 18 }}>
-          <Link href="/start">Fai l’analisi colori</Link> e qui troverai i tuoi colori già pronti.
+          <Link href="/start" style={{ color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 3 }}>Fai l’analisi</Link> e qui troverai i tuoi colori già pronti.
         </p>
       )}
 
