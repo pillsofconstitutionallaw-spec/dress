@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import MappaNegozi from "@/components/MappaNegozi";
 
 // I negozi di vestiti qui intorno.
 //
@@ -12,6 +13,9 @@ import Link from "next/link";
 //
 // E si dà via meno di quanto si crede: il browser ci dà il punto esatto, ma
 // prima di uscire da qui lo arrotondiamo a cento metri. Vedi lib/vicini.js.
+//
+// Sopra la mappa, sotto l'elenco. Si tocca un negozio — su una o sull'altro —
+// e si apre: indirizzo, orari, come arrivarci, sito e social.
 
 function quantoDista(metri) {
   if (metri < 1000) return `${metri} m`;
@@ -32,6 +36,18 @@ export default function Vicini() {
   const [negozi, setNegozi] = useState([]);
   const [raggio, setRaggio] = useState(1500);
   const [problema, setProblema] = useState("");
+  const [centro, setCentro] = useState(null);
+  const [scelto, setScelto] = useState(null);
+  // Ogni ricerca ha la sua mappa: cambiando raggio si ricomincia da capo
+  // invece di spostare quella vecchia.
+  const [giro, setGiro] = useState(0);
+  const righe = useRef(new Map());
+
+  // Toccato un punto sulla mappa, il negozio si apre nell'elenco e ci si
+  // scorre fino a vederlo.
+  useEffect(() => {
+    if (scelto) righe.current.get(scelto)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [scelto]);
 
   function cerca(metri = raggio) {
     if (!navigator.geolocation) {
@@ -53,8 +69,16 @@ export default function Vicini() {
           const res = await fetch(`/api/vicini?${q}`);
           const d = await res.json();
           if (!res.ok || !d.ok) throw new Error(d.error || "no");
+          // Sulla mappa si mette lo stesso punto arrotondato che è partito,
+          // non quello esatto: «più o meno qui» è quello che sappiamo.
+          setCentro({
+            lat: Math.round(pos.coords.latitude * 1000) / 1000,
+            lon: Math.round(pos.coords.longitude * 1000) / 1000,
+          });
           setNegozi(d.negozi);
           setRaggio(d.raggio);
+          setScelto(null);
+          setGiro((g) => g + 1);
           setStato("fatto");
         } catch (e) {
           setProblema(e.message === "no" ? "Non ha funzionato. Riprova fra poco." : e.message);
@@ -97,7 +121,8 @@ export default function Vicini() {
           </button>
           <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
             Il telefono ti chiederà il permesso. La posizione la arrotondiamo a cento metri prima di
-            usarla, non la salviamo da nessuna parte e non la diamo a nessuno.
+            usarla e non la salviamo da nessuna parte. La mappa la disegna OpenStreetMap: per farlo vede
+            la zona che stai guardando, come qualunque mappa.
           </p>
         </>
       ) : null}
@@ -114,38 +139,63 @@ export default function Vicini() {
               : `Qui intorno, entro ${quantoDista(raggio)}, non ce n'è nessuno sulla mappa. Prova ad allargare.`}
           </p>
 
+          {centro && negozi.length ? (
+            <div style={{ marginTop: 14 }}>
+              <MappaNegozi
+                key={giro}
+                centro={centro}
+                negozi={negozi}
+                scelto={scelto}
+                onScegli={(id) => setScelto(id)}
+              />
+            </div>
+          ) : null}
+
           <ul style={{ listStyle: "none", padding: 0, margin: "16px 0 0" }}>
-            {negozi.map((n) => (
-              <li key={n.id} style={{ padding: "12px 0", borderTop: "1px solid #e8e8e8" }}>
-                <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-                  <strong style={{ fontSize: 15 }}>{n.nome}</strong>
-                  <span className="muted" style={{ fontSize: 12 }}>
-                    {quantoDista(n.metri)}
-                    {n.genere && GENERI[n.genere] ? ` · ${GENERI[n.genere]}` : ""}
-                  </span>
-                </div>
+            {negozi.map((n) => {
+              const aperto = n.id === scelto;
+              return (
+                <li
+                  key={n.id}
+                  ref={(el) => (el ? righe.current.set(n.id, el) : righe.current.delete(n.id))}
+                  style={{ borderTop: "1px solid var(--line)", scrollMarginTop: 60, scrollMarginBottom: 90 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setScelto(aperto ? null : n.id)}
+                    aria-expanded={aperto}
+                    style={{
+                      display: "flex",
+                      width: "100%",
+                      gap: 10,
+                      alignItems: "baseline",
+                      justifyContent: "space-between",
+                      padding: "14px 0",
+                      background: "none",
+                      border: 0,
+                      font: "inherit",
+                      color: "inherit",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span>
+                      <strong style={{ fontSize: 15, color: aperto ? "var(--signal)" : "inherit" }}>{n.nome}</strong>
+                      <span className="muted" style={{ fontSize: 13, display: "block", marginTop: 2 }}>
+                        {quantoDista(n.metri)}
+                        {n.genere && GENERI[n.genere] ? ` · ${GENERI[n.genere]}` : ""}
+                        {n.inCatalogo ? " · in catalogo" : ""}
+                      </span>
+                    </span>
+                    <span aria-hidden="true" className="muted" style={{ fontSize: 18, lineHeight: 1 }}>
+                      {aperto ? "−" : "+"}
+                    </span>
+                  </button>
 
-                {n.inCatalogo ? (
-                  <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
-                    {n.quantiInCatalogo
-                      ? `Di questo negozio abbiamo ${n.quantiInCatalogo.toLocaleString("it-IT")} capi, con prezzi e colori.`
-                      : "Questo negozio è fra quelli che seguiamo."}
-                  </p>
-                ) : null}
-
-                <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
-                  {/* Il sito prima della mappa: chi cerca gli sconti li trova lì. */}
-                  {n.sito ? (
-                    <a href={n.sito} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>
-                      Il loro sito
-                    </a>
-                  ) : null}
-                  <a href={n.mappa} target="_blank" rel="noopener noreferrer" className="muted" style={{ fontSize: 13 }}>
-                    Dove si trova
-                  </a>
-                </div>
-              </li>
-            ))}
+                  {aperto ? <DettagliNegozio negozio={n} /> : null}
+                </li>
+              );
+            })}
           </ul>
 
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
@@ -169,6 +219,45 @@ export default function Vicini() {
         </a>
         , mappati dalle persone che ci vivono. Se ne manca uno, si può aggiungere.
       </p>
+    </div>
+  );
+}
+
+// Quello che si vede toccando un negozio. Si mostra solo quello che c'è:
+// in OpenStreetMap metà dei negozi non ha il sito e pochi hanno i social, e
+// una riga «Instagram: non disponibile» è rumore.
+function DettagliNegozio({ negozio: n }) {
+  const link = { fontSize: 14, textDecoration: "underline", textUnderlineOffset: 3 };
+  return (
+    <div style={{ padding: "0 0 18px", display: "grid", gap: 12 }}>
+      {n.indirizzo ? <p style={{ margin: 0, fontSize: 14 }}>{n.indirizzo}</p> : null}
+
+      {n.orari?.length ? (
+        <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
+          {n.orari.map((r) => <div key={r}>{r}</div>)}
+        </div>
+      ) : null}
+
+      {n.inCatalogo ? (
+        <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+          {n.quantiInCatalogo
+            ? `Di questo negozio abbiamo ${n.quantiInCatalogo.toLocaleString("it-IT")} capi, con prezzi e colori.`
+            : "Questo negozio è fra quelli che seguiamo."}
+        </p>
+      ) : null}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 18px", alignItems: "center" }}>
+        <a className="btn" href={n.indicazioni} target="_blank" rel="noopener noreferrer">
+          Indicazioni
+        </a>
+        {n.sito ? <a href={n.sito} target="_blank" rel="noopener noreferrer" style={link}>Sito</a> : null}
+        {n.social?.map((s) => (
+          <a key={s.nome} href={s.url} target="_blank" rel="noopener noreferrer" style={link}>{s.nome}</a>
+        ))}
+        {n.telefono ? (
+          <a href={`tel:${n.telefono.replace(/[^\d+]/g, "")}`} style={link}>{n.telefono}</a>
+        ) : null}
+      </div>
     </div>
   );
 }

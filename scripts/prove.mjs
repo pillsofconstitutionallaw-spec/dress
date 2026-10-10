@@ -2291,6 +2291,87 @@ test("i negozi che abbiamo già in catalogo si riconoscono", () => {
   assert.equal(n.inCatalogo, "Kocca", "non ha collegato il negozio al catalogo");
 });
 
+test("di un negozio si sa dove sta: punto sulla mappa e indirizzo", () => {
+  const [n] = negoziDaOsm([
+    { id: 1, lat: 40.8361, lon: 14.2490, tags: {
+      name: "Sartoria", shop: "clothes",
+      "addr:street": "Via Toledo", "addr:housenumber": "120", "addr:postcode": "80134", "addr:city": "Napoli",
+    } },
+  ], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(n.lat, 40.8361);
+  assert.equal(n.lon, 14.249);
+  assert.equal(n.indirizzo, "Via Toledo 120, 80134 Napoli");
+  assert.match(n.indicazioni, /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=40\.8361,14\.249/);
+});
+
+test("più numeri civici si scrivono come per strada", () => {
+  const [n] = negoziDaOsm([{ id: 1, lat: 40.836, lon: 14.249, tags: {
+    name: "Madì", shop: "clothes", "addr:street": "Via Toledo", "addr:housenumber": "199;200",
+  } }], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(n.indirizzo, "Via Toledo 199/200");
+});
+
+test("senza indirizzo si dice null, non si inventa", () => {
+  const [n] = negoziDaOsm([{ id: 1, lat: 40.836, lon: 14.249, tags: { name: "A", shop: "clothes" } }], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(n.indirizzo, null);
+  assert.deepEqual(n.social, []);
+  assert.equal(n.telefono, null);
+  assert.equal(n.orari, null);
+});
+
+test("i social diventano link veri, comunque li abbia scritti chi ha mappato", () => {
+  // In OpenStreetMap lo stesso profilo si trova scritto in tre modi: il nome
+  // nudo, con la chiocciola, o l'indirizzo intero.
+  const [n] = negoziDaOsm([{ id: 1, lat: 40.836, lon: 14.249, tags: {
+    name: "A", shop: "clothes",
+    "contact:instagram": "@sartoria.na",
+    facebook: "https://www.facebook.com/sartoriana",
+    "contact:tiktok": "sartoria_na",
+  } }], { lat: 40.8359, lon: 14.2488 });
+  assert.deepEqual(n.social, [
+    { nome: "Instagram", url: "https://www.instagram.com/sartoria.na" },
+    { nome: "Facebook", url: "https://www.facebook.com/sartoriana" },
+    { nome: "TikTok", url: "https://www.tiktok.com/@sartoria_na" },
+  ]);
+});
+
+test("un link che non porta dove dice non passa", () => {
+  // Quello che c'è in OpenStreetMap lo scrive chiunque. Un «instagram» che
+  // punta a un altro sito, o un sito che è uno script, non si mostra.
+  const [n] = negoziDaOsm([{ id: 1, lat: 40.836, lon: 14.249, tags: {
+    name: "A", shop: "clothes",
+    instagram: "https://truffa.example/instagram",
+    website: "javascript:alert(1)",
+  } }], { lat: 40.8359, lon: 14.2488 });
+  assert.deepEqual(n.social, []);
+  assert.equal(n.sito, null);
+});
+
+test("un sito scritto senza https si apre lo stesso", () => {
+  const [n] = negoziDaOsm([{ id: 1, lat: 40.836, lon: 14.249, tags: { name: "A", shop: "clothes", website: "www.negozio.it" } }], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(n.sito, "https://www.negozio.it");
+});
+
+test("telefono e orari, detti in italiano", () => {
+  const [n] = negoziDaOsm([{ id: 1, lat: 40.836, lon: 14.249, tags: {
+    name: "A", shop: "clothes",
+    phone: "+39 081 123 4567; +39 333 1234567",
+    opening_hours: "Mo-Fr 09:30-13:30,16:30-20:00; Sa 10:00-20:00; Su off",
+  } }], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(n.telefono, "+39 081 123 4567");
+  assert.deepEqual(n.orari, ["Lun-Ven 09:30-13:30, 16:30-20:00", "Sab 10:00-20:00", "Dom chiuso"]);
+});
+
+test("dei due doppioni si tengono anche indirizzo e social", () => {
+  const elenco = negoziDaOsm([
+    { id: 1, lat: 40.8360, lon: 14.2490, tags: { name: "Imperatrice", shop: "clothes" } },
+    { id: 2, lat: 40.8360, lon: 14.2491, tags: { name: "Imperatrice", shop: "boutique", "addr:street": "Via Chiaia", instagram: "imperatrice" } },
+  ], { lat: 40.8359, lon: 14.2488 });
+  assert.equal(elenco.length, 1);
+  assert.equal(elenco[0].indirizzo, "Via Chiaia");
+  assert.equal(elenco[0].social.length, 1);
+});
+
 test("la posizione si arrotonda prima di uscire di qui", () => {
   // Per cercare negozi entro un chilometro non serve sapere in che stanza si
   // è. Tre decimali sono circa cento metri: abbastanza per la ricerca, non
