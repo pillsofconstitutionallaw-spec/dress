@@ -93,7 +93,7 @@ export default function Confirmed() {
           <p className="muted">Ti stiamo portando dentro…</p>
           <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
             <Link className="btn" href="/start">Comincia: misure e selfie</Link>
-            <Link className="btn ghost" href="/dashboard">Il tuo spazio</Link>
+            <Link className="btn ghost" href="/tuo-stile">I miei colori</Link>
           </div>
         </>
       )}

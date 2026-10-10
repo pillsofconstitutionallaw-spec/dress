@@ -434,3 +434,8 @@ select.control { appearance: none; background-image: linear-gradient(45deg, tran
   .marchio-animato .marchio-parola,
   .entra-morbido { animation: none; }
 }
+
+/* Le schede in cima a ogni voce: scorrono di lato se non ci stanno, senza
+   mostrare la barra di scorrimento, che su una fila di parole fa solo rumore. */
+.schede { scrollbar-width: none; }
+.schede::-webkit-scrollbar { display: none; }

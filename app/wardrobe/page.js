@@ -50,7 +50,7 @@ export default function Wardrobe() {
 
   return (
     <div className="wrap" style={{ paddingTop: 56, paddingBottom: 20, maxWidth: 900 }}>
-      <p className="eyebrow">Il tuo guardaroba</p>
+      <p className="eyebrow">Armadio</p>
       <h1 className="h1" style={{ fontSize: "clamp(30px, 5.4vw, 56px)", marginTop: 16, marginBottom: 12 }}>Abbina un capo</h1>
       <p className="lead" style={{ marginBottom: 40 }}>
         Carica la foto di un capo che hai già e ti dico che cos&apos;è e con cosa si mette. Se invece

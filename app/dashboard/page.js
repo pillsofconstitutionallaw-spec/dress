@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { fileToDataUrl } from "@/lib/img";
 import CapiTrovati from "@/components/CapiTrovati";
-import NonUnCapo from "@/components/NonUnCapo";
-import Gruppo from "@/components/Gruppo";
 import ProponiImpronta from "@/components/ProponiImpronta";
 import { usaPreferiti } from "@/lib/preferiti";
 import {
@@ -27,9 +24,9 @@ export default function Dashboard() {
   const [passwordInput, setPasswordInput] = useState("");
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState("");
-  const [image, setImage] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [matchRes, setMatchRes] = useState(null);
+  // Il modulo d'accesso resta chiuso finché non lo si chiede: chi apre i
+  // preferiti vuole vedere i preferiti, non una email e una password.
+  const [apriAccesso, setApriAccesso] = useState(false);
 
   const { capi: capiPreferiti, pronto: preferitiPronti } = usaPreferiti();
   const confirmed = Boolean(user?.email_confirmed_at || user?.confirmed_at);
@@ -130,42 +127,6 @@ export default function Dashboard() {
     }
   }
 
-  // ---- analisi immagine -------------------------------------------------
-  async function onPhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setImage(await fileToDataUrl(file));
-    } catch {
-      setErr("Immagine non leggibile.");
-    }
-  }
-
-  // La foto di un CAPO va all'endpoint dei capi, non a quello dei colori:
-  // /api/analyze ora lavora sulle misure e le immagini le ignora, quindi
-  // questa funzione non faceva più niente.
-  //
-  // Qui si abbina soltanto: l'annuncio di vendita si chiede da /vendi.
-  async function askMatch() {
-    if (!image) return setErr("Carica prima la foto di un capo.");
-    setLoading(true);
-    setErr("");
-    setMatchRes(null);
-    try {
-      const r = await fetch("/api/abbina", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Errore");
-      setMatchRes(data);
-    } catch {
-      setErr("Non sono riuscito a leggere il capo. Riprova con una foto più nitida.");
-    }
-    setLoading(false);
-  }
-
   // ---- account ----------------------------------------------------------
   async function onSignIn(e) {
     e.preventDefault();
@@ -198,28 +159,10 @@ export default function Dashboard() {
   }
 
 
-  // Le destinazioni dell'app, in un elenco solo.
-  //
-  // Erano due: quattro schede in cima e tre bottoni grigi in fondo, sotto un
-  // titolo che diceva "Altro". Due liste della stessa cosa, in due posti, con
-  // due aspetti diversi — e per sapere dove si poteva andare bisognava
-  // leggerle tutte e due. Adesso è una, e ogni voce dice cosa ci trovi.
-  const destinazioni = [
-    { href: "/tuo-stile", titolo: "I tuoi colori e i tuoi stili", detta: "La tua palette, e i capi veri di ogni stile" },
-    { href: "/outfit", titolo: "I tuoi completi", detta: "Uno per stagione, nei tuoi colori" },
-    { href: "/offers", titolo: "In sconto adesso", detta: "I ribassi veri dei negozi in catalogo" },
-    { href: "/cerca", titolo: "Cerca un capo", detta: "Per marca o modello, filtrato sui tuoi colori" },
-    { href: "/wardrobe", titolo: "Abbina un capo", detta: "La stessa cosa di qui sopra, in una pagina sua" },
-    { href: "/vendi", titolo: "Vendi un capo", detta: "L’annuncio per Vinted, già scritto" },
-    { href: "/colors", titolo: "I colori dell’anno", detta: "Le tinte della stagione, spiegate" },
-    { href: "/start", titolo: "Rifai l’analisi", detta: "Se cambi capelli, o la foto non era buona" },
-  ];
-
   // L'account: in cima se devi ancora entrare, in fondo se sei già dentro.
   // Le impostazioni non sono la prima cosa che uno vuole vedere di casa sua.
   const sezioneAccount = (
     <section className="card" style={{ padding: 16 }}>
-      <h2 className="h3">Account</h2>
 
       {!hasAccounts() && (
         <p className="muted">
@@ -228,9 +171,16 @@ export default function Dashboard() {
         </p>
       )}
 
-      {hasAccounts() && !user && (
+      {hasAccounts() && !user && !apriAccesso && (
+        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <p className="muted" style={{ margin: 0 }}>Per ora sono salvati solo su questo telefono.</p>
+          <button className="btn ghost" type="button" onClick={() => setApriAccesso(true)}>Accedi</button>
+        </div>
+      )}
+
+      {hasAccounts() && !user && apriAccesso && (
         <>
-          <p className="muted">Accedi per ritrovare palette, preferiti e outfit su qualsiasi dispositivo.</p>
+          <p className="muted" style={{ marginTop: 0 }}>Accedi per ritrovare palette, preferiti e completi su qualsiasi dispositivo.</p>
           <form onSubmit={onSignIn} style={{ display: "grid", gap: 8, maxWidth: 360, marginTop: 12 }}>
             <input
               className="control"
@@ -253,8 +203,12 @@ export default function Dashboard() {
               <Link className="btn ghost" href="/start">Iscriviti</Link>
             </div>
           </form>
-          <button className="btn ghost" style={{ marginTop: 8 }} onClick={onResend} type="button">
-            Rimandami la mail di conferma
+          <button
+            type="button"
+            onClick={onResend}
+            style={{ marginTop: 12, padding: 0, background: "none", border: 0, font: "inherit", fontSize: 13, color: "var(--greige)", textDecoration: "underline", cursor: "pointer" }}
+          >
+            Non ti è arrivata la mail di conferma?
           </button>
         </>
       )}
@@ -277,9 +231,9 @@ export default function Dashboard() {
 
   return (
     <div className="wrap" style={{ paddingTop: 48, paddingBottom: 40, maxWidth: 960 }}>
-      <h1 className="h2" style={{ margin: 0 }}>Il tuo spazio personale</h1>
+      <h1 className="h2" style={{ margin: 0 }}>Preferiti</h1>
       <p className="muted" style={{ marginTop: 6 }}>
-        I capi che hai messo da parte e i completi salvati.
+        I capi col cuore e i completi che hai salvato.
       </p>
 
       {err ? <p style={{ color: "var(--signal)", marginTop: 12 }}>{err}</p> : null}
@@ -290,12 +244,8 @@ export default function Dashboard() {
       {/* A chi è già dentro e non l'ha ancora attivato. Si mostra una volta. */}
       <ProponiImpronta />
 
-      <Gruppo
-        titolo="Le tue cose"
-        detta="Quello che hai messo da parte tu: resta qui e non cambia se non lo cambi."
-      >
       {/* ---------------- I capi messi da parte ---------------- */}
-      <section>
+      <section style={{ marginTop: 40 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <h2 className="h3" style={{ margin: 0 }}>Capi col cuore</h2>
           {capiPreferiti.length ? <span className="muted" style={{ fontSize: 13 }}>{capiPreferiti.length}</span> : null}
@@ -312,19 +262,13 @@ export default function Dashboard() {
               : "Un attimo…"}
           </p>
         )}
-
-        {capiPreferiti.length > 0 && !online ? (
-          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            Sono salvati solo su questo dispositivo. Accedi e te li portiamo dietro ovunque.
-          </p>
-        ) : null}
       </section>
 
-      {/* ---------------- Capi salvati ---------------- */}
-      <section>
+      {/* ---------------- Completi salvati ---------------- */}
+      <section style={{ marginTop: 40 }}>
         <h2 className="h3">Completi salvati</h2>
         {saved.length === 0 ? (
-          <p className="muted">Non ci sono ancora capi salvati.</p>
+          <p className="muted">Nessun completo salvato. Quelli che ti piacciono in Completi li ritrovi qui.</p>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {saved.map((s, i) => (
@@ -347,71 +291,6 @@ export default function Dashboard() {
           </div>
         )}
       </section>
-
-      </Gruppo>
-
-      <Gruppo
-        titolo="Fare qualcosa"
-        detta="Le pagine dell’app, tutte da qui — e la domanda che si fa più spesso, senza doverci andare."
-      >
-      {/* ---------------- Abbinamenti ---------------- */}
-      <section>
-        <h2 className="h3">Chiedi cosa abbinare</h2>
-        <p className="muted">Carica la foto di un capo e chiedi come abbinarlo.</p>
-        <p className="muted" style={{ fontSize: 12, marginTop: -6 }}>
-          Questa foto viene inviata per il tempo della descrizione e non viene conservata. È
-          l'unica che esce dal dispositivo: il selfie dell'analisi colori resta qui.
-        </p>
-        <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-          <label className="card" style={{ padding: 12 }}>
-            <div style={{ fontSize: 13, marginBottom: 8 }}>Carica immagine</div>
-            <div style={{ width: 120, height: 160, background: "var(--stone)", display: "grid", placeItems: "center" }}>
-              {image ? (
-                <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <span className="muted">Tocca per caricare</span>
-              )}
-            </div>
-            <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
-          </label>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button className="btn" onClick={askMatch} disabled={loading}>
-              {loading ? "Analizzo…" : "Chiedi all'AI"}
-            </button>
-          </div>
-        </div>
-
-        {matchRes?.riconosciuto === false && (
-          <div style={{ marginTop: 18 }}>
-            <NonUnCapo esito={matchRes} />
-          </div>
-        )}
-
-        {matchRes && matchRes.riconosciuto !== false && (
-          <>
-            <div className="card" style={{ marginTop: 18, padding: 16, display: "grid", gap: 8 }}>
-              <strong style={{ fontSize: 15 }}>{matchRes.title}</strong>
-              {matchRes.description ? <p className="muted" style={{ margin: 0, fontSize: 14 }}>{matchRes.description}</p> : null}
-              {matchRes.matchTips?.length ? (
-                <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em", fontSize: 14, lineHeight: 1.6 }}>
-                  {matchRes.matchTips.map((t) => <li key={t}>{t}</li>)}
-                </ul>
-              ) : null}
-            </div>
-          </>
-        )}
-      </section>
-
-      <nav style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        {destinazioni.map((d) => (
-          <Link key={d.href} href={d.href} className="card"
-            style={{ padding: 16, textDecoration: "none", color: "inherit", display: "block" }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{d.titolo}</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.4 }}>{d.detta}</div>
-          </Link>
-        ))}
-      </nav>
-      </Gruppo>
 
     </div>
   );

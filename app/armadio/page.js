@@ -267,9 +267,12 @@ export default function Armadio() {
       <div className="wrap" style={{ paddingTop: 32, maxWidth: 640 }}>
         <h1 className="h2" style={{ marginBottom: 4 }}>Il tuo armadio</h1>
         <p className="muted" style={{ fontSize: 14 }}>
-          Per ricordarsi i tuoi vestiti serve sapere che sei tu. <Link href="/start">Entra o iscriviti</Link>, poi
-          torna qui.
+          Per ricordarsi i tuoi vestiti serve sapere che sei tu.
         </p>
+        {/* Era un link dentro la frase, dello stesso colore del testo: non
+            si vedeva che si poteva toccare, e la pagina sembrava un vicolo
+            cieco. */}
+        <Link className="btn" href="/" style={{ marginTop: 16 }}>Entra o iscriviti</Link>
       </div>
     );
   }

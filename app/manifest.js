@@ -23,7 +23,7 @@ export default function manifest() {
     ],
     shortcuts: [
       { name: "Analisi colori", url: "/start" },
-      { name: "Il tuo spazio", url: "/dashboard" },
+      { name: "I miei colori", url: "/tuo-stile" },
     ],
   };
 }
