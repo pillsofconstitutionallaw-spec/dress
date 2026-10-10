@@ -46,6 +46,7 @@ const ORDINE = [
   "ricerca_indice.sql",     // capi_per_palette_v2: è questa che usa l'app
   "tendenze.sql",           // i tagli di moda, contati una volta a notte
   "controlla_importazione.sql", // il controllo dopo l'importazione, in una domanda
+  "pulisci_catalogo.sql",   // via gli esauriti e i capi spariti, ogni notte
   "armadio.sql",            // i capi che uno ha già, e le foto in un secchio non pubblico
 ];
 
